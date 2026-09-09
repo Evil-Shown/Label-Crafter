@@ -40,8 +40,26 @@ function buildGrid(gridGroup, labelW, labelH, gridMm, showGrid, isDark) {
   gridGroup.add(mat)
 }
 
-// Paper Canvas & Outer Green Handles matching Screenshot 2
+// Paper drop-shadow + canvas & outer green handles
 function buildPaper(contentGroup, overlayGroup, labelW, labelH, isDark) {
+  // Soft drop shadow behind label
+  let shadow = contentGroup.getObjectByName('__paper_shadow__')
+  if (!shadow) {
+    const geo = new THREE.PlaneGeometry(1, 1)
+    const mat = new THREE.MeshBasicMaterial({
+      color: 0x000000,
+      transparent: true,
+      opacity: 0.18,
+    })
+    shadow = new THREE.Mesh(geo, mat)
+    shadow.name = '__paper_shadow__'
+    contentGroup.add(shadow)
+  }
+  const shadowPad = 6
+  shadow.scale.set(labelW + shadowPad * 2, labelH + shadowPad * 2, 1)
+  shadow.position.set(labelW / 2, -labelH / 2, -2)
+  shadow.material.opacity = isDark ? 0.45 : 0.14
+
   let paper = contentGroup.getObjectByName('__paper__')
   if (!paper) {
     const geo = new THREE.PlaneGeometry(1, 1)
@@ -52,7 +70,7 @@ function buildPaper(contentGroup, overlayGroup, labelW, labelH, isDark) {
   }
   paper.scale.set(labelW, labelH, 1)
   paper.position.set(labelW / 2, -labelH / 2, -1)
-  paper.material.color.set(isDark ? 0x0f172a : 0xffffff)
+  paper.material.color.set(isDark ? 0xf8fafc : 0xffffff)
 
   // Outer paper border
   let paperBorder = overlayGroup.getObjectByName('__paper_border__')
@@ -223,7 +241,6 @@ export default function LabelCanvas() {
   const syncMeshes = useCallback(async () => {
     const sm = sceneRef.current
     if (!sm) return
-    sm.updateBackground(isDark)
     sm.clearMeshes()
 
     const sorted = [...fields].sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0))

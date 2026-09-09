@@ -4,7 +4,7 @@ export class SceneManager {
   constructor(canvas) {
     this.canvas = canvas
     this.scene = new THREE.Scene()
-    this.updateBackground(false)
+    this.scene.background = null
 
     const w = canvas.clientWidth || 800
     const h = canvas.clientHeight || 600
@@ -24,7 +24,7 @@ export class SceneManager {
     this.renderer = new THREE.WebGLRenderer({
       canvas,
       antialias: true,
-      alpha: false,
+      alpha: true,
     })
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     this.renderer.setSize(w, h, false)
@@ -45,10 +45,6 @@ export class SceneManager {
     this.labelGroup.add(this.overlayGroup)
 
     this._meshes = new Map()
-  }
-
-  updateBackground(isDark) {
-    this.scene.background = new THREE.Color(isDark ? 0x0b1120 : 0xeef2f6)
   }
 
   resize() {

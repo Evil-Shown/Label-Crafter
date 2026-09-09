@@ -2,18 +2,21 @@ import { useRef } from 'react'
 import {
   Maximize2,
   X,
-  ListOrdered,
+  LayoutTemplate,
   Sun,
   Moon,
   FolderOpen,
   Save,
-  PlusCircle,
+  Plus,
+  Tag,
 } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
+import { IconButton } from './primitives'
 
 export default function TopHeader() {
   const fileRef = useRef(null)
 
+  const name = useLabelStore((s) => s.name)
   const margins = useLabelStore((s) => s.margins)
   const setMargins = useLabelStore((s) => s.setMargins)
   const theme = useLabelStore((s) => s.theme)
@@ -57,140 +60,92 @@ export default function TopHeader() {
     }
   }
 
+  const marginKeys = [
+    { key: 'left', label: 'L' },
+    { key: 'right', label: 'R' },
+    { key: 'top', label: 'T' },
+    { key: 'bottom', label: 'B' },
+  ]
+
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b border-[var(--lc-panel-border)] bg-[var(--lc-panel)] px-5">
-      {/* Left Title */}
+    <header
+      className="flex h-[52px] shrink-0 items-center justify-between border-b border-[var(--lc-panel-border)] bg-[var(--lc-toolbar-bg)] px-4 backdrop-blur-md"
+      style={{ boxShadow: 'var(--lc-shadow-sm)' }}
+    >
+      {/* Brand + title */}
       <div className="flex items-center gap-3">
-        <h1 className="text-base font-bold tracking-tight text-[var(--lc-text)]">
-          Edit Label Layout
-        </h1>
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 shadow-md">
+          <Tag size={15} className="text-white" strokeWidth={2.5} />
+        </div>
+        <div>
+          <h1 className="text-sm font-bold leading-none tracking-tight text-[var(--lc-text)]">
+            Lable Crafter
+          </h1>
+          <p className="mt-0.5 max-w-[180px] truncate text-[10px] font-medium text-[var(--lc-text-muted)]">
+            {name || 'Edit Label Layout'}
+          </p>
+        </div>
         <button
           type="button"
           onClick={() => setModal('showNewModal', true)}
-          className="flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-400"
-          title="Create New Blank Label Template"
+          className="lc-btn lc-btn-outline ml-1 !py-1 !px-2.5 !text-xs"
         >
-          <PlusCircle size={14} />
+          <Plus size={13} />
           New
         </button>
       </div>
 
-      {/* Middle Margins Readout */}
-      <div className="flex items-center gap-2 text-xs font-medium text-[var(--lc-text-muted)]">
-        <span>Margin (mm):</span>
-        <div className="flex items-center gap-1">
-          <span className="text-[var(--lc-text)]">L:</span>
-          <input
-            type="number"
-            step="0.5"
-            value={margins?.left ?? 0}
-            onChange={(e) => setMargins({ left: Number(e.target.value) })}
-            className="lc-input h-7 w-12 px-1 text-center"
-          />
-        </div>
-        <div className="flex items-center gap-1">
-          <span className="text-[var(--lc-text)]">R:</span>
-          <input
-            type="number"
-            step="0.5"
-            value={margins?.right ?? 0}
-            onChange={(e) => setMargins({ right: Number(e.target.value) })}
-            className="lc-input h-7 w-12 px-1 text-center"
-          />
-        </div>
-        <div className="flex items-center gap-1">
-          <span className="text-[var(--lc-text)]">T:</span>
-          <input
-            type="number"
-            step="0.5"
-            value={margins?.top ?? 0}
-            onChange={(e) => setMargins({ top: Number(e.target.value) })}
-            className="lc-input h-7 w-12 px-1 text-center"
-          />
-        </div>
-        <div className="flex items-center gap-1">
-          <span className="text-[var(--lc-text)]">B:</span>
-          <input
-            type="number"
-            step="0.5"
-            value={margins?.bottom ?? 0}
-            onChange={(e) => setMargins({ bottom: Number(e.target.value) })}
-            className="lc-input h-7 w-12 px-1 text-center"
-          />
+      {/* Margins chip group */}
+      <div className="hidden items-center gap-2 lg:flex">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--lc-text-muted)]">
+          Margins
+        </span>
+        <div className="lc-margin-group">
+          {marginKeys.map(({ key, label }) => (
+            <label key={key}>
+              {label}
+              <input
+                type="number"
+                step="0.5"
+                value={margins?.[key] ?? 0}
+                onChange={(e) => setMargins({ [key]: Number(e.target.value) })}
+              />
+            </label>
+          ))}
+          <span className="text-[10px] text-[var(--lc-text-muted)]">mm</span>
         </div>
       </div>
 
-      {/* Right Actions */}
-      <div className="flex items-center gap-2">
-        {/* Theme Toggle */}
-        <button
-          type="button"
+      {/* Actions */}
+      <div className="flex items-center gap-1">
+        <IconButton
+          icon={theme === 'dark' ? Sun : Moon}
+          title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
           onClick={toggleTheme}
-          title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-          className="flex h-8 w-8 items-center justify-center rounded-md border border-[var(--lc-panel-border)] text-[var(--lc-text-muted)] hover:bg-slate-100 hover:text-[var(--lc-text)] dark:hover:bg-slate-800"
-        >
-          {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
-        </button>
-
-        {/* Import JSON */}
-        <button
-          type="button"
-          onClick={() => fileRef.current?.click()}
-          title="Import JSON template"
-          className="flex h-8 w-8 items-center justify-center rounded-md border border-[var(--lc-panel-border)] text-[var(--lc-text-muted)] hover:bg-slate-100 hover:text-[var(--lc-text)] dark:hover:bg-slate-800"
-        >
-          <FolderOpen size={15} />
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept=".json,application/json"
-          className="hidden"
-          onChange={handleOpen}
         />
-
-        {/* Save JSON */}
-        <button
-          type="button"
-          onClick={handleSave}
-          title="Export JSON template"
-          className="flex h-8 w-8 items-center justify-center rounded-md border border-[var(--lc-panel-border)] text-[var(--lc-text-muted)] hover:bg-slate-100 hover:text-[var(--lc-text)] dark:hover:bg-slate-800"
-        >
-          <Save size={15} />
-        </button>
-
-        {/* Manage Templates link matching screenshot */}
+        <div className="mx-1 h-5 w-px bg-[var(--lc-panel-border)]" />
+        <IconButton icon={FolderOpen} title="Import JSON" onClick={() => fileRef.current?.click()} />
+        <input ref={fileRef} type="file" accept=".json" className="hidden" onChange={handleOpen} />
+        <IconButton icon={Save} title="Export JSON" onClick={handleSave} />
+        <div className="mx-1 h-5 w-px bg-[var(--lc-panel-border)]" />
         <button
           type="button"
           onClick={() => setModal('showNewModal', true)}
-          className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold text-[var(--lc-text-muted)] hover:text-blue-600 dark:hover:text-blue-400"
+          className="lc-btn lc-btn-ghost !py-1.5 !px-2.5 !text-xs"
         >
-          <ListOrdered size={15} />
-          Manage Templates
+          <LayoutTemplate size={14} />
+          Templates
         </button>
-
-        {/* Fullscreen icon button */}
-        <button
-          type="button"
-          onClick={toggleFullscreen}
-          title="Toggle Fullscreen"
-          className="flex h-8 w-8 items-center justify-center rounded-md text-[var(--lc-text-muted)] hover:bg-slate-100 hover:text-[var(--lc-text)] dark:hover:bg-slate-800"
-        >
-          <Maximize2 size={15} />
-        </button>
-
-        {/* Close button */}
+        <IconButton icon={Maximize2} title="Fullscreen" onClick={toggleFullscreen} />
         <button
           type="button"
           onClick={() => {
-            if (confirm('Exit label designer? Unsaved changes will be discarded.')) {
-              window.close()
-            }
+            if (confirm('Exit label designer?')) window.close()
           }}
-          className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--lc-panel-border)] text-[var(--lc-text-muted)] hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/40"
-          title="Close Designer"
+          className="lc-icon-btn hover:!bg-red-50 hover:!text-red-500 dark:hover:!bg-red-950/30"
+          title="Close"
         >
-          <X size={16} />
+          <X size={15} />
         </button>
       </div>
     </header>
