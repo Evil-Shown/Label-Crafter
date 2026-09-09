@@ -6,8 +6,8 @@ import { toast } from './Toast'
 export default function BottomFooter() {
   const undo = useLabelStore((s) => s.undo)
   const redo = useLabelStore((s) => s.redo)
-  const canUndo = useLabelStore((s) => s.canUndo())
-  const canRedo = useLabelStore((s) => s.canRedo())
+  const canUndo = useLabelStore((s) => s._history.length > 0)
+  const canRedo = useLabelStore((s) => s._future.length > 0)
   const exportTemplate = useLabelStore((s) => s.exportTemplate)
   const saveToLibrary = useLabelStore((s) => s.saveToLibrary)
   const name = useLabelStore((s) => s.name)

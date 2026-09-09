@@ -444,16 +444,22 @@ export default function LabelCanvas() {
     return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up) }
   }, [])
 
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const onWheel = (e) => {
+      e.preventDefault()
+      const factor = e.deltaY > 0 ? 0.92 : 1.08
+      const s = useLabelStore.getState()
+      s.setView({ zoom: Math.min(8, Math.max(0.15, s.zoom * factor)) })
+    }
+    canvas.addEventListener('wheel', onWheel, { passive: false })
+    return () => canvas.removeEventListener('wheel', onWheel)
+  }, [])
+
   const onContextMenu = (e) => {
     e.preventDefault()
     setContextMenu({ x: e.clientX, y: e.clientY })
-  }
-
-  const onWheel = (e) => {
-    e.preventDefault()
-    const factor = e.deltaY > 0 ? 0.92 : 1.08
-    const s = useLabelStore.getState()
-    s.setView({ zoom: Math.min(8, Math.max(0.15, s.zoom * factor)) })
   }
 
   const cursorClass = isPanning || spaceRef.current || activeTool === 'pan'
@@ -471,7 +477,6 @@ export default function LabelCanvas() {
         onPointerUp={endPointer}
         onPointerCancel={endPointer}
         onContextMenu={onContextMenu}
-        onWheel={onWheel}
       />
 
       <AlignmentToolbar />

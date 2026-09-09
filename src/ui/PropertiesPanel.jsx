@@ -30,6 +30,8 @@ export default function PropertiesPanel() {
   const fields = useLabelStore((s) => s.fields)
   const updateField = useLabelStore((s) => s.updateField)
   const deleteField = useLabelStore((s) => s.deleteField)
+  const toggleFieldLock = useLabelStore((s) => s.toggleFieldLock)
+  const toggleFieldVisible = useLabelStore((s) => s.toggleFieldVisible)
 
   const field = selectedKeys.length === 1
     ? fields.find((f) => f.fieldKey === selectedKeys[0])
@@ -54,8 +56,6 @@ export default function PropertiesPanel() {
   const isDxf = field.shapeType === 'dxf'
   const isText = field.type === 'text'
   const isTable = field.type === 'table'
-  const toggleFieldLock = useLabelStore((s) => s.toggleFieldLock)
-  const toggleFieldVisible = useLabelStore((s) => s.toggleFieldVisible)
 
   return (
     <aside className="flex w-[260px] shrink-0 flex-col border-l border-[var(--lc-panel-border)] bg-[var(--lc-panel)]">

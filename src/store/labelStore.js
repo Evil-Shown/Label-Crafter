@@ -52,8 +52,8 @@ const defaultTemplate = () => ({
   ],
 })
 
-function snapshot(state) {
-  return JSON.stringify({
+function templateSnapshot(state) {
+  return {
     id: state.id,
     name: state.name,
     width: state.width,
@@ -61,11 +61,30 @@ function snapshot(state) {
     unit: state.unit,
     labelType: state.labelType,
     printerDpi: state.printerDpi,
-    margins: state.margins,
-    globalStyles: state.globalStyles,
-    fields: state.fields,
-    groups: state.groups,
-  })
+    margins: { ...state.margins },
+    globalStyles: { ...state.globalStyles },
+    fields: JSON.parse(JSON.stringify(state.fields)),
+    groups: { ...(state.groups || {}) },
+  }
+}
+
+function snapshotKey(state) {
+  return JSON.stringify(templateSnapshot(state))
+}
+
+function applyTemplateSnapshot(st, data) {
+  st.id = data.id
+  st.name = data.name
+  st.width = data.width
+  st.height = data.height
+  if (data.unit != null) st.unit = data.unit
+  if (data.labelType != null) st.labelType = data.labelType
+  st.printerDpi = data.printerDpi
+  st.margins = { ...data.margins }
+  st.globalStyles = { ...data.globalStyles }
+  st.fields = JSON.parse(JSON.stringify(data.fields))
+  st.groups = { ...(data.groups || {}) }
+  st.selectedKeys = st.selectedKeys.filter((k) => st.fields.some((f) => f.fieldKey === k))
 }
 
 function loadLibrary() {
@@ -143,7 +162,7 @@ export const useLabelStore = create(
 
     pushHistory() {
       const s = get()
-      const snap = snapshot(s)
+      const snap = snapshotKey(s)
       if (s._history.length && s._history[s._history.length - 1] === snap) return
       set((st) => {
         st._history.push(snap)
@@ -152,24 +171,32 @@ export const useLabelStore = create(
       })
     },
 
-    undo() {
-      if (!get()._history.length) return
+    clearHistory() {
       set((st) => {
-        st._future.unshift(snapshot(st))
-        Object.assign(st, JSON.parse(st._history.pop()))
+        st._history = []
+        st._future = []
+      })
+    },
+
+    undo() {
+      const { _history } = get()
+      if (!_history.length) return
+      set((st) => {
+        st._future.unshift(snapshotKey(st))
+        const prev = JSON.parse(st._history.pop())
+        applyTemplateSnapshot(st, prev)
       })
     },
 
     redo() {
-      if (!get()._future.length) return
+      const { _future } = get()
+      if (!_future.length) return
       set((st) => {
-        st._history.push(snapshot(st))
-        Object.assign(st, JSON.parse(st._future.shift()))
+        st._history.push(snapshotKey(st))
+        const next = JSON.parse(st._future.shift())
+        applyTemplateSnapshot(st, next)
       })
     },
-
-    canUndo: () => get()._history.length > 0,
-    canRedo: () => get()._future.length > 0,
 
     setTool(tool) { set({ activeTool: tool }) },
 
@@ -303,8 +330,16 @@ export const useLabelStore = create(
     },
 
     cutSelected() {
-      get().copySelected()
-      get().deleteSelected()
+      const keys = get().selectedKeys
+      if (!keys.length) return
+      const clip = get().fields.filter((f) => keys.includes(f.fieldKey))
+      get().pushHistory()
+      set((st) => {
+        st.clipboard = JSON.parse(JSON.stringify(clip))
+        st.fields = st.fields.filter((f) => !keys.includes(f.fieldKey))
+        st.selectedKeys = []
+      })
+      get().addToast({ message: 'Cut to clipboard', type: 'info' })
     },
 
     nudgeSelected(dx, dy) {
@@ -449,7 +484,7 @@ export const useLabelStore = create(
       get().pushHistory()
       const parsed = parseImportTemplate(json)
       set((st) => {
-        Object.assign(st, parsed)
+        applyTemplateSnapshot(st, parsed)
         st.selectedKeys = []
       })
       get().addToast({ message: 'Template imported', type: 'success' })
