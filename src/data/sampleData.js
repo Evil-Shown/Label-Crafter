@@ -18,6 +18,14 @@ export const OPTI_SAMPLE = {
   salesID: 'S-8842',
   note2: { field10: 'CUT > EDG > TEM' },
   note3: { field1: 'ACME GLASS', field6: 'TGH' },
+  Dimensions: '1200×800',
+  contour: [
+    { x: 0, y: 0 },
+    { x: 900, y: 0 },
+    { x: 1200, y: 160 },
+    { x: 1200, y: 800 },
+    { x: 0, y: 800 },
+  ],
 }
 
 /** ERP metro-style preview bag */

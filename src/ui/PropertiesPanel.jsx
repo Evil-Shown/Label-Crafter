@@ -1,6 +1,11 @@
-import { Trash2, MousePointer2, AlignLeft, Barcode, Shapes, Image } from 'lucide-react'
+import { Trash2, MousePointer2, AlignLeft, Barcode, Shapes, Image, Table } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
 import { PanelHeader, EmptyState, PropGroup, SectionLabel } from './primitives'
+import TokenInput from './TokenInput'
+
+const FONT_OPTIONS = ['Arial, sans-serif', 'Helvetica, sans-serif', 'Times New Roman, serif', 'Courier New, monospace', 'Verdana, sans-serif']
+const BARCODE_FORMATS = ['CODE128', 'CODE39', 'EAN13', 'ITF14', 'UPC']
+const QR_ECC = ['L', 'M', 'Q', 'H']
 
 const TYPE_META = {
   text: { icon: AlignLeft, label: 'Text Field' },
@@ -9,6 +14,7 @@ const TYPE_META = {
   line: { icon: Shapes, label: 'Line' },
   shape: { icon: Shapes, label: 'Shape' },
   image: { icon: Image, label: 'Image' },
+  table: { icon: Table, label: 'Table' },
 }
 
 function FieldLabel({ children }) {
@@ -47,7 +53,9 @@ export default function PropertiesPanel() {
   const isShape = field.type === 'shape'
   const isDxf = field.shapeType === 'dxf'
   const isText = field.type === 'text'
-  const isBarcode = field.type === 'barcode' || field.type === 'qrcode'
+  const isTable = field.type === 'table'
+  const toggleFieldLock = useLabelStore((s) => s.toggleFieldLock)
+  const toggleFieldVisible = useLabelStore((s) => s.toggleFieldVisible)
 
   return (
     <aside className="flex w-[260px] shrink-0 flex-col border-l border-[var(--lc-panel-border)] bg-[var(--lc-panel)]">
@@ -85,70 +93,102 @@ export default function PropertiesPanel() {
           <PropGroup title="Content">
             <div>
               <FieldLabel>Text / token</FieldLabel>
-              <textarea
+              <TokenInput
                 value={field.value || ''}
-                onChange={(e) => updateField(field.fieldKey, { value: e.target.value })}
-                className="lc-input min-h-[72px] w-full resize-y font-mono text-xs"
+                onChange={(v) => updateField(field.fieldKey, { value: v })}
+                multiline
                 placeholder="{{orderNumber}}"
               />
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <FieldLabel>Font size</FieldLabel>
-                <input
-                  type="number"
-                  value={field.fontSize ?? 12}
-                  onChange={(e) => updateField(field.fieldKey, { fontSize: Number(e.target.value) })}
-                  className="lc-input w-full"
-                />
+                <input type="number" value={field.fontSize ?? 12} onChange={(e) => updateField(field.fieldKey, { fontSize: Number(e.target.value) })} className="lc-input w-full" />
               </div>
               <div>
                 <FieldLabel>Weight</FieldLabel>
-                <select
-                  value={field.fontWeight || 'normal'}
-                  onChange={(e) => updateField(field.fieldKey, { fontWeight: e.target.value })}
-                  className="lc-input w-full"
-                >
+                <select value={field.fontWeight || 'normal'} onChange={(e) => updateField(field.fieldKey, { fontWeight: e.target.value })} className="lc-input w-full">
                   <option value="normal">Normal</option>
                   <option value="bold">Bold</option>
                 </select>
               </div>
             </div>
             <div>
+              <FieldLabel>Font family</FieldLabel>
+              <select value={field.fontFamily || 'Arial, sans-serif'} onChange={(e) => updateField(field.fieldKey, { fontFamily: e.target.value })} className="lc-input w-full">
+                {FONT_OPTIONS.map((f) => <option key={f} value={f}>{f.split(',')[0]}</option>)}
+              </select>
+            </div>
+            <div>
+              <FieldLabel>Text color</FieldLabel>
+              <div className="flex items-center gap-2">
+                <input type="color" value={field.color || '#000000'} onChange={(e) => updateField(field.fieldKey, { color: e.target.value })} className="h-8 w-10 rounded border border-[var(--lc-panel-border)]" />
+                <input type="text" value={field.color || '#000000'} onChange={(e) => updateField(field.fieldKey, { color: e.target.value })} className="lc-input flex-1 font-mono text-xs" />
+              </div>
+            </div>
+            <div>
               <FieldLabel>Align</FieldLabel>
-              <select
-                value={field.textAlign || 'left'}
-                onChange={(e) => updateField(field.fieldKey, { textAlign: e.target.value })}
-                className="lc-input w-full"
-              >
+              <select value={field.textAlign || 'left'} onChange={(e) => updateField(field.fieldKey, { textAlign: e.target.value })} className="lc-input w-full">
                 <option value="left">Left</option>
                 <option value="center">Center</option>
                 <option value="right">Right</option>
               </select>
             </div>
+            <label className="flex items-center gap-2 text-xs font-medium">
+              <input type="checkbox" checked={field.blackBox ?? false} onChange={(e) => updateField(field.fieldKey, { blackBox: e.target.checked, color: e.target.checked ? '#ffffff' : (field.color || '#000') })} className="rounded" />
+              Black box (inverted text)
+            </label>
           </PropGroup>
         )}
 
         {/* Barcode */}
-        {isBarcode && (
+        {field.type === 'barcode' && (
           <PropGroup title="Barcode">
             <div>
-              <FieldLabel>Fallback value</FieldLabel>
-              <input
-                type="text"
-                value={field.fallbackValue || ''}
-                onChange={(e) => updateField(field.fieldKey, { fallbackValue: e.target.value })}
-                className="lc-input w-full font-mono text-xs"
-              />
+              <FieldLabel>Symbology</FieldLabel>
+              <select value={field.barcodeFormat || 'CODE128'} onChange={(e) => updateField(field.fieldKey, { barcodeFormat: e.target.value })} className="lc-input w-full">
+                {BARCODE_FORMATS.map((f) => <option key={f} value={f}>{f}</option>)}
+              </select>
             </div>
-            <label className="flex items-center gap-2 text-xs font-medium text-[var(--lc-text)]">
-              <input
-                type="checkbox"
-                checked={field.displayValue !== false}
-                onChange={(e) => updateField(field.fieldKey, { displayValue: e.target.checked })}
-                className="rounded"
-              />
+            <div>
+              <FieldLabel>Fallback value</FieldLabel>
+              <input type="text" value={field.fallbackValue || ''} onChange={(e) => updateField(field.fieldKey, { fallbackValue: e.target.value })} className="lc-input w-full font-mono text-xs" />
+            </div>
+            <label className="flex items-center gap-2 text-xs font-medium">
+              <input type="checkbox" checked={field.displayValue !== false} onChange={(e) => updateField(field.fieldKey, { displayValue: e.target.checked })} className="rounded" />
               Show human-readable text
+            </label>
+          </PropGroup>
+        )}
+
+        {field.type === 'qrcode' && (
+          <PropGroup title="QR Code">
+            <div>
+              <FieldLabel>Error correction</FieldLabel>
+              <select value={field.qrEcc || 'M'} onChange={(e) => updateField(field.fieldKey, { qrEcc: e.target.value })} className="lc-input w-full">
+                {QR_ECC.map((e) => <option key={e} value={e}>{e}</option>)}
+              </select>
+            </div>
+            <div>
+              <FieldLabel>Fallback value</FieldLabel>
+              <input type="text" value={field.fallbackValue || ''} onChange={(e) => updateField(field.fieldKey, { fallbackValue: e.target.value })} className="lc-input w-full font-mono text-xs" />
+            </div>
+          </PropGroup>
+        )}
+
+        {field.type === 'line' && (
+          <PropGroup title="Line style">
+            <div>
+              <FieldLabel>Dash style</FieldLabel>
+              <select value={field.dashStyle || 'solid'} onChange={(e) => updateField(field.fieldKey, { dashStyle: e.target.value })} className="lc-input w-full">
+                <option value="solid">Solid</option>
+                <option value="dashed">Dashed</option>
+                <option value="dotted">Dotted</option>
+              </select>
+            </div>
+            <label className="flex items-center gap-2 text-xs font-medium">
+              <input type="checkbox" checked={field.arrowEnd ?? false} onChange={(e) => updateField(field.fieldKey, { arrowEnd: e.target.checked })} className="rounded" />
+              Arrow end
             </label>
           </PropGroup>
         )}
@@ -224,6 +264,63 @@ export default function PropertiesPanel() {
             </div>
           </PropGroup>
         )}
+
+        {isTable && (
+          <PropGroup title="Table">
+            <div>
+              <FieldLabel>Columns (comma-separated)</FieldLabel>
+              <input
+                type="text"
+                value={(field.columns || []).join(', ')}
+                onChange={(e) => updateField(field.fieldKey, { columns: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
+                className="lc-input w-full text-xs"
+              />
+            </div>
+            <div>
+              <FieldLabel>Rows (one per line, cells comma-separated)</FieldLabel>
+              <textarea
+                value={(field.rows || []).map((r) => r.join(', ')).join('\n')}
+                onChange={(e) => updateField(field.fieldKey, {
+                  rows: e.target.value.split('\n').filter(Boolean).map((line) => line.split(',').map((s) => s.trim())),
+                })}
+                className="lc-input min-h-[72px] w-full resize-y text-xs"
+              />
+            </div>
+          </PropGroup>
+        )}
+
+        {isDxf && (
+          <PropGroup title="DXF viewport">
+            <label className="flex items-center gap-2 text-xs font-medium">
+              <input type="checkbox" checked={field.showOrientation ?? true} onChange={(e) => updateField(field.fieldKey, { showOrientation: e.target.checked })} className="rounded" />
+              Show orientation mark
+            </label>
+            <label className="flex items-center gap-2 text-xs font-medium">
+              <input type="checkbox" checked={field.showBevel ?? false} onChange={(e) => updateField(field.fieldKey, { showBevel: e.target.checked })} className="rounded" />
+              Show bevel/polish indicator
+            </label>
+          </PropGroup>
+        )}
+
+        {field.shapeType === 'roundRect' && (
+          <PropGroup title="Shape">
+            <div>
+              <FieldLabel>Corner radius (px)</FieldLabel>
+              <input type="number" value={field.cornerRadius ?? 8} onChange={(e) => updateField(field.fieldKey, { cornerRadius: Number(e.target.value) })} className="lc-input w-full" />
+            </div>
+          </PropGroup>
+        )}
+
+        <PropGroup title="Element">
+          <div className="flex gap-2">
+            <button type="button" onClick={() => toggleFieldVisible(field.fieldKey)} className="lc-btn lc-btn-outline flex-1 !text-xs">
+              {field.hidden ? 'Show' : 'Hide'}
+            </button>
+            <button type="button" onClick={() => toggleFieldLock(field.fieldKey)} className="lc-btn lc-btn-outline flex-1 !text-xs">
+              {field.locked ? 'Unlock' : 'Lock'}
+            </button>
+          </div>
+        </PropGroup>
 
         {/* Layout — always shown */}
         <PropGroup title="Layout">

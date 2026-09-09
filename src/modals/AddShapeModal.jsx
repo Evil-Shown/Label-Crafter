@@ -6,6 +6,8 @@ export default function AddShapeModal() {
   const isOpen = useLabelStore((s) => s.showAddShapeModal)
   const setModal = useLabelStore((s) => s.setModal)
   const addRectField = useLabelStore((s) => s.addRectField)
+  const addRoundedRectField = useLabelStore((s) => s.addRoundedRectField)
+  const addEllipseField = useLabelStore((s) => s.addEllipseField)
 
   const [shapeType, setShapeType] = useState('rect')
   const [posX, setPosX] = useState(50)
@@ -20,9 +22,9 @@ export default function AddShapeModal() {
   if (!isOpen) return null
 
   const handleAdd = () => {
-    addRectField({
+    const base = {
       shapeType,
-      label: shapeType === 'circle' ? 'Circle' : 'Rectangle',
+      label: shapeType === 'circle' ? 'Circle' : shapeType === 'roundRect' ? 'Rounded Rect' : shapeType === 'ellipse' ? 'Ellipse' : 'Rectangle',
       x: Number(posX) || 0,
       y: Number(posY) || 0,
       width: Number(width) || 80,
@@ -31,7 +33,11 @@ export default function AddShapeModal() {
       strokeWidth: Number(borderThickness) || 1,
       fillEnabled: fillShape,
       fillColor,
-    })
+      cornerRadius: shapeType === 'roundRect' ? 8 : 0,
+    }
+    if (shapeType === 'roundRect') addRoundedRectField(base)
+    else if (shapeType === 'ellipse' || shapeType === 'circle') addEllipseField({ ...base, shapeType: shapeType === 'circle' ? 'ellipse' : 'ellipse' })
+    else addRectField(base)
     setModal('showAddShapeModal', false)
   }
 
@@ -58,6 +64,8 @@ export default function AddShapeModal() {
             <label className="mb-1.5 block text-xs font-semibold">Shape Type</label>
             <select value={shapeType} onChange={(e) => setShapeType(e.target.value)} className="lc-input w-full">
               <option value="rect">Rectangle</option>
+              <option value="roundRect">Rounded rectangle</option>
+              <option value="ellipse">Ellipse / oval</option>
               <option value="circle">Circle</option>
             </select>
           </div>
