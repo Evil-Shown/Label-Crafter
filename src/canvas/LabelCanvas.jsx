@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useState } from 'react'
 import * as THREE from 'three'
 import { SceneManager } from './SceneManager'
 import { buildFieldCanvas } from './fieldTextures'
@@ -217,6 +217,18 @@ export default function LabelCanvas() {
   const dragRef = useRef(null)
   const panRef = useRef(null)
   const spaceRef = useRef(false)
+  const [isPanning, setIsPanning] = useState(false)
+
+  const isPanMode = () => {
+    const s = useLabelStore.getState()
+    return spaceRef.current || s.activeTool === 'pan'
+  }
+
+  const shouldPan = (e) =>
+    e.button === 1 ||
+    e.ctrlKey ||
+    e.metaKey ||
+    isPanMode()
 
   const fields = useLabelStore((s) => s.fields)
   const selectedKeys = useLabelStore((s) => s.selectedKeys)
@@ -322,17 +334,33 @@ export default function LabelCanvas() {
     }
   }, [zoom, panX, panY])
 
+  const startPan = (e) => {
+    panRef.current = {
+      pointerId: e.pointerId,
+      x: e.clientX,
+      y: e.clientY,
+      panX,
+      panY,
+    }
+    setIsPanning(true)
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+
   const onPointerDown = (e) => {
     const sm = sceneRef.current
     if (!sm) return
     const store = useLabelStore.getState()
 
-    if (e.button === 1 || spaceRef.current || activeTool === 'pan') {
-      panRef.current = { x: e.clientX, y: e.clientY, panX, panY }
+    const key = sm.hitTest(e.clientX, e.clientY)
+    const panGesture = shouldPan(e)
+
+    // Ctrl / Space / middle-click / pan tool / drag on empty canvas → pan view
+    if (panGesture || (!key && e.button === 0)) {
+      startPan(e)
+      if (!key && !panGesture) store.clearSelection()
       return
     }
 
-    const key = sm.hitTest(e.clientX, e.clientY)
     if (key) {
       if (e.shiftKey) {
         const set = new Set(selectedKeys)
@@ -344,11 +372,13 @@ export default function LabelCanvas() {
       }
       dragRef.current = {
         key,
+        pointerId: e.pointerId,
         startX: e.clientX,
         startY: e.clientY,
         orig: store.fields.find((f) => f.fieldKey === key),
         historySaved: false,
       }
+      e.currentTarget.setPointerCapture(e.pointerId)
     } else {
       store.clearSelection()
     }
@@ -361,10 +391,9 @@ export default function LabelCanvas() {
     if (panRef.current) {
       const dx = e.clientX - panRef.current.x
       const dy = e.clientY - panRef.current.y
-      const scale = zoom
       useLabelStore.getState().setView({
-        panX: panRef.current.panX + dx / scale,
-        panY: panRef.current.panY - dy / scale,
+        panX: panRef.current.panX + dx,
+        panY: panRef.current.panY - dy,
       })
       return
     }
@@ -376,8 +405,9 @@ export default function LabelCanvas() {
     }
     const world0 = sm.screenToWorld(dragRef.current.startX, dragRef.current.startY)
     const world1 = sm.screenToWorld(e.clientX, e.clientY)
-    let dx = (world1.x - world0.x) / zoom
-    let dy = -(world1.y - world0.y) / zoom
+    const z = useLabelStore.getState().zoom
+    let dx = (world1.x - world0.x) / z
+    let dy = -(world1.y - world0.y) / z
     const orig = dragRef.current.orig
     if (!orig) return
     let nx = orig.x + dx
@@ -389,10 +419,57 @@ export default function LabelCanvas() {
     useLabelStore.getState().updateFieldLive(dragRef.current.key, { x: nx, y: ny })
   }
 
-  const onPointerUp = () => {
-    dragRef.current = null
-    panRef.current = null
+  const endPointer = (e) => {
+    if (panRef.current?.pointerId === e.pointerId) {
+      panRef.current = null
+      setIsPanning(false)
+    }
+    if (dragRef.current?.pointerId === e.pointerId) {
+      dragRef.current = null
+    }
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    }
   }
+
+  useEffect(() => {
+    const isTypingTarget = (el) => {
+      const tag = el?.tagName
+      return (
+        tag === 'INPUT' ||
+        tag === 'TEXTAREA' ||
+        tag === 'SELECT' ||
+        el?.isContentEditable
+      )
+    }
+
+    const onKeyDown = (e) => {
+      if (isTypingTarget(e.target)) return
+
+      if (e.code === 'Space') {
+        e.preventDefault()
+        spaceRef.current = true
+        return
+      }
+
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        const store = useLabelStore.getState()
+        if (store.selectedKeys.length > 0) {
+          e.preventDefault()
+          store.deleteSelected()
+        }
+      }
+    }
+    const onKeyUp = (e) => {
+      if (e.code === 'Space') spaceRef.current = false
+    }
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('keyup', onKeyUp)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keyup', onKeyUp)
+    }
+  }, [])
 
   const onWheel = (e) => {
     e.preventDefault()
@@ -402,14 +479,20 @@ export default function LabelCanvas() {
     store.setView({ zoom: nz })
   }
 
+  const cursorClass = isPanning || isPanMode()
+    ? isPanning
+      ? 'cursor-grabbing'
+      : 'cursor-grab'
+    : 'cursor-default'
+
   return (
     <canvas
       ref={canvasRef}
-      className="block h-full w-full cursor-crosshair select-none"
+      className={`block h-full w-full select-none ${cursorClass}`}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerLeave={onPointerUp}
+      onPointerUp={endPointer}
+      onPointerCancel={endPointer}
       onWheel={onWheel}
     />
   )
