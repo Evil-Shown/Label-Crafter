@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
+import { current, isDraft } from 'immer'
 import {
   createBarcodeField,
   createBlackBoxTextField,
@@ -17,9 +18,26 @@ import {
 import { ERP_SAMPLE, OPTI_SAMPLE } from '../data/sampleData'
 import { buildExportTemplate, parseImportTemplate } from '../utils/template'
 import { fieldRect } from '../utils/geometry'
+import { computeFitView, mmToPx, toMm } from '../utils/units'
+import {
+  loadTemplates,
+  saveTemplate,
+  deleteTemplate,
+  generateNextTemplateId,
+  detectLabelType,
+  validateTemplateJson,
+  downloadJsonFile,
+  exportTemplatesToFolder,
+  migrateLegacyLibrary,
+  getDefaultTemplateId,
+  setDefaultTemplateId,
+  sanitizeFileName,
+} from '../utils/templateStorage'
+import { getBuiltinTemplateConfig } from '../data/builtinTemplates'
 
 const MAX_HISTORY = 80
-const LIB_KEY = 'lc-template-library'
+
+migrateLegacyLibrary()
 
 const defaultTemplate = () => ({
   id: 'LBL_NEW',
@@ -52,7 +70,27 @@ const defaultTemplate = () => ({
   ],
 })
 
+/** Strip Immer proxies and non-serializable values before history/export clones. */
+function plainValue(value) {
+  return isDraft(value) ? current(value) : value
+}
+
+function jsonReplacer(_key, value) {
+  if (value == null) return value
+  if (typeof value === 'function') return undefined
+  if (typeof Node !== 'undefined' && value instanceof Node) return undefined
+  if (typeof value === 'object' && value.constructor?.name?.endsWith('Element')) return undefined
+  return value
+}
+
+function cloneSerializable(value) {
+  return JSON.parse(JSON.stringify(plainValue(value), jsonReplacer))
+}
+
 function templateSnapshot(state) {
+  const margins = plainValue(state.margins) || {}
+  const globalStyles = plainValue(state.globalStyles) || {}
+  const groups = plainValue(state.groups) || {}
   return {
     id: state.id,
     name: state.name,
@@ -61,10 +99,10 @@ function templateSnapshot(state) {
     unit: state.unit,
     labelType: state.labelType,
     printerDpi: state.printerDpi,
-    margins: { ...state.margins },
-    globalStyles: { ...state.globalStyles },
-    fields: JSON.parse(JSON.stringify(state.fields)),
-    groups: { ...(state.groups || {}) },
+    margins: { ...margins },
+    globalStyles: { ...globalStyles },
+    fields: cloneSerializable(state.fields),
+    groups: { ...groups },
   }
 }
 
@@ -72,27 +110,26 @@ function snapshotKey(state) {
   return JSON.stringify(templateSnapshot(state))
 }
 
+function sanitizeFieldPatch(patch) {
+  if (!patch || typeof patch !== 'object' || Array.isArray(patch)) return patch
+  return cloneSerializable(patch)
+}
+
 function applyTemplateSnapshot(st, data) {
-  st.id = data.id
+  if (data.id != null) st.id = data.id
   st.name = data.name
   st.width = data.width
   st.height = data.height
   if (data.unit != null) st.unit = data.unit
   if (data.labelType != null) st.labelType = data.labelType
-  st.printerDpi = data.printerDpi
+  if (data.printerDpi != null) st.printerDpi = data.printerDpi
+  if (data.createdAt) st.createdAt = data.createdAt
+  if (data.updatedAt) st.updatedAt = data.updatedAt
   st.margins = { ...data.margins }
   st.globalStyles = { ...data.globalStyles }
-  st.fields = JSON.parse(JSON.stringify(data.fields))
+  st.fields = cloneSerializable(data.fields)
   st.groups = { ...(data.groups || {}) }
   st.selectedKeys = st.selectedKeys.filter((k) => st.fields.some((f) => f.fieldKey === k))
-}
-
-function loadLibrary() {
-  try {
-    return JSON.parse(localStorage.getItem(LIB_KEY) || '[]')
-  } catch {
-    return []
-  }
 }
 
 export const useLabelStore = create(
@@ -120,7 +157,12 @@ export const useLabelStore = create(
     showSampleDataEditor: false,
     showBatchPreview: false,
     showMinimap: true,
-    zoom: 2.65,
+    showImportModal: false,
+    pendingImport: null,
+    defaultTemplateId: getDefaultTemplateId(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    zoom: 1,
     panX: 0,
     panY: 0,
     cursorPos: { x: 0, y: 0 },
@@ -129,7 +171,7 @@ export const useLabelStore = create(
     clipboard: null,
     groups: {},
     toasts: [],
-    templateLibrary: loadLibrary(),
+    templateLibrary: loadTemplates(),
     zplPreview: '',
     showNewModal: false,
     showAddShapeModal: false,
@@ -162,7 +204,13 @@ export const useLabelStore = create(
 
     pushHistory() {
       const s = get()
-      const snap = snapshotKey(s)
+      let snap
+      try {
+        snap = snapshotKey(s)
+      } catch (err) {
+        console.warn('pushHistory: snapshot failed', err)
+        return
+      }
       if (s._history.length && s._history[s._history.length - 1] === snap) return
       set((st) => {
         st._history.push(snap)
@@ -239,16 +287,18 @@ export const useLabelStore = create(
 
     updateField(key, patch) {
       get().pushHistory()
+      const clean = sanitizeFieldPatch(patch)
       set((st) => {
         const f = st.fields.find((x) => x.fieldKey === key)
-        if (f) Object.assign(f, patch)
+        if (f) Object.assign(f, clean)
       })
     },
 
     updateFieldLive(key, patch) {
+      const clean = sanitizeFieldPatch(patch)
       set((st) => {
         const f = st.fields.find((x) => x.fieldKey === key)
-        if (f && !f.locked) Object.assign(f, patch)
+        if (f && !f.locked) Object.assign(f, clean)
       })
     },
 
@@ -256,7 +306,7 @@ export const useLabelStore = create(
       set((st) => {
         for (const key of st.selectedKeys) {
           const f = st.fields.find((x) => x.fieldKey === key)
-          if (f && !f.locked) Object.assign(f, patchFn(f))
+          if (f && !f.locked) Object.assign(f, sanitizeFieldPatch(patchFn(f)))
         }
       })
     },
@@ -291,7 +341,7 @@ export const useLabelStore = create(
           const src = st.fields.find((f) => f.fieldKey === key)
           if (!src) continue
           clones.push({
-            ...JSON.parse(JSON.stringify(src)),
+            ...cloneSerializable(src),
             fieldKey: `${src.fieldKey}_copy_${Date.now()}_${clones.length}`,
             x: src.x + 8,
             y: src.y + 8,
@@ -307,7 +357,7 @@ export const useLabelStore = create(
       const keys = get().selectedKeys
       if (!keys.length) return
       const fields = get().fields.filter((f) => keys.includes(f.fieldKey))
-      set({ clipboard: JSON.parse(JSON.stringify(fields)) })
+      set({ clipboard: cloneSerializable(fields) })
       get().addToast({ message: 'Copied to clipboard', type: 'success' })
     },
 
@@ -335,7 +385,7 @@ export const useLabelStore = create(
       const clip = get().fields.filter((f) => keys.includes(f.fieldKey))
       get().pushHistory()
       set((st) => {
-        st.clipboard = JSON.parse(JSON.stringify(clip))
+        st.clipboard = cloneSerializable(clip)
         st.fields = st.fields.filter((f) => !keys.includes(f.fieldKey))
         st.selectedKeys = []
       })
@@ -452,9 +502,29 @@ export const useLabelStore = create(
       })
     },
 
-    setLabelSize(width, height) {
+    /** Set label size from display values in the current unit. */
+    setLabelSize(displayW, displayH) {
       get().pushHistory()
-      set((st) => { st.width = width; st.height = height })
+      const unit = get().unit || 'mm'
+      set((st) => {
+        st.width = toMm(displayW, unit)
+        st.height = toMm(displayH, unit)
+      })
+    },
+
+    setDisplayUnit(unit) {
+      set((st) => { st.unit = unit || 'mm' })
+    },
+
+    applySizePreset(preset) {
+      if (!preset) return
+      get().pushHistory()
+      const u = preset.unit || 'mm'
+      set((st) => {
+        st.width = toMm(preset.width, u)
+        st.height = toMm(preset.height, u)
+        st.unit = u
+      })
     },
 
     setMargins(margins) {
@@ -471,8 +541,8 @@ export const useLabelStore = create(
       get().pushHistory()
       set((st) => {
         st.name = name || 'New Label'
-        st.width = Number(width) || 100
-        st.height = Number(height) || 60
+        st.width = toMm(Number(width) || 100, unit)
+        st.height = toMm(Number(height) || 60, unit)
         st.unit = unit
         st.labelType = labelType
         st.fields = []
@@ -480,39 +550,160 @@ export const useLabelStore = create(
       })
     },
 
-    importTemplate(json) {
-      get().pushHistory()
+    importTemplate(json, { skipHistory = false } = {}) {
+      if (!skipHistory) get().pushHistory()
       const parsed = parseImportTemplate(json)
       set((st) => {
         applyTemplateSnapshot(st, parsed)
         st.selectedKeys = []
+        st.updatedAt = new Date().toISOString()
       })
-      get().addToast({ message: 'Template imported', type: 'success' })
+      get().addToast({ message: 'Template loaded', type: 'success' })
     },
 
     exportTemplate() {
       return buildExportTemplate(get())
     },
 
+    refreshTemplateLibrary() {
+      set({ templateLibrary: loadTemplates(), defaultTemplateId: getDefaultTemplateId() })
+    },
+
     saveToLibrary() {
-      const tpl = get().exportTemplate()
-      const entry = {
-        id: tpl.id || `lib_${Date.now()}`,
-        name: tpl.name,
-        savedAt: new Date().toISOString(),
-        template: tpl,
-      }
-      set((st) => {
-        st.templateLibrary = [entry, ...st.templateLibrary.filter((e) => e.id !== entry.id)].slice(0, 50)
-        localStorage.setItem(LIB_KEY, JSON.stringify(st.templateLibrary))
-      })
-      get().addToast({ message: 'Saved to library', type: 'success' })
+      const s = get()
+      const tpl = buildExportTemplate(s)
+      const id = tpl.id && !String(tpl.id).startsWith('__builtin') ? tpl.id : generateNextTemplateId()
+      const saved = saveTemplate({ ...tpl, id, builtin: false })
+      set((st) => { st.id = saved.id })
+      get().refreshTemplateLibrary()
+      get().addToast({ message: 'Saved to template library', type: 'success' })
     },
 
     loadFromLibrary(id) {
-      const entry = get().templateLibrary.find((e) => e.id === id)
-      if (!entry) return
-      get().importTemplate(entry.template)
+      const tpl = loadTemplates().find((t) => t.id === id)
+      if (!tpl) return
+      get().importTemplate(tpl)
+      set({ showTemplateGallery: false })
+    },
+
+    loadBuiltinTemplate(id) {
+      const cfg = getBuiltinTemplateConfig(id)
+      if (!cfg) return
+      get().importTemplate(cfg)
+      set({ showTemplateGallery: false })
+    },
+
+    deleteFromLibrary(id) {
+      deleteTemplate(id)
+      get().refreshTemplateLibrary()
+      get().addToast({ message: 'Template deleted', type: 'info' })
+    },
+
+    setDefaultTemplate(id) {
+      setDefaultTemplateId(id)
+      set({ defaultTemplateId: id })
+      get().addToast({ message: 'Default template updated', type: 'success' })
+    },
+
+    exportCurrentTemplateJson() {
+      const tpl = get().exportTemplate()
+      downloadJsonFile(tpl, sanitizeFileName(tpl.name || tpl.id))
+      get().addToast({ message: 'Template exported', type: 'success' })
+    },
+
+    exportTemplateJsonById(id) {
+      const tpl = loadTemplates().find((t) => t.id === id)
+      if (!tpl) return
+      downloadJsonFile(tpl, sanitizeFileName(tpl.name || tpl.id))
+    },
+
+    async exportAllTemplatesJson() {
+      const result = await exportTemplatesToFolder(loadTemplates())
+      if (!result.count) {
+        get().addToast({ message: 'No user templates to export', type: 'info' })
+        return
+      }
+      const msg = result.mode === 'folder'
+        ? `Exported ${result.count} templates to folder`
+        : `Downloaded bundle with ${result.count} templates`
+      get().addToast({ message: msg, type: 'success' })
+    },
+
+    beginImportFromJson(parsed) {
+      const check = validateTemplateJson(parsed)
+      if (!check.ok) {
+        get().addToast({ message: check.error, type: 'error' })
+        return
+      }
+      set({
+        showImportModal: true,
+        pendingImport: {
+          parsed,
+          suggestedName: (typeof parsed.name === 'string' && parsed.name.trim()) || 'Imported Label',
+          labelType: detectLabelType(parsed),
+        },
+      })
+    },
+
+    cancelImportTemplate() {
+      set({ showImportModal: false, pendingImport: null })
+    },
+
+    confirmImportTemplate({ name, labelType }) {
+      const pending = get().pendingImport
+      if (!pending?.parsed) return
+      const templates = loadTemplates()
+      const id = generateNextTemplateId(templates)
+      const hasSections =
+        pending.parsed.sections &&
+        typeof pending.parsed.sections === 'object' &&
+        !Array.isArray(pending.parsed.sections)
+
+      const imported = {
+        ...pending.parsed,
+        id,
+        name: (name || '').trim() || 'Imported Label',
+        labelType: labelType || detectLabelType(pending.parsed),
+        unit: pending.parsed.unit || 'mm',
+        builtin: false,
+        sections: hasSections
+          ? pending.parsed.sections
+          : {
+              main: {
+                enabled: true,
+                display: 'block',
+                position: 'relative',
+                fields: pending.parsed.fields || [],
+              },
+            },
+      }
+      delete imported.fields
+
+      const saved = saveTemplate(imported)
+      get().refreshTemplateLibrary()
+      get().importTemplate(saved)
+      set({ showImportModal: false, pendingImport: null, showTemplateGallery: false })
+    },
+
+    pickAndImportJsonFile() {
+      const input = document.createElement('input')
+      input.type = 'file'
+      input.accept = '.json,application/json'
+      input.onchange = (e) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        const reader = new FileReader()
+        reader.onload = () => {
+          try {
+            const parsed = JSON.parse(reader.result)
+            get().beginImportFromJson(parsed)
+          } catch {
+            get().addToast({ message: 'Invalid JSON file', type: 'error' })
+          }
+        }
+        reader.readAsText(file)
+      }
+      input.click()
     },
 
     setView({ zoom, panX, panY }) {
@@ -523,7 +714,13 @@ export const useLabelStore = create(
       })
     },
 
-    fitToScreen() { set({ zoom: 2.65, panX: 0, panY: 0 }) },
+    fitToScreen(canvasW, canvasH) {
+      const s = get()
+      const lw = mmToPx(s.width)
+      const lh = mmToPx(s.height)
+      const view = computeFitView(lw, lh, canvasW || 800, canvasH || 600)
+      set(view)
+    },
 
     setPrintConfig(patch) {
       set((st) => Object.assign(st, patch))

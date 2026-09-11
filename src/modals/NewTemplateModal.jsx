@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { X, Check, Sparkles } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
+import { SIZE_PRESET_GROUPS } from '../data/templatePresets'
+import { unitLabel } from '../utils/units'
 
 export default function NewTemplateModal() {
   const isOpen = useLabelStore((s) => s.showNewModal)
@@ -71,6 +73,22 @@ export default function NewTemplateModal() {
             </p>
           </div>
 
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-[var(--lc-text)]">Quick size</label>
+            <div className="flex flex-wrap gap-1.5">
+              {SIZE_PRESET_GROUPS.flatMap((g) => g.presets).slice(0, 8).map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => { setWidth(p.width); setHeight(p.height); setUnit(p.unit || 'mm') }}
+                  className="lc-btn lc-btn-outline !py-0.5 !px-2 !text-[10px]"
+                >
+                  {p.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="mb-1.5 block text-xs font-semibold text-[var(--lc-text)]">Width</label>
@@ -103,7 +121,7 @@ export default function NewTemplateModal() {
           {/* Preview card */}
           <div className="rounded-xl border border-indigo-200/60 bg-gradient-to-br from-indigo-50 to-violet-50 p-4 dark:border-indigo-900/40 dark:from-indigo-950/30 dark:to-violet-950/20">
             <p className="text-sm font-semibold text-[var(--lc-text)]">
-              {name || 'New Label'} — {width} × {height} {unit}
+              {name || 'New Label'} — {width} × {height} {unitLabel(unit)}
             </p>
             <span className={`lc-badge mt-2 ${isOffcut ? 'lc-badge-offcut' : 'lc-badge-prod'}`}>
               {labelType} label

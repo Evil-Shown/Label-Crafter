@@ -1,0 +1,486 @@
+{
+  "id": "LBL_Json",
+  "name": "Standard Label (json)",
+  "builtin": false,
+  "width": 90,
+  "height": 43,
+  "globalStyles": {
+    "fontFamily": "Arial, sans-serif",
+    "defaultFontSize": 9,
+    "backgroundColor": "#ffffff",
+    "defaultColor": "#000000",
+    "borderWidth": "1px",
+    "borderColor": "#000000"
+  },
+  "sections": {
+    "orderCustomerBlock": {
+      "enabled": true,
+      "flex": "1",
+      "position": "relative",
+      "display": "block",
+      "fields": [
+        {
+          "fieldKey": "railDivider",
+          "type": "shape",
+          "shapeType": "rect",
+          "label": "Rail Divider",
+          "x": 66,
+          "y": 0,
+          "width": 2,
+          "height": 163,
+          "left": "66px",
+          "top": "0px",
+          "position": "absolute",
+          "strokeColor": "#000000",
+          "strokeWidth": 0,
+          "fillEnabled": true,
+          "fillColor": "#000000"
+        },
+        {
+          "fieldKey": "sideRailBarcode",
+          "type": "barcode",
+          "label": "Side Rail Barcode",
+          "source": [
+            "Barcode",
+            "barcode",
+            "mainBarcode"
+          ],
+          "x": -41,
+          "y": 53,
+          "width": 147,
+          "height": 58,
+          "left": "-41px",
+          "top": "53px",
+          "position": "absolute",
+          "rotation": 90,
+          "displayValue": false,
+          "fallbackValue": "000000000"
+        },
+        {
+          "fieldKey": "mainBarcode",
+          "type": "barcode",
+          "label": "Main Barcode",
+          "source": [
+            "Barcode",
+            "barcode"
+          ],
+          "x": 70,
+          "y": 4,
+          "width": 155,
+          "height": 54,
+          "left": "70px",
+          "top": "4px",
+          "position": "absolute",
+          "rotation": 0,
+          "displayValue": false,
+          "fallbackValue": "000000000"
+        },
+        {
+          "fieldKey": "batchNumber",
+          "type": "text",
+          "label": "Batch Number",
+          "source": [
+            "batchNumber"
+          ],
+          "value": "Batch ID:\n{{batchNumber}}",
+          "editableField": "batchNumber",
+          "x": 228,
+          "y": 4,
+          "width": 108,
+          "height": 54,
+          "left": "228px",
+          "top": "4px",
+          "position": "absolute",
+          "fontSize": 9,
+          "fontWeight": "bold",
+          "fontFamily": "Arial, sans-serif",
+          "textAlign": "center",
+          "whiteSpace": "pre-wrap",
+          "border": "1.5px solid #000000",
+          "borderRadius": "3px",
+          "padding": "4px 6px",
+          "boxSizing": "border-box",
+          "fallbackValue": "Batch ID:\n***"
+        },
+        {
+          "fieldKey": "salesID",
+          "type": "text",
+          "label": "Sales ID",
+          "source": [
+            "salesID"
+          ],
+          "value": "Sales Id: {{salesID}}",
+          "editableField": "salesID",
+          "x": 70,
+          "y": 65,
+          "width": 152,
+          "height": 13,
+          "left": "70px",
+          "top": "65px",
+          "position": "absolute",
+          "fontSize": 9,
+          "fontFamily": "Arial, sans-serif",
+          "fallbackValue": "Sales Id: -"
+        },
+        {
+          "fieldKey": "colour",
+          "type": "text",
+          "label": "Colour",
+          "source": [
+            "colour"
+          ],
+          "value": "Colour: {{colour}}",
+          "editableField": "colour",
+          "x": 70,
+          "y": 79,
+          "width": 152,
+          "height": 13,
+          "left": "70px",
+          "top": "79px",
+          "position": "absolute",
+          "fontSize": 9,
+          "fontFamily": "Arial, sans-serif",
+          "fallbackValue": "Colour: -"
+        },
+        {
+          "fieldKey": "cutSize",
+          "type": "text",
+          "label": "Cut Size",
+          "source": [
+            "cutSize"
+          ],
+          "value": "Cut Size: {{cutSize}}",
+          "editableField": "cutSize",
+          "x": 70,
+          "y": 93,
+          "width": 152,
+          "height": 13,
+          "left": "70px",
+          "top": "93px",
+          "position": "absolute",
+          "fontSize": 9,
+          "fontFamily": "Arial, sans-serif",
+          "fallbackValue": "Cut Size: -"
+        },
+        {
+          "fieldKey": "finishedSize",
+          "type": "text",
+          "label": "Finished Size",
+          "source": [
+            "height",
+            "width"
+          ],
+          "value": "Finished Size: {{height}} × {{width}}",
+          "editableField": "finishedSize",
+          "x": 70,
+          "y": 107,
+          "width": 152,
+          "height": 13,
+          "left": "70px",
+          "top": "107px",
+          "position": "absolute",
+          "fontSize": 9,
+          "fontFamily": "Arial, sans-serif",
+          "fallbackValue": "Finished Size: -"
+        },
+        {
+          "fieldKey": "glassCode",
+          "type": "text",
+          "label": "Code",
+          "source": [
+            "Code"
+          ],
+          "value": "Code: {{Code}}",
+          "editableField": "Code",
+          "x": 70,
+          "y": 121,
+          "width": 152,
+          "height": 13,
+          "left": "70px",
+          "top": "121px",
+          "position": "absolute",
+          "fontSize": 9,
+          "fontFamily": "Arial, sans-serif",
+          "fallbackValue": "Code: -"
+        },
+        {
+          "fieldKey": "cuRef",
+          "type": "text",
+          "label": "CustRef",
+          "source": [
+            "cuRef"
+          ],
+          "value": "CustRef: {{cuRef}}",
+          "editableField": "cuRef",
+          "x": 70,
+          "y": 135,
+          "width": 152,
+          "height": 13,
+          "left": "70px",
+          "top": "135px",
+          "position": "absolute",
+          "fontSize": 9,
+          "fontFamily": "Arial, sans-serif",
+          "fallbackValue": "CustRef: -"
+        },
+        {
+          "fieldKey": "custlabel",
+          "type": "text",
+          "label": "Detail",
+          "source": [
+            "custlabel"
+          ],
+          "value": "Detail: {{custlabel}}",
+          "editableField": "custlabel",
+          "x": 70,
+          "y": 149,
+          "width": 152,
+          "height": 13,
+          "left": "70px",
+          "top": "149px",
+          "position": "absolute",
+          "fontSize": 9,
+          "fontFamily": "Arial, sans-serif",
+          "fallbackValue": "Detail: -"
+        },
+        {
+          "fieldKey": "axpieceId",
+          "type": "text",
+          "label": "AXPiece",
+          "source": [
+            "axpieceId"
+          ],
+          "value": "AXPiece: {{axpieceId}}",
+          "editableField": "axpieceId",
+          "x": 70,
+          "y": 149,
+          "width": 152,
+          "height": 13,
+          "left": "70px",
+          "top": "149px",
+          "position": "absolute",
+          "fontSize": 9,
+          "fontFamily": "Arial, sans-serif",
+          "fallbackValue": "AXPiece: -"
+        },
+        {
+          "fieldKey": "lot",
+          "type": "text",
+          "label": "Lot",
+          "source": [
+            "lot"
+          ],
+          "value": "Lot: {{lot}}",
+          "editableField": "lot",
+          "x": 226,
+          "y": 65,
+          "width": 110,
+          "height": 13,
+          "left": "226px",
+          "top": "65px",
+          "position": "absolute",
+          "fontSize": 9,
+          "fontFamily": "Arial, sans-serif",
+          "fallbackValue": "Lot: -"
+        },
+        {
+          "fieldKey": "thickness",
+          "type": "text",
+          "label": "Thickness",
+          "source": [
+            "thickness"
+          ],
+          "value": "{{thickness}}",
+          "editableField": "thickness",
+          "x": 226,
+          "y": 79,
+          "width": 110,
+          "height": 13,
+          "left": "226px",
+          "top": "79px",
+          "position": "absolute",
+          "fontSize": 9,
+          "fontFamily": "Arial, sans-serif",
+          "fallbackValue": "Thickness"
+        },
+        {
+          "fieldKey": "grain",
+          "type": "text",
+          "label": "Grain",
+          "source": [
+            "grain"
+          ],
+          "value": "Grain: {{grain}}",
+          "editableField": "grain",
+          "x": 226,
+          "y": 93,
+          "width": 110,
+          "height": 13,
+          "left": "226px",
+          "top": "93px",
+          "position": "absolute",
+          "fontSize": 9,
+          "fontFamily": "Arial, sans-serif",
+          "fallbackValue": "Grain: -"
+        },
+        {
+          "fieldKey": "PolishId",
+          "type": "text",
+          "label": "Polish",
+          "source": [
+            "PolishId"
+          ],
+          "value": "{{PolishId}}",
+          "editableField": "PolishId",
+          "x": 226,
+          "y": 107,
+          "width": 110,
+          "height": 24,
+          "left": "226px",
+          "top": "107px",
+          "position": "absolute",
+          "fontSize": 11,
+          "fontWeight": "800",
+          "textAlign": "center",
+          "fontFamily": "Arial, sans-serif",
+          "border": "2px solid #000000",
+          "borderRadius": "4px",
+          "fallbackValue": "Polish"
+        },
+        {
+          "fieldKey": "transportType",
+          "type": "text",
+          "label": "Transport",
+          "source": [
+            "transportType"
+          ],
+          "value": "{{transportType}}",
+          "editableField": "transportType",
+          "x": 226,
+          "y": 135,
+          "width": 110,
+          "height": 24,
+          "left": "226px",
+          "top": "135px",
+          "position": "absolute",
+          "fontSize": 11,
+          "fontWeight": "800",
+          "textAlign": "center",
+          "fontFamily": "Arial, sans-serif",
+          "border": "2px solid #000000",
+          "borderRadius": "4px",
+          "fallbackValue": "TRANSPORT"
+        }
+      ]
+    }
+  },
+  "isEditedCopyOf": "__builtin_standard__",
+  "updatedAt": "2026-07-29T08:38:39.480Z",
+  "fieldMappings": {
+    "sideRailBarcode": {
+      "label": "Side Rail Barcode",
+      "noteField": 1,
+      "subField": 1,
+      "isBlackBox": false
+    },
+    "mainBarcode": {
+      "label": "Main Barcode",
+      "noteField": 1,
+      "subField": 1,
+      "isBlackBox": false
+    },
+    "batchNumber": {
+      "label": "Batch Number",
+      "noteField": 1,
+      "subField": 1,
+      "isBlackBox": false
+    },
+    "salesID": {
+      "label": "Sales ID",
+      "noteField": 1,
+      "subField": 1,
+      "isBlackBox": false
+    },
+    "colour": {
+      "label": "Colour",
+      "noteField": 1,
+      "subField": 1,
+      "isBlackBox": false
+    },
+    "cutSize": {
+      "label": "Cut Size",
+      "noteField": 1,
+      "subField": 1,
+      "isBlackBox": false
+    },
+    "finishedSize": {
+      "label": "Finished Size",
+      "noteField": 1,
+      "subField": 1,
+      "isBlackBox": false
+    },
+    "glassCode": {
+      "label": "Code",
+      "noteField": 1,
+      "subField": 1,
+      "isBlackBox": false
+    },
+    "cuRef": {
+      "label": "CustRef",
+      "noteField": 1,
+      "subField": 1,
+      "isBlackBox": false
+    },
+    "custlabel": {
+      "label": "Detail",
+      "noteField": 1,
+      "subField": 1,
+      "isBlackBox": false
+    },
+    "axpieceId": {
+      "label": "AXPiece",
+      "noteField": 1,
+      "subField": 1,
+      "isBlackBox": false
+    },
+    "lot": {
+      "label": "Lot",
+      "noteField": 1,
+      "subField": 1,
+      "isBlackBox": false
+    },
+    "thickness": {
+      "label": "Thickness",
+      "noteField": 1,
+      "subField": 1,
+      "isBlackBox": false
+    },
+    "grain": {
+      "label": "Grain",
+      "noteField": 1,
+      "subField": 1,
+      "isBlackBox": false
+    },
+    "PolishId": {
+      "label": "Polish",
+      "noteField": 1,
+      "subField": 1,
+      "isBlackBox": false
+    },
+    "transportType": {
+      "label": "Transport",
+      "noteField": 1,
+      "subField": 1,
+      "isBlackBox": false
+    }
+  },
+  "isActive": true,
+  "left": 0,
+  "right": 0,
+  "top": 0,
+  "bottom": 0,
+  "rotate": 0,
+  "BrRotate": 0,
+  "imagePath": "Opti/",
+  "tempPdfPath": "Opti/"
+}

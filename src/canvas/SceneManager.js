@@ -26,7 +26,8 @@ export class SceneManager {
       antialias: true,
       alpha: true,
     })
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    this._pixelRatio = Math.min(window.devicePixelRatio || 1, 2)
+    this.renderer.setPixelRatio(this._pixelRatio)
     this.renderer.setSize(w, h, false)
 
     this.raycaster = new THREE.Raycaster()
@@ -58,6 +59,8 @@ export class SceneManager {
     this.camera.top = view
     this.camera.bottom = -view
     this.camera.updateProjectionMatrix()
+    this._pixelRatio = Math.min(window.devicePixelRatio || 1, 2)
+    this.renderer.setPixelRatio(this._pixelRatio)
     this.renderer.setSize(w, h, false)
   }
 

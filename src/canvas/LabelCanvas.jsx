@@ -1,10 +1,10 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
 import * as THREE from 'three'
 import { SceneManager } from './SceneManager'
-import { buildFieldCanvas } from './fieldTextures'
+import { buildFieldCanvas, getTexturePixelRatio } from './fieldTextures'
 import { screenToLabelLocal, labelLocalToCanvasPx } from './coords'
 import { useLabelStore } from '../store/labelStore'
-import { mmToPx, snapPx } from '../utils/units'
+import { mmToPx, snapPx, computeMarginLayout, computeFitView } from '../utils/units'
 import {
   hitTestHandle,
   applyResize,
@@ -42,16 +42,19 @@ function buildGrid(gridGroup, labelW, labelH, gridMm, showGrid, isDark) {
   })))
 }
 
-function buildPaper(contentGroup, overlayGroup, labelW, labelH, isDark) {
+function buildPaper(contentGroup, labelW, labelH, isDark) {
   let shadow = contentGroup.getObjectByName('__paper_shadow__')
   if (!shadow) {
-    shadow = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.15 }))
+    shadow = new THREE.Mesh(
+      new THREE.PlaneGeometry(1, 1),
+      new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.12 }),
+    )
     shadow.name = '__paper_shadow__'
     contentGroup.add(shadow)
   }
-  shadow.scale.set(labelW + 12, labelH + 12, 1)
+  shadow.scale.set(labelW + 8, labelH + 8, 1)
   shadow.position.set(labelW / 2, -labelH / 2, -2)
-  shadow.material.opacity = isDark ? 0.4 : 0.12
+  shadow.material.opacity = isDark ? 0.35 : 0.1
 
   let paper = contentGroup.getObjectByName('__paper__')
   if (!paper) {
@@ -62,25 +65,48 @@ function buildPaper(contentGroup, overlayGroup, labelW, labelH, isDark) {
   paper.scale.set(labelW, labelH, 1)
   paper.position.set(labelW / 2, -labelH / 2, -1)
   paper.material.color.set(isDark ? 0xf8fafc : 0xffffff)
+}
 
-  clearGroup(overlayGroup)
-  const border = new THREE.LineSegments(
-    new THREE.EdgesGeometry(new THREE.PlaneGeometry(labelW, labelH)),
-    new THREE.LineBasicMaterial({ color: isDark ? 0x475569 : 0x94a3b8, depthTest: false }),
+function buildLabelBorder(overlayGroup, labelW, labelH, isDark) {
+  const pts = [
+    new THREE.Vector3(0, 0, 0.5),
+    new THREE.Vector3(labelW, 0, 0.5),
+    new THREE.Vector3(labelW, -labelH, 0.5),
+    new THREE.Vector3(0, -labelH, 0.5),
+  ]
+  const border = new THREE.LineLoop(
+    new THREE.BufferGeometry().setFromPoints(pts),
+    new THREE.LineBasicMaterial({ color: isDark ? 0x64748b : 0x94a3b8, depthTest: false }),
   )
-  border.position.set(labelW / 2, -labelH / 2, 0.6)
   overlayGroup.add(border)
 }
 
-function buildMargins(overlayGroup, labelW, labelH, margins) {
-  const padL = mmToPx(margins?.left ?? 0)
-  const padT = mmToPx(margins?.top ?? 0)
-  const innerW = Math.max(1, labelW - padL - mmToPx(margins?.right ?? 0))
-  const innerH = Math.max(1, labelH - padT - mmToPx(margins?.bottom ?? 0))
-  const geo = new THREE.EdgesGeometry(new THREE.PlaneGeometry(innerW, innerH))
-  const line = new THREE.LineSegments(geo, new THREE.LineDashedMaterial({ color: 0x64748b, dashSize: 4, gapSize: 3, depthTest: false }))
+function buildMargins(overlayGroup, widthMm, heightMm, margins, showMargins) {
+  if (!showMargins) return
+  const layout = computeMarginLayout(widthMm, heightMm, margins)
+  if (!layout.hasMargin) return
+
+  const x0 = layout.contentLeft
+  const y0 = layout.contentTop
+  const x1 = x0 + layout.guideW
+  const y1 = y0 + layout.guideH
+
+  const pts = [
+    new THREE.Vector3(x0, -y0, 1.2),
+    new THREE.Vector3(x1, -y0, 1.2),
+    new THREE.Vector3(x1, -y1, 1.2),
+    new THREE.Vector3(x0, -y1, 1.2),
+  ]
+  const line = new THREE.LineLoop(
+    new THREE.BufferGeometry().setFromPoints(pts),
+    new THREE.LineDashedMaterial({
+      color: 0x1976d2,
+      dashSize: 6,
+      gapSize: 4,
+      depthTest: false,
+    }),
+  )
   line.computeLineDistances()
-  line.position.set(padL + innerW / 2, -(padT + innerH / 2), 1.2)
   overlayGroup.add(line)
 }
 
@@ -168,6 +194,7 @@ export default function LabelCanvas() {
   const activeTool = useLabelStore((s) => s.activeTool)
   const theme = useLabelStore((s) => s.theme)
   const thermalPreview = useLabelStore((s) => s.thermalPreview)
+  const showMargins = useLabelStore((s) => s.showMargins)
   const activeSnapGuides = useLabelStore((s) => s.activeSnapGuides)
 
   const isDark = theme === 'dark'
@@ -181,14 +208,17 @@ export default function LabelCanvas() {
     return screenToLabelLocal(sm, clientX, clientY, s.zoom, s.panX, s.panY)
   }
 
+  const texturePixelRatio = getTexturePixelRatio(zoom)
+
   const syncMeshes = useCallback(async () => {
     const sm = sceneRef.current
     if (!sm) return
     sm.clearMeshes()
     const visible = fields.filter((f) => !f.hidden)
     const sorted = [...visible].sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0))
+    const pr = getTexturePixelRatio(useLabelStore.getState().zoom)
     for (const field of sorted) {
-      const tex = await buildFieldCanvas(field, labelData, globalStyles, showLiveTokens)
+      const tex = await buildFieldCanvas(field, labelData, globalStyles, showLiveTokens, pr)
       const w = Math.max(1, field.width)
       const h = Math.max(1, field.height)
       const mesh = new THREE.Mesh(
@@ -201,9 +231,10 @@ export default function LabelCanvas() {
       sm.registerMesh(field.fieldKey, mesh)
     }
     buildGrid(sm.gridGroup, labelW, labelH, gridMm, showGrid, isDark)
+    buildPaper(sm.contentGroup, labelW, labelH, isDark)
     clearGroup(sm.overlayGroup)
-    buildPaper(sm.contentGroup, sm.overlayGroup, labelW, labelH, isDark)
-    buildMargins(sm.overlayGroup, labelW, labelH, margins)
+    buildLabelBorder(sm.overlayGroup, labelW, labelH, isDark)
+    buildMargins(sm.overlayGroup, width, height, margins, showMargins)
     const primary = selectedKeys[0]
     for (const key of selectedKeys) {
       const f = fields.find((x) => x.fieldKey === key)
@@ -211,14 +242,28 @@ export default function LabelCanvas() {
     }
     sm.setTransform(zoom, panX, panY)
     sm.render()
-  }, [fields, labelData, globalStyles, showLiveTokens, selectedKeys, labelW, labelH, margins, gridMm, showGrid, zoom, panX, panY, isDark])
+  }, [fields, labelData, globalStyles, showLiveTokens, selectedKeys, labelW, labelH, width, height, margins, showMargins, gridMm, showGrid, texturePixelRatio, panX, panY, isDark])
 
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const sm = new SceneManager(canvas)
     sceneRef.current = sm
-    const ro = new ResizeObserver(() => { sm.resize(); sm.render() })
+
+    const fit = () => {
+      sm.resize()
+      const parent = canvas.parentElement
+      const rect = parent?.getBoundingClientRect()
+      if (rect?.width && rect?.height) {
+        const s = useLabelStore.getState()
+        const view = computeFitView(mmToPx(s.width), mmToPx(s.height), rect.width, rect.height)
+        useLabelStore.getState().setView(view)
+      }
+      sm.render()
+    }
+
+    fit()
+    const ro = new ResizeObserver(fit)
     ro.observe(canvas.parentElement)
     return () => { ro.disconnect(); sm.dispose(); sceneRef.current = null }
   }, [])

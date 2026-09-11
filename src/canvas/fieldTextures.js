@@ -3,12 +3,32 @@ import JsBarcode from 'jsbarcode'
 import QRCode from 'qrcode'
 import { interpolateTokens } from '../utils/template'
 
-function canvasTexture(canvas) {
+/** Pixel ratio for offscreen field canvases — matches screen zoom so textures stay sharp. */
+export function getTexturePixelRatio(zoom = 1) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2)
+  return Math.min(4, Math.max(1, Math.ceil(dpr * Math.max(1, zoom))))
+}
+
+function canvasTexture(canvas, { crisp = false } = {}) {
   const tex = new THREE.CanvasTexture(canvas)
+  tex.generateMipmaps = false
   tex.minFilter = THREE.LinearFilter
-  tex.magFilter = THREE.LinearFilter
+  tex.magFilter = crisp ? THREE.NearestFilter : THREE.LinearFilter
+  tex.anisotropy = 4
   tex.needsUpdate = true
   return tex
+}
+
+function createHiDpiContext(w, h, pixelRatio) {
+  const pr = Math.max(1, pixelRatio)
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(w * pr)
+  canvas.height = Math.round(h * pr)
+  const ctx = canvas.getContext('2d')
+  ctx.scale(pr, pr)
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
+  return { canvas, ctx, w, h, pr }
 }
 
 function drawRoundRect(ctx, x, y, w, h, r) {
@@ -119,13 +139,16 @@ function drawDxfPreview(ctx, w, h, labelData, field) {
   }
 }
 
-export async function buildFieldCanvas(field, labelData, globalStyles, showLiveTokens = true) {
+export async function buildFieldCanvas(
+  field,
+  labelData,
+  globalStyles,
+  showLiveTokens = true,
+  pixelRatio = 1,
+) {
   const w = Math.max(8, Math.round(field.width || 10))
   const h = Math.max(8, Math.round(field.height || 10))
-  const canvas = document.createElement('canvas')
-  canvas.width = w
-  canvas.height = h
-  const ctx = canvas.getContext('2d')
+  const { canvas, ctx, pr } = createHiDpiContext(w, h, pixelRatio)
   ctx.clearRect(0, 0, w, h)
 
   const type = (field.type || 'text').toLowerCase()
@@ -164,7 +187,7 @@ export async function buildFieldCanvas(field, labelData, globalStyles, showLiveT
       ctx.lineWidth = 1
       ctx.strokeRect(0.5, 0.5, w - 1, h - 1)
     }
-    return canvasTexture(canvas)
+    return canvasTexture(canvas, { crisp: false })
   }
 
   if (type === 'table') {
@@ -207,18 +230,20 @@ export async function buildFieldCanvas(field, labelData, globalStyles, showLiveT
       JsBarcode(bc, val, {
         format: field.barcodeFormat || 'CODE128',
         displayValue: field.displayValue !== false,
-        fontSize: Math.max(8, Math.min(14, h * 0.2)),
-        margin: 2,
-        width: 2,
-        height: Math.max(20, h - 16),
+        fontSize: Math.max(8, Math.min(14, h * 0.2)) * pr,
+        margin: 2 * pr,
+        width: Math.max(1, 2 * pr),
+        height: Math.max(20, h - 16) * pr,
       })
+      ctx.imageSmoothingEnabled = false
       ctx.drawImage(bc, 0, 0, w, h)
+      ctx.imageSmoothingEnabled = true
     } catch {
       ctx.fillStyle = '#666'
       ctx.font = '10px Arial'
       ctx.fillText('Barcode', 4, 14)
     }
-    return canvasTexture(canvas)
+    return canvasTexture(canvas, { crisp: true })
   }
 
   if (type === 'qrcode') {
@@ -231,11 +256,13 @@ export async function buildFieldCanvas(field, labelData, globalStyles, showLiveT
     try {
       const qrCanvas = document.createElement('canvas')
       await QRCode.toCanvas(qrCanvas, val, {
-        width: Math.min(w, h),
+        width: Math.round(Math.min(w, h) * pr),
         margin: 1,
         errorCorrectionLevel: field.qrEcc || 'M',
       })
+      ctx.imageSmoothingEnabled = false
       ctx.drawImage(qrCanvas, 0, 0, w, h)
+      ctx.imageSmoothingEnabled = true
     } catch {
       ctx.strokeRect(1, 1, w - 2, h - 2)
     }

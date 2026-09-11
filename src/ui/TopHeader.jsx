@@ -1,4 +1,3 @@
-import { useRef } from 'react'
 import {
   Maximize2,
   X,
@@ -13,11 +12,8 @@ import {
 } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
 import { IconButton } from './primitives'
-import { toast } from './Toast'
 
 export default function TopHeader() {
-  const fileRef = useRef(null)
-
   const name = useLabelStore((s) => s.name)
   const margins = useLabelStore((s) => s.margins)
   const setMargins = useLabelStore((s) => s.setMargins)
@@ -25,34 +21,15 @@ export default function TopHeader() {
   const toggleTheme = useLabelStore((s) => s.toggleTheme)
   const setModal = useLabelStore((s) => s.setModal)
   const setPrintConfig = useLabelStore((s) => s.setPrintConfig)
-  const importTemplate = useLabelStore((s) => s.importTemplate)
-  const exportTemplate = useLabelStore((s) => s.exportTemplate)
+  const pickAndImportJsonFile = useLabelStore((s) => s.pickAndImportJsonFile)
+  const exportCurrentTemplateJson = useLabelStore((s) => s.exportCurrentTemplateJson)
 
-  const handleOpen = (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      try {
-        importTemplate(reader.result)
-      } catch (err) {
-        toast(`Import failed: ${err.message}`, 'error')
-      }
-    }
-    reader.readAsText(file)
-    e.target.value = ''
-  }
-
-  const handleSave = () => {
-    const json = exportTemplate()
-    const blob = new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' })
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = `${json.id || 'label'}.json`
-    a.click()
-    URL.revokeObjectURL(a.href)
-    toast('Template exported', 'success')
-  }
+  const marginKeys = [
+    { key: 'left', label: 'L' },
+    { key: 'right', label: 'R' },
+    { key: 'top', label: 'T' },
+    { key: 'bottom', label: 'B' },
+  ]
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -61,13 +38,6 @@ export default function TopHeader() {
       document.exitFullscreen().catch(() => {})
     }
   }
-
-  const marginKeys = [
-    { key: 'left', label: 'L' },
-    { key: 'right', label: 'R' },
-    { key: 'top', label: 'T' },
-    { key: 'bottom', label: 'B' },
-  ]
 
   return (
     <header
@@ -105,9 +75,8 @@ export default function TopHeader() {
       <div className="flex items-center gap-1">
         <IconButton icon={theme === 'dark' ? Sun : Moon} title={theme === 'dark' ? 'Light mode' : 'Dark mode'} onClick={toggleTheme} />
         <div className="mx-1 h-5 w-px bg-[var(--lc-panel-border)]" />
-        <IconButton icon={FolderOpen} title="Import JSON" onClick={() => fileRef.current?.click()} />
-        <input ref={fileRef} type="file" accept=".json" className="hidden" onChange={handleOpen} />
-        <IconButton icon={Save} title="Export JSON" onClick={handleSave} />
+        <IconButton icon={FolderOpen} title="Import JSON" onClick={pickAndImportJsonFile} />
+        <IconButton icon={Save} title="Export JSON" onClick={exportCurrentTemplateJson} />
         <div className="mx-1 h-5 w-px bg-[var(--lc-panel-border)]" />
         <button type="button" onClick={() => setPrintConfig({ showTemplateGallery: true })} className="lc-btn lc-btn-ghost !py-1.5 !px-2.5 !text-xs">
           <LayoutTemplate size={14} /> Gallery

@@ -5,6 +5,8 @@ import {
 } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
 import { sendToPrinter } from '../services/printService'
+import { SIZE_PRESET_GROUPS } from '../data/templatePresets'
+import { fromMm, roundDisplay } from '../utils/units'
 import { toast } from './Toast'
 
 export default function CanvasSubBar() {
@@ -12,9 +14,15 @@ export default function CanvasSubBar() {
   const [showPrinterIpDialog, setShowPrinterIpDialog] = useState(false)
   const [printerIp, setPrinterIp] = useState('192.168.1.100')
 
-  const width = useLabelStore((s) => s.width)
-  const height = useLabelStore((s) => s.height)
+  const widthMm = useLabelStore((s) => s.width)
+  const heightMm = useLabelStore((s) => s.height)
+  const unit = useLabelStore((s) => s.unit) || 'mm'
   const setLabelSize = useLabelStore((s) => s.setLabelSize)
+  const setDisplayUnit = useLabelStore((s) => s.setDisplayUnit)
+  const applySizePreset = useLabelStore((s) => s.applySizePreset)
+  const displayW = roundDisplay(fromMm(widthMm, unit), unit)
+  const displayH = roundDisplay(fromMm(heightMm, unit), unit)
+  const inputStep = unit === 'inch' ? 0.01 : unit === 'cm' ? 0.1 : 1
   const zoom = useLabelStore((s) => s.zoom)
   const setView = useLabelStore((s) => s.setView)
   const fitToScreen = useLabelStore((s) => s.fitToScreen)
@@ -77,7 +85,17 @@ export default function CanvasSubBar() {
               <Plus size={12} />
             </button>
           </div>
-          <button type="button" onClick={fitToScreen} className="lc-btn lc-btn-outline !py-1 !px-2.5 !text-xs">Fit</button>
+          <button
+            type="button"
+            onClick={() => {
+              const canvas = document.querySelector('.lc-canvas-wrap canvas')
+              const rect = canvas?.parentElement?.getBoundingClientRect()
+              fitToScreen(rect?.width, rect?.height)
+            }}
+            className="lc-btn lc-btn-outline !py-1 !px-2.5 !text-xs"
+          >
+            Fit
+          </button>
         </div>
 
         <div className="flex items-center gap-1.5">
@@ -120,10 +138,37 @@ export default function CanvasSubBar() {
         </div>
 
         <div className="flex items-center gap-2 text-xs font-medium text-[var(--lc-text-muted)]">
+          <select
+            className="lc-input lc-input-sm !w-[9.5rem] !py-1 !text-[10px]"
+            defaultValue=""
+            onChange={(e) => {
+              const id = e.target.value
+              if (!id) return
+              for (const group of SIZE_PRESET_GROUPS) {
+                const preset = group.presets.find((p) => p.id === id)
+                if (preset) applySizePreset(preset)
+              }
+              e.target.value = ''
+            }}
+            title="Common label sizes"
+          >
+            <option value="">Size preset…</option>
+            {SIZE_PRESET_GROUPS.map((group) => (
+              <optgroup key={group.id} label={group.label}>
+                {group.presets.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
           <div className="lc-margin-group !gap-2">
-            <label>W<input type="number" value={width} onChange={(e) => setLabelSize(Number(e.target.value), height)} /></label>
-            <label>H<input type="number" value={height} onChange={(e) => setLabelSize(width, Number(e.target.value))} /></label>
-            <span className="text-[10px]">mm</span>
+            <label>W<input type="number" step={inputStep} min={0.01} value={displayW} onChange={(e) => setLabelSize(Number(e.target.value), displayH)} /></label>
+            <label>H<input type="number" step={inputStep} min={0.01} value={displayH} onChange={(e) => setLabelSize(displayW, Number(e.target.value))} /></label>
+            <select value={unit} onChange={(e) => setDisplayUnit(e.target.value)} className="lc-input lc-input-sm !w-12 !py-0.5 !text-[10px]" title="Display unit">
+              <option value="mm">mm</option>
+              <option value="cm">cm</option>
+              <option value="inch">in</option>
+            </select>
           </div>
           <select value={printerDpi} onChange={(e) => setPrintConfig({ printerDpi: Number(e.target.value) })} className="lc-input lc-input-sm !py-1">
             <option value={203}>203 DPI</option>

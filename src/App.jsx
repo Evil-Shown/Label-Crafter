@@ -13,6 +13,7 @@ import ShortcutsOverlay from './ui/ShortcutsOverlay'
 import TemplateGallery from './ui/TemplateGallery'
 import SampleDataEditor from './ui/SampleDataEditor'
 import BatchPreview from './ui/BatchPreview'
+import ImportTemplateModal from './modals/ImportTemplateModal'
 import Rulers from './ui/Rulers'
 import { useLabelStore } from './store/labelStore'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
@@ -52,6 +53,7 @@ export default function App() {
       <TemplateGallery />
       <SampleDataEditor />
       <BatchPreview />
+      <ImportTemplateModal />
       <ShortcutsOverlay />
       <ToastContainer />
     </div>

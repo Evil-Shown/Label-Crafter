@@ -1,4 +1,4 @@
-import { buildFieldCanvas } from '../canvas/fieldTextures'
+import { buildFieldCanvas, getTexturePixelRatio } from '../canvas/fieldTextures'
 import { mmToPx } from './units'
 
 /** Render label fields to a 2D canvas at design resolution (px @ 96 DPI). */
@@ -16,12 +16,14 @@ export async function renderLabelToCanvas(state, { thermal = false } = {}) {
     .filter((f) => !f.hidden)
     .sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0))
 
+  const exportPr = Math.max(2, getTexturePixelRatio(1))
   for (const field of fields) {
     const tex = await buildFieldCanvas(
       field,
       state.labelData,
       state.globalStyles,
       state.showLiveTokens,
+      exportPr,
     )
     const img = tex.image
     const x = field.x ?? 0

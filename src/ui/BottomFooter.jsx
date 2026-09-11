@@ -1,6 +1,7 @@
 import { Undo2, Check, X, Redo2, Image, FileText } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
 import { exportPng, exportPdf } from '../utils/export'
+import { formatSize } from '../utils/units'
 import { toast } from './Toast'
 
 export default function BottomFooter() {
@@ -13,6 +14,7 @@ export default function BottomFooter() {
   const name = useLabelStore((s) => s.name)
   const width = useLabelStore((s) => s.width)
   const height = useLabelStore((s) => s.height)
+  const unit = useLabelStore((s) => s.unit) || 'mm'
 
   const handleSave = () => {
     const json = exportTemplate()
@@ -45,7 +47,7 @@ export default function BottomFooter() {
       <p className="text-[11px] font-medium text-[var(--lc-text-muted)]">
         <span className="font-semibold text-[var(--lc-text)]">{name}</span>
         {' · '}
-        {width} × {height} mm
+        {formatSize(width, height, unit)}
       </p>
 
       <div className="flex items-center gap-2">
