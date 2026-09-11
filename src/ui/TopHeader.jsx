@@ -7,7 +7,6 @@ import {
   FolderOpen,
   Save,
   Plus,
-  Tag,
   Grid2x2,
 } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
@@ -41,17 +40,17 @@ export default function TopHeader() {
 
   return (
     <header
-      className="flex h-[52px] shrink-0 items-center justify-between border-b border-[var(--lc-panel-border)] bg-[var(--lc-toolbar-bg)] px-4 backdrop-blur-md"
+      className="lc-top-header flex h-[64px] shrink-0 items-center justify-between border-b border-[var(--lc-panel-border)] bg-[var(--lc-toolbar-bg)] px-5 backdrop-blur-md"
       style={{ boxShadow: 'var(--lc-shadow-sm)' }}
     >
       <div className="flex items-center gap-3">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 shadow-md">
-          <Tag size={15} className="text-white" strokeWidth={2.5} />
+        <div className="lc-brand-mark flex h-10 w-10 items-center justify-center rounded-xl shadow-md">
+          <img src="/crafter-mark.png" alt="" className="lc-brand-image" />
         </div>
         <div>
-          <h1 className="text-sm font-bold leading-none tracking-tight text-[var(--lc-text)]">Lable Crafter</h1>
+          <h1 className="text-[15px] font-extrabold leading-none tracking-tight text-[var(--lc-text)]">Label Crafter</h1>
           <p className="mt-0.5 max-w-[180px] truncate text-[10px] font-medium text-[var(--lc-text-muted)]">
-            {name || 'Edit Label Layout'}
+            {name || 'Precision label studio'}
           </p>
         </div>
         <button type="button" onClick={() => setModal('showNewModal', true)} className="lc-btn lc-btn-outline ml-1 !py-1 !px-2.5 !text-xs">

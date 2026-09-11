@@ -60,12 +60,10 @@ export async function sendToPrinter({
 }
 
 export async function checkServiceHealth(baseUrl) {
-  try {
-    const res = await fetch(`${baseUrl.replace(/\/$/, '')}/api/info`)
-    if (!res.ok) return false
-    const data = await res.json()
-    return Boolean(data?.ok ?? data?.service ?? true)
-  } catch {
-    return false
-  }
+  const url = `${baseUrl.replace(/\/$/, '')}/api/health`
+  const res = await fetch(url, { headers: { Accept: 'application/json' } })
+  if (!res.ok) throw new Error(`Service returned ${res.status}`)
+  const data = await res.json()
+  if (!data?.ok) throw new Error('Service did not report ready')
+  return data
 }

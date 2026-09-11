@@ -41,7 +41,7 @@ export default function BottomFooter() {
 
   return (
     <footer
-      className="flex h-[52px] shrink-0 items-center justify-between border-t border-[var(--lc-panel-border)] bg-[var(--lc-toolbar-bg)] px-5 backdrop-blur-md"
+      className="lc-footer flex h-[58px] shrink-0 items-center justify-between border-t border-[var(--lc-panel-border)] bg-[var(--lc-toolbar-bg)] px-5 backdrop-blur-md"
       style={{ boxShadow: '0 -1px 0 var(--lc-panel-border)' }}
     >
       <p className="text-[11px] font-medium text-[var(--lc-text-muted)]">

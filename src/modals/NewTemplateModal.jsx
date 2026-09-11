@@ -42,10 +42,10 @@ export default function NewTemplateModal() {
 
   return (
     <div className="lc-modal-overlay">
-      <div className="lc-modal !max-w-md">
+      <div className="lc-modal lc-modal-new !max-w-md">
         <div className="mb-5 flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-md">
+            <div className="lc-modal-icon flex h-10 w-10 items-center justify-center rounded-xl shadow-md">
               <Sparkles size={18} className="text-white" />
             </div>
             <div>
@@ -119,7 +119,7 @@ export default function NewTemplateModal() {
           </div>
 
           {/* Preview card */}
-          <div className="rounded-xl border border-indigo-200/60 bg-gradient-to-br from-indigo-50 to-violet-50 p-4 dark:border-indigo-900/40 dark:from-indigo-950/30 dark:to-violet-950/20">
+          <div className="lc-template-summary rounded-xl p-4">
             <p className="text-sm font-semibold text-[var(--lc-text)]">
               {name || 'New Label'} — {width} × {height} {unitLabel(unit)}
             </p>

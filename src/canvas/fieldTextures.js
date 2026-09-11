@@ -194,25 +194,43 @@ export async function buildFieldCanvas(
     const cols = field.columns || ['Col1', 'Col2']
     const rows = field.rows || [['A', 'B']]
     const fs = field.fontSize || 9
-    ctx.font = `${fs}px Arial`
-    const rowH = Math.max(fs + 6, h / (rows.length + 1))
+    const rowH = h / Math.max(1, rows.length + 1)
+    const fittedFontSize = Math.max(5, Math.min(fs, rowH - 7))
+    ctx.font = `600 ${fittedFontSize}px Arial`
+    ctx.textBaseline = 'middle'
     const colW = w / cols.length
-    ctx.strokeStyle = '#000'
-    ctx.lineWidth = 1
-    ctx.strokeRect(0, 0, w, h)
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, w, h)
+    ctx.strokeStyle = '#0f172a'
+    ctx.lineWidth = 1.25
+    ctx.strokeRect(0.75, 0.75, w - 1.5, h - 1.5)
     cols.forEach((c, i) => {
-      ctx.fillStyle = '#e2e8f0'
+      ctx.fillStyle = '#0b172a'
       ctx.fillRect(i * colW, 0, colW, rowH)
-      ctx.fillStyle = '#000'
-      ctx.fillText(c, i * colW + 4, 4)
+      ctx.fillStyle = '#ffffff'
+      ctx.save()
+      ctx.beginPath()
+      ctx.rect(i * colW + 1, 1, colW - 2, rowH - 2)
+      ctx.clip()
+      ctx.fillText(c, i * colW + 5, rowH / 2, Math.max(1, colW - 10))
+      ctx.restore()
       ctx.strokeRect(i * colW, 0, colW, rowH)
     })
+    ctx.font = `${fittedFontSize}px Arial`
     rows.forEach((row, ri) => {
       const y = rowH + ri * rowH
       row.forEach((cell, ci) => {
+        ctx.fillStyle = ri % 2 === 0 ? '#ffffff' : '#f3f6f8'
+        ctx.fillRect(ci * colW, y, colW, rowH)
+        ctx.strokeStyle = '#0f172a'
         ctx.strokeRect(ci * colW, y, colW, rowH)
-        ctx.fillStyle = '#000'
-        ctx.fillText(String(cell), ci * colW + 4, y + 4)
+        ctx.fillStyle = '#0f172a'
+        ctx.save()
+        ctx.beginPath()
+        ctx.rect(ci * colW + 1, y + 1, colW - 2, rowH - 2)
+        ctx.clip()
+        ctx.fillText(String(cell), ci * colW + 5, y + rowH / 2, Math.max(1, colW - 10))
+        ctx.restore()
       })
     })
     return canvasTexture(canvas)

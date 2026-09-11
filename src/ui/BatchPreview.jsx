@@ -35,7 +35,7 @@ export default function BatchPreview() {
 
   return (
     <div className="lc-modal-overlay">
-      <div className="lc-modal !max-w-3xl">
+      <div className="lc-modal lc-batch-modal !max-w-3xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-base font-bold">Batch Preview</h2>
           <button type="button" onClick={() => setPrintConfig({ showBatchPreview: false })} className="lc-icon-btn">
@@ -50,7 +50,7 @@ export default function BatchPreview() {
             <p className="col-span-2 text-center text-xs text-[var(--lc-text-muted)]">Rendering…</p>
           ) : (
             previews.map((p, i) => (
-              <div key={i} className="rounded-lg border border-[var(--lc-panel-border)] p-2">
+              <div key={i} className="lc-preview-card rounded-xl p-2.5">
                 <div className="mb-1 text-[10px] font-semibold text-[var(--lc-text-muted)]">
                   {p.data.orderNumber} · #{p.data.id}
                 </div>

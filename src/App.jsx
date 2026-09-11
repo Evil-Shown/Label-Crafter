@@ -27,10 +27,10 @@ export default function App() {
   }, [theme])
 
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden bg-[var(--lc-bg)]">
+    <div className="lc-app-shell relative flex h-full w-full flex-col overflow-hidden bg-[var(--lc-bg)]">
       <TopHeader />
 
-      <div className="flex min-h-0 flex-1 overflow-hidden">
+      <div className="lc-workspace flex min-h-0 flex-1 overflow-hidden">
         <ComponentsSidebar />
 
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">

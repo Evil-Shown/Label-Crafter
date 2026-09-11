@@ -74,7 +74,7 @@ export default function ComponentsSidebar() {
   const sortedFields = [...fields].sort((a, b) => (b.zIndex ?? 0) - (a.zIndex ?? 0))
 
   return (
-    <aside className="flex w-[220px] shrink-0 flex-col border-r border-[var(--lc-panel-border)] bg-[var(--lc-panel)]">
+    <aside className="lc-sidebar lc-sidebar-left flex w-[236px] shrink-0 flex-col border-r border-[var(--lc-panel-border)] bg-[var(--lc-panel)]">
       <PanelHeader
         title="Components"
         badge={

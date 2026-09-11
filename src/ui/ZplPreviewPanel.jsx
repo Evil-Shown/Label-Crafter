@@ -45,7 +45,7 @@ export default function ZplPreviewPanel() {
   if (!open) return null
 
   return (
-    <div className="flex h-48 shrink-0 flex-col border-t border-[var(--lc-panel-border)] bg-[var(--lc-panel)]">
+    <div className="lc-code-panel flex h-48 shrink-0 flex-col border-t border-[var(--lc-panel-border)] bg-[var(--lc-panel)]">
       <div className="flex items-center justify-between border-b border-[var(--lc-panel-border)] px-3 py-1.5">
         <span className="text-xs font-bold text-[var(--lc-text)]">ZPL / Printer Code Preview</span>
         <div className="flex items-center gap-1">

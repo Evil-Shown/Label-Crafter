@@ -29,8 +29,8 @@ function TemplateCard({
 
   return (
     <div
-      className={`flex flex-col rounded-lg border bg-[var(--lc-panel)] p-3 transition-shadow hover:shadow-md ${
-        isDefault ? 'border-indigo-500 ring-1 ring-indigo-500/30' : 'border-[var(--lc-panel-border)]'
+      className={`lc-template-card flex flex-col rounded-xl border bg-[var(--lc-panel)] p-3 ${
+        isDefault ? 'is-default' : 'border-[var(--lc-panel-border)]'
       }`}
     >
       <TemplatePreviewThumb template={builtin ? getBuiltinTemplateConfig(template.id) : template} />
@@ -38,7 +38,7 @@ function TemplateCard({
       <div className="mt-2 flex flex-wrap items-center gap-1">
         <span className="text-xs font-bold text-[var(--lc-text)]">{template.name}</span>
         {isDefault && (
-          <span className="rounded bg-indigo-600 px-1.5 py-0.5 text-[9px] font-bold text-white">DEFAULT</span>
+          <span className="lc-default-badge rounded px-1.5 py-0.5 text-[9px] font-bold text-white">DEFAULT</span>
         )}
         <span className={`lc-badge ${badgeClass}`}>{labelType}</span>
       </div>
@@ -109,7 +109,7 @@ export default function TemplateGallery() {
   return (
     <>
       <div className="lc-modal-overlay">
-        <div className="lc-modal !max-w-4xl !max-h-[90vh] flex flex-col">
+        <div className="lc-modal lc-gallery-modal !max-w-4xl !max-h-[90vh] flex flex-col">
           <div className="mb-4 flex shrink-0 items-center justify-between">
             <div>
               <h2 className="text-base font-bold">Label Template Gallery</h2>
@@ -209,7 +209,7 @@ export default function TemplateGallery() {
             })}
 
             {userTemplates.length === 0 && (
-              <div className="rounded-lg border border-dashed border-[var(--lc-panel-border)] p-8 text-center">
+              <div className="lc-gallery-empty rounded-xl p-8 text-center">
                 <p className="text-sm font-medium text-[var(--lc-text)]">No saved templates yet</p>
                 <p className="mt-1 text-xs text-[var(--lc-text-muted)]">
                   Import a JSON file from Opti, or design a label and click Save Current.

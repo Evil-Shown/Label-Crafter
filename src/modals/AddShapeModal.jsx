@@ -43,10 +43,10 @@ export default function AddShapeModal() {
 
   return (
     <div className="lc-modal-overlay">
-      <div className="lc-modal !max-w-md">
+      <div className="lc-modal lc-modal-shape !max-w-md">
         <div className="mb-5 flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--lc-accent-soft)]">
+            <div className="lc-modal-icon flex h-10 w-10 items-center justify-center rounded-xl">
               <Shapes size={18} className="text-[var(--lc-accent)]" />
             </div>
             <div>

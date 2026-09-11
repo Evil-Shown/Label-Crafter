@@ -1,18 +1,19 @@
 import { useState } from 'react'
 import {
-  Printer, Minus, Plus, Grid3x3, Magnet, Code, Thermometer, Database,
-  Layers, Ruler, HelpCircle, Eye,
+  Printer, Grid3x3, Magnet, Code, Thermometer, Database,
+  Layers, Ruler, HelpCircle, Eye, Server, Wifi, CheckCircle2, CircleAlert,
 } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
-import { sendToPrinter } from '../services/printService'
+import { checkServiceHealth, sendToPrinter } from '../services/printService'
 import { SIZE_PRESET_GROUPS } from '../data/templatePresets'
 import { fromMm, roundDisplay } from '../utils/units'
 import { toast } from './Toast'
 
 export default function CanvasSubBar() {
   const [isPrinting, setIsPrinting] = useState(false)
+  const [isCheckingService, setIsCheckingService] = useState(false)
+  const [serviceStatus, setServiceStatus] = useState(null)
   const [showPrinterIpDialog, setShowPrinterIpDialog] = useState(false)
-  const [printerIp, setPrinterIp] = useState('192.168.1.100')
 
   const widthMm = useLabelStore((s) => s.width)
   const heightMm = useLabelStore((s) => s.height)
@@ -23,9 +24,6 @@ export default function CanvasSubBar() {
   const displayW = roundDisplay(fromMm(widthMm, unit), unit)
   const displayH = roundDisplay(fromMm(heightMm, unit), unit)
   const inputStep = unit === 'inch' ? 0.01 : unit === 'cm' ? 0.1 : 1
-  const zoom = useLabelStore((s) => s.zoom)
-  const setView = useLabelStore((s) => s.setView)
-  const fitToScreen = useLabelStore((s) => s.fitToScreen)
   const showGrid = useLabelStore((s) => s.showGrid)
   const snapToGrid = useLabelStore((s) => s.snapToGrid)
   const snapToElements = useLabelStore((s) => s.snapToElements)
@@ -38,12 +36,12 @@ export default function CanvasSubBar() {
   const printerDpi = useLabelStore((s) => s.printerDpi)
   const setPrintConfig = useLabelStore((s) => s.setPrintConfig)
   const printServiceUrl = useLabelStore((s) => s.printServiceUrl)
+  const printerHost = useLabelStore((s) => s.printerHost)
+  const printerPort = useLabelStore((s) => s.printerPort)
   const client = useLabelStore((s) => s.client)
   const printerBrand = useLabelStore((s) => s.printerBrand)
   const exportTemplate = useLabelStore((s) => s.exportTemplate)
   const labelData = useLabelStore((s) => s.labelData)
-
-  const zoomPercent = Math.round(zoom * 100)
 
   const handleTestPrint = async () => {
     setIsPrinting(true)
@@ -51,8 +49,8 @@ export default function CanvasSubBar() {
       const template = exportTemplate()
       await sendToPrinter({
         baseUrl: printServiceUrl,
-        host: printerIp,
-        port: 9100,
+        host: printerHost,
+        port: printerPort,
         compileRequest: {
           client,
           brand: printerBrand,
@@ -63,7 +61,7 @@ export default function CanvasSubBar() {
           labelData,
         },
       })
-      toast(`Sent to ${printerIp}:9100`, 'success')
+      toast(`Sent to ${printerHost}:${printerPort}`, 'success')
       setShowPrinterIpDialog(false)
     } catch (err) {
       toast(`Print failed: ${err.message}`, 'error')
@@ -72,32 +70,22 @@ export default function CanvasSubBar() {
     }
   }
 
+  const handleCheckService = async () => {
+    setIsCheckingService(true)
+    setServiceStatus(null)
+    try {
+      const info = await checkServiceHealth(printServiceUrl)
+      setServiceStatus({ ok: true, message: `${info.service || 'Label Print Service'} is ready` })
+    } catch (err) {
+      setServiceStatus({ ok: false, message: err.message || 'Unable to connect' })
+    } finally {
+      setIsCheckingService(false)
+    }
+  }
+
   return (
     <>
-      <div className="flex h-11 shrink-0 items-center justify-between gap-2 overflow-x-auto border-b border-[var(--lc-panel-border)] bg-[var(--lc-panel)] px-3">
-        <div className="flex items-center gap-2">
-          <div className="lc-segment">
-            <button type="button" onClick={() => setView({ zoom: Math.max(0.2, zoom / 1.15) })} title="Zoom out">
-              <Minus size={12} />
-            </button>
-            <span className="lc-segment-value">{zoomPercent}%</span>
-            <button type="button" onClick={() => setView({ zoom: Math.min(8, zoom * 1.15) })} title="Zoom in">
-              <Plus size={12} />
-            </button>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              const canvas = document.querySelector('.lc-canvas-wrap canvas')
-              const rect = canvas?.parentElement?.getBoundingClientRect()
-              fitToScreen(rect?.width, rect?.height)
-            }}
-            className="lc-btn lc-btn-outline !py-1 !px-2.5 !text-xs"
-          >
-            Fit
-          </button>
-        </div>
-
+      <div className="lc-canvas-toolbar flex h-[52px] shrink-0 items-center justify-between gap-2 overflow-x-auto border-b border-[var(--lc-panel-border)] bg-[var(--lc-panel)] px-3">
         <div className="flex items-center gap-1.5">
           <button type="button" onClick={() => setPrintConfig({ showGrid: !showGrid })} className={`lc-pill-toggle ${showGrid ? 'active' : ''}`} title="Toggle grid">
             <Grid3x3 size={12} /> Grid
@@ -176,21 +164,71 @@ export default function CanvasSubBar() {
             <option value={600}>600 DPI</option>
           </select>
           <button type="button" onClick={() => setShowPrinterIpDialog(true)} className="lc-btn lc-btn-primary !py-1.5 !px-3 !text-xs">
-            <Printer size={13} /> Test Print
+            <Printer size={13} /> Print Setup
           </button>
         </div>
       </div>
 
       {showPrinterIpDialog && (
         <div className="lc-modal-overlay">
-          <div className="lc-modal">
-            <h3 className="mb-1 text-base font-bold text-[var(--lc-text)]">Test Print</h3>
-            <p className="mb-4 text-xs text-[var(--lc-text-muted)]">Sends compiled label code to printer on TCP port 9100.</p>
-            <label className="mb-1 block text-xs font-semibold text-[var(--lc-text)]">Printer IP</label>
-            <input type="text" value={printerIp} onChange={(e) => setPrinterIp(e.target.value)} className="lc-input mb-5 w-full" placeholder="192.168.1.100" />
-            <div className="flex justify-end gap-2">
+          <div className="lc-modal lc-service-modal !max-w-lg">
+            <div className="mb-5 flex items-start gap-3">
+              <div className="lc-modal-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"><Server size={18} /></div>
+              <div>
+                <h3 className="text-base font-bold text-[var(--lc-text)]">Print Service Connection</h3>
+                <p className="mt-0.5 text-xs text-[var(--lc-text-muted)]">Connect Label Crafter to the service hosted in IIS.</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-[var(--lc-text)]">IIS service URL</label>
+                <div className="flex gap-2">
+                  <input type="url" value={printServiceUrl} onChange={(e) => { setPrintConfig({ printServiceUrl: e.target.value }); setServiceStatus(null) }} className="lc-input min-w-0 flex-1" placeholder="http://labels-server:5088" />
+                  <button type="button" onClick={handleCheckService} disabled={isCheckingService || !printServiceUrl.trim()} className="lc-btn lc-btn-outline !px-3 !text-xs">
+                    <Wifi size={13} /> {isCheckingService ? 'Checking...' : 'Test'}
+                  </button>
+                </div>
+                <p className="mt-1 text-[10px] text-[var(--lc-text-muted)]">Example: http://server-name:5088 or your IIS site URL</p>
+              </div>
+
+              {serviceStatus && (
+                <div className={`lc-connection-status ${serviceStatus.ok ? 'is-online' : 'is-offline'}`}>
+                  {serviceStatus.ok ? <CheckCircle2 size={14} /> : <CircleAlert size={14} />}
+                  <span>{serviceStatus.message}</span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-[var(--lc-text)]">Printer brand</label>
+                  <select value={printerBrand} onChange={(e) => setPrintConfig({ printerBrand: e.target.value })} className="lc-input w-full">
+                    <option value="zebra">Zebra</option>
+                    <option value="honeywell">Honeywell / Intermec</option>
+                    <option value="citizen">Citizen</option>
+                    <option value="sato">SATO</option>
+                    <option value="sato-sbpl">SATO (native SBPL)</option>
+                    <option value="tsc">TSC</option>
+                    <option value="godex">GoDEX</option>
+                    <option value="datamax">Datamax</option>
+                    <option value="epl">Eltron / EPL</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-[var(--lc-text)]">Printer port</label>
+                  <input type="number" min="1" max="65535" value={printerPort} onChange={(e) => setPrintConfig({ printerPort: Number(e.target.value) || 9100 })} className="lc-input w-full" />
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-[var(--lc-text)]">Printer IP or hostname</label>
+                <input type="text" value={printerHost} onChange={(e) => setPrintConfig({ printerHost: e.target.value })} className="lc-input w-full" placeholder="192.168.1.100" />
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2">
               <button type="button" onClick={() => setShowPrinterIpDialog(false)} className="lc-btn lc-btn-outline !text-xs">Cancel</button>
-              <button type="button" disabled={isPrinting} onClick={handleTestPrint} className="lc-btn lc-btn-primary !text-xs">
+              <button type="button" disabled={isPrinting || !printerHost.trim() || !printServiceUrl.trim()} onClick={handleTestPrint} className="lc-btn lc-btn-primary !text-xs">
                 {isPrinting ? 'Sending…' : 'Send'}
               </button>
             </div>

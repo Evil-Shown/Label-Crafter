@@ -140,13 +140,15 @@ export const useLabelStore = create(
     activeTool: 'select',
     client: 'opti',
     labelData: { ...OPTI_SAMPLE },
-    printServiceUrl: 'http://localhost:5088',
-    printerBrand: 'zebra',
+    printServiceUrl: localStorage.getItem('lc-print-service-url') || 'http://localhost:5088',
+    printerBrand: localStorage.getItem('lc-printer-brand') || 'zebra',
+    printerHost: localStorage.getItem('lc-printer-host') || '192.168.1.100',
+    printerPort: Number(localStorage.getItem('lc-printer-port')) || 9100,
     snapToGrid: true,
     snapToElements: true,
     snapToEdges: true,
     gridMm: 1,
-    showGrid: true,
+    showGrid: false,
     showMargins: true,
     showRulers: true,
     thermalPreview: false,
@@ -723,6 +725,10 @@ export const useLabelStore = create(
     },
 
     setPrintConfig(patch) {
+      if (patch.printServiceUrl != null) localStorage.setItem('lc-print-service-url', patch.printServiceUrl)
+      if (patch.printerBrand != null) localStorage.setItem('lc-printer-brand', patch.printerBrand)
+      if (patch.printerHost != null) localStorage.setItem('lc-printer-host', patch.printerHost)
+      if (patch.printerPort != null) localStorage.setItem('lc-printer-port', String(patch.printerPort))
       set((st) => Object.assign(st, patch))
     },
   })),

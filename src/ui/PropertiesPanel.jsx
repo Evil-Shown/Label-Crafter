@@ -39,7 +39,7 @@ export default function PropertiesPanel() {
 
   if (!field) {
     return (
-      <aside className="flex w-[260px] shrink-0 flex-col border-l border-[var(--lc-panel-border)] bg-[var(--lc-panel)]">
+      <aside className="lc-sidebar lc-sidebar-right flex w-[280px] shrink-0 flex-col border-l border-[var(--lc-panel-border)] bg-[var(--lc-panel)]">
         <PanelHeader title="Properties" />
         <EmptyState
           icon={MousePointer2}
@@ -58,7 +58,7 @@ export default function PropertiesPanel() {
   const isTable = field.type === 'table'
 
   return (
-    <aside className="flex w-[260px] shrink-0 flex-col border-l border-[var(--lc-panel-border)] bg-[var(--lc-panel)]">
+    <aside className="lc-sidebar lc-sidebar-right flex w-[280px] shrink-0 flex-col border-l border-[var(--lc-panel-border)] bg-[var(--lc-panel)]">
       <PanelHeader
         title="Properties"
         badge={
