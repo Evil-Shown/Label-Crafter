@@ -49,7 +49,7 @@ export default function TopHeader() {
           <img src="/crafter-mark.png" alt="" className="lc-brand-image" />
         </div>
         <div>
-          <h1 className="text-[15px] font-extrabold leading-none tracking-tight text-[var(--lc-text)]">Label Crafter</h1>
+          <h1 className="text-[15px] font-extrabold leading-none tracking-tight text-[var(--lc-text)]">Label Designer</h1>
           <p className="mt-0.5 max-w-[180px] truncate text-[10px] font-medium text-[var(--lc-text-muted)]">
             {name || 'Precision label studio'}
           </p>
@@ -88,7 +88,7 @@ export default function TopHeader() {
         <button
           type="button"
           onClick={() => requestConfirmation({
-            title: 'Exit Label Crafter?',
+            title: 'Exit Label Designer?',
             message: 'Close the designer window. Save your work first if you need to keep recent edits.',
             confirmLabel: 'Exit designer',
             tone: 'danger',

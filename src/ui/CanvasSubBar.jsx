@@ -176,7 +176,7 @@ export default function CanvasSubBar() {
               <div className="lc-modal-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"><Server size={18} /></div>
               <div>
                 <h3 className="text-base font-bold text-[var(--lc-text)]">Print Service Connection</h3>
-                <p className="mt-0.5 text-xs text-[var(--lc-text-muted)]">Connect Label Crafter to the service hosted in IIS.</p>
+                <p className="mt-0.5 text-xs text-[var(--lc-text-muted)]">Connect Label Designer to the service hosted in IIS.</p>
               </div>
             </div>
 
