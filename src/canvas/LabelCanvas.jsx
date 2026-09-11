@@ -174,6 +174,7 @@ export default function LabelCanvas() {
   const [isPanning, setIsPanning] = useState(false)
   const [marquee, setMarquee] = useState(null)
   const [contextMenu, setContextMenu] = useState(null)
+  const [hoverCursor, setHoverCursor] = useState('default')
 
   const fields = useLabelStore((s) => s.fields)
   const selectedKeys = useLabelStore((s) => s.selectedKeys)
@@ -277,6 +278,37 @@ export default function LabelCanvas() {
   const shouldPan = (e) =>
     e.button === 1 || e.ctrlKey || e.metaKey || spaceRef.current || activeTool === 'pan'
 
+  const cursorForHandle = (handle) => ({
+    nw: 'nwse-resize', se: 'nwse-resize',
+    ne: 'nesw-resize', sw: 'nesw-resize',
+    n: 'ns-resize', s: 'ns-resize',
+    e: 'ew-resize', w: 'ew-resize',
+    rotate: 'crosshair',
+  }[handle] || 'default')
+
+  const startTransform = (handle, field, local, event) => {
+    if (!field || field.locked || selectedKeys.length !== 1) return false
+    if (handle === 'rotate') {
+      const cx = field.x + field.width / 2
+      const cy = field.y + field.height / 2
+      interactionRef.current = {
+        mode: 'rotate', pointerId: event.pointerId, key: field.fieldKey,
+        cx, cy, startAngle: Math.atan2(local.y - cy, local.x - cx),
+        origRot: field.rotation || 0, historySaved: false,
+      }
+    } else if (handle) {
+      interactionRef.current = {
+        mode: 'resize', pointerId: event.pointerId, key: field.fieldKey, handle,
+        orig: { ...field }, startLocal: local, historySaved: false,
+      }
+    } else {
+      return false
+    }
+    setHoverCursor(cursorForHandle(handle))
+    event.currentTarget.setPointerCapture(event.pointerId)
+    return true
+  }
+
   const onPointerDown = (e) => {
     if (e.button === 2) return
     const sm = sceneRef.current
@@ -292,6 +324,16 @@ export default function LabelCanvas() {
       return
     }
 
+    // Handles sit above the field texture, so test the active selection first.
+    // This makes corner/edge handles draggable even where they extend outside it.
+    if (selectedKeys.length === 1) {
+      const selectedField = store.fields.find((f) => f.fieldKey === selectedKeys[0])
+      const selectedHandle = selectedField && !selectedField.locked
+        ? hitTestHandle(local.x, local.y, selectedField, 10 / store.zoom)
+        : null
+      if (startTransform(selectedHandle, selectedField, local, e)) return
+    }
+
     const hitKey = sm.hitTest(e.clientX, e.clientY)
     const primaryField = hitKey ? store.fields.find((f) => f.fieldKey === hitKey) : null
 
@@ -300,26 +342,7 @@ export default function LabelCanvas() {
         ? hitTestHandle(local.x, local.y, primaryField, 10 / store.zoom)
         : null
 
-      if (handle === 'rotate' && selectedKeys.length === 1) {
-        const cx = primaryField.x + primaryField.width / 2
-        const cy = primaryField.y + primaryField.height / 2
-        interactionRef.current = {
-          mode: 'rotate', pointerId: e.pointerId, key: hitKey,
-          cx, cy, startAngle: Math.atan2(local.y - cy, local.x - cx),
-          origRot: primaryField.rotation || 0, historySaved: false,
-        }
-        e.currentTarget.setPointerCapture(e.pointerId)
-        return
-      }
-
-      if (handle && handle !== 'rotate' && selectedKeys.length === 1) {
-        interactionRef.current = {
-          mode: 'resize', pointerId: e.pointerId, key: hitKey, handle,
-          orig: { ...primaryField }, startLocal: local, historySaved: false,
-        }
-        e.currentTarget.setPointerCapture(e.pointerId)
-        return
-      }
+      if (startTransform(handle, primaryField, local, e)) return
 
       if (e.shiftKey) {
         const set = new Set(selectedKeys)
@@ -361,7 +384,16 @@ export default function LabelCanvas() {
     const local = getLocal(e.clientX, e.clientY)
     store.setCursorPos(local)
     const inter = interactionRef.current
-    if (!inter || inter.pointerId !== e.pointerId) return
+    if (!inter || inter.pointerId !== e.pointerId) {
+      const selectedField = store.selectedKeys.length === 1
+        ? store.fields.find((f) => f.fieldKey === store.selectedKeys[0])
+        : null
+      const handle = selectedField && !selectedField.locked
+        ? hitTestHandle(local.x, local.y, selectedField, 10 / store.zoom)
+        : null
+      setHoverCursor(cursorForHandle(handle))
+      return
+    }
 
     if (inter.mode === 'pan') {
       const dx = e.clientX - inter.x
@@ -471,6 +503,7 @@ export default function LabelCanvas() {
 
     if (inter.mode === 'pan') setIsPanning(false)
     interactionRef.current = null
+    setHoverCursor('default')
     if (e.currentTarget.hasPointerCapture(e.pointerId)) {
       e.currentTarget.releasePointerCapture(e.pointerId)
     }
@@ -509,18 +542,22 @@ export default function LabelCanvas() {
 
   const cursorClass = isPanning || spaceRef.current || activeTool === 'pan'
     ? isPanning ? 'cursor-grabbing' : 'cursor-grab'
-    : 'cursor-default'
+    : hoverCursor === 'default' ? 'cursor-default' : ''
 
   return (
     <div ref={wrapRef} className="relative h-full w-full">
       <canvas
         ref={canvasRef}
         className={`block h-full w-full select-none ${cursorClass}`}
-        style={thermalPreview ? { filter: 'grayscale(1) contrast(1.4)' } : undefined}
+        style={{
+          ...(thermalPreview ? { filter: 'grayscale(1) contrast(1.4)' } : {}),
+          cursor: isPanning || spaceRef.current || activeTool === 'pan' ? undefined : hoverCursor,
+        }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endPointer}
         onPointerCancel={endPointer}
+        onPointerLeave={() => { if (!interactionRef.current) setHoverCursor('default') }}
         onContextMenu={onContextMenu}
       />
 

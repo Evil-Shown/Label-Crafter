@@ -110,6 +110,10 @@ function snapshotKey(state) {
   return JSON.stringify(templateSnapshot(state))
 }
 
+export function getTemplateFingerprint(state) {
+  return snapshotKey(state)
+}
+
 function sanitizeFieldPatch(patch) {
   if (!patch || typeof patch !== 'object' || Array.isArray(patch)) return patch
   return cloneSerializable(patch)
@@ -132,9 +136,11 @@ function applyTemplateSnapshot(st, data) {
   st.selectedKeys = st.selectedKeys.filter((k) => st.fields.some((f) => f.fieldKey === k))
 }
 
+const initialTemplate = defaultTemplate()
+
 export const useLabelStore = create(
   immer((set, get) => ({
-    ...defaultTemplate(),
+    ...initialTemplate,
     theme: localStorage.getItem('lc-theme') || 'light',
     selectedKeys: [],
     activeTool: 'select',
@@ -177,8 +183,10 @@ export const useLabelStore = create(
     zplPreview: '',
     showNewModal: false,
     showAddShapeModal: false,
+    confirmDialog: null,
     _history: [],
     _future: [],
+    _savedSnapshot: snapshotKey(initialTemplate),
 
     addToast({ message, type = 'info', duration = 3200 }) {
       const id = `toast_${Date.now()}`
@@ -552,13 +560,14 @@ export const useLabelStore = create(
       })
     },
 
-    importTemplate(json, { skipHistory = false } = {}) {
+    importTemplate(json, { skipHistory = false, markSaved = false } = {}) {
       if (!skipHistory) get().pushHistory()
       const parsed = parseImportTemplate(json)
       set((st) => {
         applyTemplateSnapshot(st, parsed)
         st.selectedKeys = []
         st.updatedAt = new Date().toISOString()
+        if (markSaved) st._savedSnapshot = snapshotKey(st)
       })
       get().addToast({ message: 'Template loaded', type: 'success' })
     },
@@ -576,7 +585,10 @@ export const useLabelStore = create(
       const tpl = buildExportTemplate(s)
       const id = tpl.id && !String(tpl.id).startsWith('__builtin') ? tpl.id : generateNextTemplateId()
       const saved = saveTemplate({ ...tpl, id, builtin: false })
-      set((st) => { st.id = saved.id })
+      set((st) => {
+        st.id = saved.id
+        st._savedSnapshot = snapshotKey(st)
+      })
       get().refreshTemplateLibrary()
       get().addToast({ message: 'Saved to template library', type: 'success' })
     },
@@ -584,7 +596,7 @@ export const useLabelStore = create(
     loadFromLibrary(id) {
       const tpl = loadTemplates().find((t) => t.id === id)
       if (!tpl) return
-      get().importTemplate(tpl)
+      get().importTemplate(tpl, { markSaved: true })
       set({ showTemplateGallery: false })
     },
 
@@ -683,7 +695,7 @@ export const useLabelStore = create(
 
       const saved = saveTemplate(imported)
       get().refreshTemplateLibrary()
-      get().importTemplate(saved)
+      get().importTemplate(saved, { markSaved: true })
       set({ showImportModal: false, pendingImport: null, showTemplateGallery: false })
     },
 
@@ -730,6 +742,25 @@ export const useLabelStore = create(
       if (patch.printerHost != null) localStorage.setItem('lc-printer-host', patch.printerHost)
       if (patch.printerPort != null) localStorage.setItem('lc-printer-port', String(patch.printerPort))
       set((st) => Object.assign(st, patch))
+    },
+
+    requestConfirmation(config) {
+      set((st) => { st.confirmDialog = config })
+    },
+
+    dismissConfirmation() {
+      set((st) => { st.confirmDialog = null })
+    },
+
+    discardUnsavedChanges() {
+      const savedSnapshot = get()._savedSnapshot
+      if (!savedSnapshot) return
+      set((st) => {
+        applyTemplateSnapshot(st, JSON.parse(savedSnapshot))
+        st._history = []
+        st._future = []
+      })
+      get().addToast({ message: 'Unsaved changes discarded', type: 'info' })
     },
   })),
 )

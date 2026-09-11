@@ -8,6 +8,7 @@ import LabelCanvas from './canvas/LabelCanvas'
 import NewTemplateModal from './modals/NewTemplateModal'
 import AddShapeModal from './modals/AddShapeModal'
 import ToastContainer from './ui/Toast'
+import ConfirmationDialog from './ui/ConfirmationDialog'
 import ZplPreviewPanel from './ui/ZplPreviewPanel'
 import ShortcutsOverlay from './ui/ShortcutsOverlay'
 import TemplateGallery from './ui/TemplateGallery'
@@ -56,6 +57,7 @@ export default function App() {
       <ImportTemplateModal />
       <ShortcutsOverlay />
       <ToastContainer />
+      <ConfirmationDialog />
     </div>
   )
 }

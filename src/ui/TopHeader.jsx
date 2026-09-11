@@ -5,7 +5,7 @@ import {
   Sun,
   Moon,
   FolderOpen,
-  Save,
+  FileDown,
   Plus,
   Grid2x2,
 } from 'lucide-react'
@@ -22,6 +22,7 @@ export default function TopHeader() {
   const setPrintConfig = useLabelStore((s) => s.setPrintConfig)
   const pickAndImportJsonFile = useLabelStore((s) => s.pickAndImportJsonFile)
   const exportCurrentTemplateJson = useLabelStore((s) => s.exportCurrentTemplateJson)
+  const requestConfirmation = useLabelStore((s) => s.requestConfirmation)
 
   const marginKeys = [
     { key: 'left', label: 'L' },
@@ -74,11 +75,11 @@ export default function TopHeader() {
       <div className="flex items-center gap-1">
         <IconButton icon={theme === 'dark' ? Sun : Moon} title={theme === 'dark' ? 'Light mode' : 'Dark mode'} onClick={toggleTheme} />
         <div className="mx-1 h-5 w-px bg-[var(--lc-panel-border)]" />
-        <IconButton icon={FolderOpen} title="Import JSON" onClick={pickAndImportJsonFile} />
-        <IconButton icon={Save} title="Export JSON" onClick={exportCurrentTemplateJson} />
+        <IconButton icon={FolderOpen} title="Import template JSON" onClick={pickAndImportJsonFile} />
+        <IconButton icon={FileDown} title="Download current template as JSON" onClick={exportCurrentTemplateJson} />
         <div className="mx-1 h-5 w-px bg-[var(--lc-panel-border)]" />
         <button type="button" onClick={() => setPrintConfig({ showTemplateGallery: true })} className="lc-btn lc-btn-ghost !py-1.5 !px-2.5 !text-xs">
-          <LayoutTemplate size={14} /> Gallery
+          <LayoutTemplate size={14} /> Templates
         </button>
         <button type="button" onClick={() => setPrintConfig({ showBatchPreview: true })} className="lc-btn lc-btn-ghost !py-1.5 !px-2.5 !text-xs">
           <Grid2x2 size={14} /> Batch
@@ -86,7 +87,13 @@ export default function TopHeader() {
         <IconButton icon={Maximize2} title="Fullscreen" onClick={toggleFullscreen} />
         <button
           type="button"
-          onClick={() => { if (confirm('Exit label designer?')) window.close() }}
+          onClick={() => requestConfirmation({
+            title: 'Exit Label Crafter?',
+            message: 'Close the designer window. Save your work first if you need to keep recent edits.',
+            confirmLabel: 'Exit designer',
+            tone: 'danger',
+            onConfirm: () => window.close(),
+          })}
           className="lc-icon-btn hover:!bg-red-50 hover:!text-red-500 dark:hover:!bg-red-950/30"
           title="Close"
         >

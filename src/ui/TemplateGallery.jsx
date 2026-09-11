@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import {
-  X, Upload, Download, Plus, Pencil, Trash2, Star, Eye, FolderDown,
+  X, Upload, Download, Plus, Pencil, Trash2, Star, Eye, FolderDown, Save,
 } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
 import { BUILTIN_TEMPLATES, getBuiltinTemplateConfig, isBuiltinId } from '../data/builtinTemplates'
@@ -59,8 +59,8 @@ function TemplateCard({
           <Eye size={11} /> Preview
         </button>
         {!builtin && onExport && (
-          <button type="button" onClick={onExport} className="lc-btn lc-btn-ghost !py-0.5 !px-2 !text-[10px]">
-            <Download size={11} />
+          <button type="button" onClick={onExport} className="lc-btn lc-btn-ghost !py-0.5 !px-2 !text-[10px]" title="Download template JSON">
+            <Download size={11} /> JSON
           </button>
         )}
         {!builtin && onSetDefault && (
@@ -94,6 +94,7 @@ export default function TemplateGallery() {
   const pickAndImportJsonFile = useLabelStore((s) => s.pickAndImportJsonFile)
   const refreshTemplateLibrary = useLabelStore((s) => s.refreshTemplateLibrary)
   const applySizePreset = useLabelStore((s) => s.applySizePreset)
+  const requestConfirmation = useLabelStore((s) => s.requestConfirmation)
 
   const [previewTpl, setPreviewTpl] = useState(null)
 
@@ -114,7 +115,7 @@ export default function TemplateGallery() {
             <div>
               <h2 className="text-base font-bold">Label Template Gallery</h2>
               <p className="text-xs text-[var(--lc-text-muted)]">
-                Import, export, preview and manage Opti-compatible JSON templates
+                Save, open, import and export Opti-compatible label templates
               </p>
             </div>
             <button type="button" onClick={() => setPrintConfig({ showTemplateGallery: false })} className="lc-icon-btn">
@@ -131,10 +132,10 @@ export default function TemplateGallery() {
               <Upload size={13} /> Import JSON
             </button>
             <button type="button" onClick={exportAllTemplatesJson} className="lc-btn lc-btn-outline !text-xs">
-              <FolderDown size={13} /> Export All
+              <FolderDown size={13} /> Download All JSON
             </button>
-            <button type="button" onClick={saveToLibrary} className="lc-btn lc-btn-outline !text-xs">
-              <Download size={13} /> Save Current
+            <button type="button" onClick={saveToLibrary} className="lc-btn lc-btn-primary !text-xs">
+              <Save size={13} /> Save Current to Library
             </button>
             <button type="button" onClick={refreshTemplateLibrary} className="lc-btn lc-btn-ghost !text-xs">
               Refresh
@@ -199,7 +200,13 @@ export default function TemplateGallery() {
                         onOpen={() => loadFromLibrary(t.id)}
                         onPreview={() => openPreview(t, false)}
                         onExport={() => exportTemplateJsonById(t.id)}
-                        onDelete={() => { if (confirm(`Delete "${t.name}"?`)) deleteFromLibrary(t.id) }}
+                        onDelete={() => requestConfirmation({
+                          title: 'Delete template?',
+                          message: `Remove "${t.name}" from your saved template library?`,
+                          confirmLabel: 'Delete template',
+                          tone: 'danger',
+                          onConfirm: () => deleteFromLibrary(t.id),
+                        })}
                         onSetDefault={() => setDefaultTemplate(t.id)}
                       />
                     ))}
@@ -212,7 +219,7 @@ export default function TemplateGallery() {
               <div className="lc-gallery-empty rounded-xl p-8 text-center">
                 <p className="text-sm font-medium text-[var(--lc-text)]">No saved templates yet</p>
                 <p className="mt-1 text-xs text-[var(--lc-text-muted)]">
-                  Import a JSON file from Opti, or design a label and click Save Current.
+                  Import a JSON file from Opti, or design a label and save it to the library.
                 </p>
               </div>
             )}

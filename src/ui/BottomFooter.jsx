@@ -1,5 +1,5 @@
 import { Undo2, Check, X, Redo2, Image, FileText } from 'lucide-react'
-import { useLabelStore } from '../store/labelStore'
+import { getTemplateFingerprint, useLabelStore } from '../store/labelStore'
 import { exportPng, exportPdf } from '../utils/export'
 import { formatSize } from '../utils/units'
 import { toast } from './Toast'
@@ -9,23 +9,14 @@ export default function BottomFooter() {
   const redo = useLabelStore((s) => s.redo)
   const canUndo = useLabelStore((s) => s._history.length > 0)
   const canRedo = useLabelStore((s) => s._future.length > 0)
-  const exportTemplate = useLabelStore((s) => s.exportTemplate)
   const saveToLibrary = useLabelStore((s) => s.saveToLibrary)
   const name = useLabelStore((s) => s.name)
   const width = useLabelStore((s) => s.width)
   const height = useLabelStore((s) => s.height)
   const unit = useLabelStore((s) => s.unit) || 'mm'
-
-  const handleSave = () => {
-    const json = exportTemplate()
-    const blob = new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' })
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = `${json.id || 'label'}.json`
-    a.click()
-    URL.revokeObjectURL(a.href)
-    toast('Template saved', 'success')
-  }
+  const requestConfirmation = useLabelStore((s) => s.requestConfirmation)
+  const discardUnsavedChanges = useLabelStore((s) => s.discardUnsavedChanges)
+  const hasUnsavedChanges = useLabelStore((s) => getTemplateFingerprint(s) !== s._savedSnapshot)
 
   const handlePng = async () => {
     const state = useLabelStore.getState()
@@ -65,13 +56,22 @@ export default function BottomFooter() {
           <Redo2 size={14} /> Redo
         </button>
         <div className="mx-1 h-5 w-px bg-[var(--lc-panel-border)]" />
-        <button type="button" onClick={saveToLibrary} className="lc-btn lc-btn-outline !text-xs">Library</button>
-        <button type="button" onClick={handleSave} className="lc-btn lc-btn-primary !text-xs">
-          <Check size={14} /> Save Changes
-        </button>
-        <button type="button" onClick={() => { if (confirm('Discard unsaved changes?')) undo() }} className="lc-btn lc-btn-danger !text-xs">
-          <X size={14} /> Cancel
-        </button>
+        {hasUnsavedChanges && (
+          <>
+            <button type="button" onClick={saveToLibrary} className="lc-btn lc-btn-primary !text-xs" title="Save this template to the library">
+              <Check size={14} /> Save to Library
+            </button>
+            <button type="button" onClick={() => requestConfirmation({
+              title: 'Discard unsaved changes?',
+              message: 'Restore the template to its last saved library version.',
+              confirmLabel: 'Discard changes',
+              tone: 'danger',
+              onConfirm: discardUnsavedChanges,
+            })} className="lc-btn lc-btn-danger !text-xs">
+              <X size={14} /> Discard
+            </button>
+          </>
+        )}
       </div>
     </footer>
   )
