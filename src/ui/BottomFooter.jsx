@@ -1,4 +1,4 @@
-import { Undo2, Check, X, Redo2, Image, FileText } from 'lucide-react'
+import { Undo2, Check, X, Redo2, Image, FileText, Cloud } from 'lucide-react'
 import { getTemplateFingerprint, useLabelStore } from '../store/labelStore'
 import { exportPng, exportPdf } from '../utils/export'
 import { formatSize } from '../utils/units'
@@ -10,6 +10,9 @@ export default function BottomFooter() {
   const canUndo = useLabelStore((s) => s._history.length > 0)
   const canRedo = useLabelStore((s) => s._future.length > 0)
   const saveToLibrary = useLabelStore((s) => s.saveToLibrary)
+  const saveToDesignService = useLabelStore((s) => s.saveToDesignService)
+  const designSession = useLabelStore((s) => s.designSession)
+  const addToast = useLabelStore((s) => s.addToast)
   const name = useLabelStore((s) => s.name)
   const width = useLabelStore((s) => s.width)
   const height = useLabelStore((s) => s.height)
@@ -58,8 +61,22 @@ export default function BottomFooter() {
         <div className="mx-1 h-5 w-px bg-[var(--lc-panel-border)]" />
         {hasUnsavedChanges && (
           <>
-            <button type="button" onClick={saveToLibrary} className="lc-btn lc-btn-primary !text-xs" title="Save this template to the library">
-              <Check size={14} /> Save to Library
+            <button
+              type="button"
+              onClick={() => {
+                if (designSession) {
+                  saveToDesignService().catch((err) =>
+                    addToast({ message: err.message || 'Save failed', type: 'error' }),
+                  )
+                } else {
+                  saveToLibrary()
+                }
+              }}
+              className="lc-btn lc-btn-primary !text-xs"
+              title={designSession ? 'Save this template to Opti' : 'Save this template to the local library'}
+            >
+              {designSession ? <Cloud size={14} /> : <Check size={14} />}
+              {designSession ? 'Save to Opti' : 'Save to Library'}
             </button>
             <button type="button" onClick={() => requestConfirmation({
               title: 'Discard unsaved changes?',

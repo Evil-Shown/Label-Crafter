@@ -112,7 +112,13 @@ export default function TopHeader() {
             message: 'Close the designer window. Save your work first if you need to keep recent edits.',
             confirmLabel: 'Exit designer',
             tone: 'danger',
-            onConfirm: () => window.close(),
+            onConfirm: () => {
+              if (window.parent && window.parent !== window) {
+                window.parent.postMessage({ type: 'spil-label-designer-close' }, '*')
+              } else {
+                window.close()
+              }
+            },
           })}
           className="lc-icon-btn hover:!bg-red-50 hover:!text-red-500 dark:hover:!bg-red-950/30"
           title="Close"

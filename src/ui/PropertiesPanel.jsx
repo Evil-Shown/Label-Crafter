@@ -2,6 +2,7 @@ import { Trash2, MousePointer2, AlignLeft, Barcode, Shapes, Image, Table } from 
 import { useLabelStore } from '../store/labelStore'
 import { PanelHeader, EmptyState, PropGroup, SectionLabel } from './primitives'
 import TokenInput from './TokenInput'
+import { catalogForClient } from '../data/fieldCatalog'
 
 const FONT_OPTIONS = ['Arial, sans-serif', 'Helvetica, sans-serif', 'Times New Roman, serif', 'Courier New, monospace', 'Verdana, sans-serif']
 const BARCODE_FORMATS = ['CODE128', 'CODE39', 'EAN13', 'ITF14', 'UPC']
@@ -32,6 +33,10 @@ export default function PropertiesPanel() {
   const deleteField = useLabelStore((s) => s.deleteField)
   const toggleFieldLock = useLabelStore((s) => s.toggleFieldLock)
   const toggleFieldVisible = useLabelStore((s) => s.toggleFieldVisible)
+
+  const fieldCatalog = useLabelStore((s) => s.fieldCatalog)
+  const client = useLabelStore((s) => s.client)
+  const catalog = fieldCatalog?.length ? fieldCatalog : catalogForClient(client)
 
   const field = selectedKeys.length === 1
     ? fields.find((f) => f.fieldKey === selectedKeys[0])
@@ -70,6 +75,64 @@ export default function PropertiesPanel() {
       />
 
       <div className="flex-1 space-y-3 overflow-y-auto p-3">
+        {(isText || field.type === 'barcode' || field.type === 'qrcode') && (
+          <PropGroup title="Data mapping">
+            <p className="mb-2 text-[10px] leading-snug text-[var(--lc-text-muted)]">
+              Bind a piece field the same way Opti printing does. Optional note + subfield is the old Configure Data Mapping path (noteN.fieldM). Tokens print first; notes fill when the token is empty.
+            </p>
+            <div>
+              <FieldLabel>Bind to piece field</FieldLabel>
+              <select
+                value=""
+                onChange={(e) => {
+                  const key = e.target.value
+                  if (!key) return
+                  const item = catalog.find((c) => c.key === key)
+                  if (item?.type === 'barcode' || field.type === 'barcode' || field.type === 'qrcode') {
+                    updateField(field.fieldKey, { source: [key], label: item?.label || field.label })
+                  } else {
+                    updateField(field.fieldKey, { value: `{{${key}}}`, label: item?.label || field.label })
+                  }
+                }}
+                className="lc-input w-full"
+              >
+                <option value="">Choose a field…</option>
+                {catalog.map((c) => (
+                  <option key={c.key} value={c.key}>{c.label} ({c.key})</option>
+                ))}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <FieldLabel>Note no.</FieldLabel>
+                <input
+                  type="number"
+                  min="0"
+                  max="20"
+                  value={field.noteField || 0}
+                  onChange={(e) => updateField(field.fieldKey, { noteField: Number(e.target.value) || 0 })}
+                  className="lc-input w-full"
+                />
+              </div>
+              <div>
+                <FieldLabel>Subfield</FieldLabel>
+                <input
+                  type="number"
+                  min="0"
+                  max="50"
+                  value={field.subField || 0}
+                  onChange={(e) => updateField(field.fieldKey, { subField: Number(e.target.value) || 0 })}
+                  className="lc-input w-full"
+                />
+              </div>
+            </div>
+            {(Number(field.noteField) > 0) && (
+              <p className="font-mono text-[10px] text-[var(--lc-text-muted)]">
+                Reads note{field.noteField}.field{field.subField || '?'}
+              </p>
+            )}
+          </PropGroup>
+        )}
         {/* Element name */}
         <div className="flex items-center justify-between">
           <div>
@@ -98,6 +161,7 @@ export default function PropertiesPanel() {
                 onChange={(v) => updateField(field.fieldKey, { value: v })}
                 multiline
                 placeholder="{{orderNumber}}"
+                tokens={catalog.map((c) => c.key)}
               />
             </div>
             <div className="grid grid-cols-2 gap-2">

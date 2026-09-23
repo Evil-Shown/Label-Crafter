@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import JsBarcode from 'jsbarcode'
 import QRCode from 'qrcode'
-import { interpolateTokens } from '../utils/template'
+import { interpolateTokens, resolveMappedPreview } from '../utils/template'
 
 /** Pixel ratio for offscreen field canvases — matches screen zoom so textures stay sharp. */
 export function getTexturePixelRatio(zoom = 1) {
@@ -156,7 +156,8 @@ export async function buildFieldCanvas(
 
   if (type === 'text') {
     const raw = field.value || field.label || ''
-    const text = interpolateTokens(raw, data)
+    const mapped = resolveMappedPreview(field, data)
+    const text = mapped != null && mapped !== '' ? mapped : interpolateTokens(raw, data)
     const fs = field.fontSize || globalStyles?.defaultFontSize || 12
     const ff = field.fontFamily || globalStyles?.fontFamily || 'Arial'
     const fw = field.fontWeight === 'bold' ? 'bold' : 'normal'
@@ -238,9 +239,11 @@ export async function buildFieldCanvas(
 
   if (type === 'barcode') {
     const sources = field.source || ['Barcode', 'barcode']
-    let val = ''
-    for (const s of sources) {
-      if (labelData[s]) { val = String(labelData[s]); break }
+    let val = resolveMappedPreview(field, data) || ''
+    if (!val) {
+      for (const s of sources) {
+        if (data[s]) { val = String(data[s]); break }
+      }
     }
     if (!val) val = field.fallbackValue || '000000000'
     try {
@@ -266,9 +269,11 @@ export async function buildFieldCanvas(
 
   if (type === 'qrcode') {
     const sources = field.source || ['Barcode', 'barcode']
-    let val = ''
-    for (const s of sources) {
-      if (labelData[s]) { val = String(labelData[s]); break }
+    let val = resolveMappedPreview(field, data) || ''
+    if (!val) {
+      for (const s of sources) {
+        if (data[s]) { val = String(data[s]); break }
+      }
     }
     if (!val) val = field.fallbackValue || 'sample'
     try {
