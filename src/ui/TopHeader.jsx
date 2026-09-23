@@ -8,6 +8,8 @@ import {
   FileDown,
   Plus,
   Grid2x2,
+  Cloud,
+  Library,
 } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
 import { IconButton } from './primitives'
@@ -23,6 +25,10 @@ export default function TopHeader() {
   const pickAndImportJsonFile = useLabelStore((s) => s.pickAndImportJsonFile)
   const exportCurrentTemplateJson = useLabelStore((s) => s.exportCurrentTemplateJson)
   const requestConfirmation = useLabelStore((s) => s.requestConfirmation)
+  const saveToDesignService = useLabelStore((s) => s.saveToDesignService)
+  const addToast = useLabelStore((s) => s.addToast)
+  const designSession = useLabelStore((s) => s.designSession)
+  const client = useLabelStore((s) => s.client)
 
   const marginKeys = [
     { key: 'left', label: 'L' },
@@ -50,8 +56,10 @@ export default function TopHeader() {
         </div>
         <div>
           <h1 className="text-[15px] font-extrabold leading-none tracking-tight text-[var(--lc-text)]">Label Designer</h1>
-          <p className="mt-0.5 max-w-[180px] truncate text-[10px] font-medium text-[var(--lc-text-muted)]">
-            {name || 'Precision label studio'}
+          <p className="mt-0.5 max-w-[220px] truncate text-[10px] font-medium text-[var(--lc-text-muted)]">
+            {designSession
+              ? `${client === 'erp' ? 'ERP' : 'Opti'} session · ${name || 'Label'}`
+              : (name || 'Standalone designer')}
           </p>
         </div>
         <button type="button" onClick={() => setModal('showNewModal', true)} className="lc-btn lc-btn-outline ml-1 !py-1 !px-2.5 !text-xs">
@@ -75,6 +83,18 @@ export default function TopHeader() {
       <div className="flex items-center gap-1">
         <IconButton icon={theme === 'dark' ? Sun : Moon} title={theme === 'dark' ? 'Light mode' : 'Dark mode'} onClick={toggleTheme} />
         <div className="mx-1 h-5 w-px bg-[var(--lc-panel-border)]" />
+        <IconButton
+          icon={Library}
+          title="Open templates saved on the label service"
+          onClick={() => setModal('showServerLibrary', true)}
+        />
+        <IconButton
+          icon={Cloud}
+          title="Save template to the label service"
+          onClick={() => {
+            saveToDesignService().catch((err) => addToast({ message: err.message || 'Save failed', type: 'error' }))
+          }}
+        />
         <IconButton icon={FolderOpen} title="Import template JSON" onClick={pickAndImportJsonFile} />
         <IconButton icon={FileDown} title="Download current template as JSON" onClick={exportCurrentTemplateJson} />
         <div className="mx-1 h-5 w-px bg-[var(--lc-panel-border)]" />

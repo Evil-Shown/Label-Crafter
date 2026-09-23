@@ -15,17 +15,30 @@ import TemplateGallery from './ui/TemplateGallery'
 import SampleDataEditor from './ui/SampleDataEditor'
 import BatchPreview from './ui/BatchPreview'
 import ImportTemplateModal from './modals/ImportTemplateModal'
+import ServerLibraryModal from './ui/ServerLibraryModal'
 import Rulers from './ui/Rulers'
 import { useLabelStore } from './store/labelStore'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 
 export default function App() {
   const theme = useLabelStore((s) => s.theme)
+  const applyDesignSession = useLabelStore((s) => s.applyDesignSession)
+  const addToast = useLabelStore((s) => s.addToast)
   useKeyboardShortcuts()
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
   }, [theme])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const sessionId = params.get('session')
+    if (!sessionId) return
+    const service = params.get('service') || undefined
+    applyDesignSession(sessionId, service).catch((err) => {
+      addToast({ message: err.message || 'Could not open design session', type: 'error' })
+    })
+  }, [applyDesignSession, addToast])
 
   return (
     <div className="lc-app-shell relative flex h-full w-full flex-col overflow-hidden bg-[var(--lc-bg)]">
@@ -55,6 +68,7 @@ export default function App() {
       <SampleDataEditor />
       <BatchPreview />
       <ImportTemplateModal />
+      <ServerLibraryModal />
       <ShortcutsOverlay />
       <ToastContainer />
       <ConfirmationDialog />

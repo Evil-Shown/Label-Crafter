@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
 import { PanelHeader, SectionLabel } from './primitives'
+import DataFieldsPanel from './DataFieldsPanel'
 
 const TYPE_ICONS = {
   text: Type,
@@ -83,6 +84,8 @@ export default function ComponentsSidebar() {
           </span>
         }
       />
+
+      <DataFieldsPanel />
 
       <div className="p-3">
         <SectionLabel>Add element</SectionLabel>
