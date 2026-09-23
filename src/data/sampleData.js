@@ -1,40 +1,63 @@
-/** Opti-shaped piece preview bag */
+/** Same N{note}F{sub} placeholders Opti’s Labels editor uses on the canvas. */
+export function buildSampleNotes(maxNotes = 10, maxFields = 15) {
+  const notes = {}
+  for (let n = 1; n <= maxNotes; n++) {
+    notes[`note${n}`] = {}
+    for (let f = 1; f <= maxFields; f++) {
+      notes[`note${n}`][`field${f}`] = `N${n}F${f}`
+    }
+  }
+  return notes
+}
+
+const SAMPLE_NOTES = buildSampleNotes()
+
+/** Opti-shaped piece preview bag — named fields match Labels editor sample data. */
 export const OPTI_SAMPLE = {
-  customerName: 'VAHID HELDOV',
-  batchNumber: '38551',
-  orderNumber: 'L-69515',
+  customerName: 'Sample Customer',
+  batchNumber: '120011200011',
+  orderNumber: '20025-1',
   sheetCount: '3 / 12',
   pieceDescription: '6mm Clear Float',
-  area: '1.20 m2',
-  weight: '12 kg',
-  services: 'Flat Polish',
-  id: '12',
-  pickupDate: 'Tue 1/9',
-  transportType: 'R4',
-  custPO: 'DS-002',
+  area: '6.00 m²',
+  weight: '25.4 kg',
+  services: 'SERVICE-A',
+  id: 'PIECE-001',
+  pickupDate: '2024-01-01',
+  transportType: 'SITE',
+  custPO: 'PO-12345',
   marks: 'FRONT',
-  Barcode: 'L-69515-1',
-  barcode: 'L-69515-1',
-  salesID: 'S-8842',
-  note2: { field10: 'CUT > EDG > TEM' },
-  note3: { field1: 'ACME GLASS', field6: 'TGH' },
+  Barcode: '21487955956',
+  barcode: '21487955956',
+  salesID: 'SALE-20025',
   optiNo: 'OPT-001',
-  BatchNo: '38551',
+  BatchNo: 'BATCH-001',
+  BatchNum: '74519',
   thickness: '6mm',
   glassCode: '6CFL',
   GlassFam: 'FLOAT',
-  pieceSheet: '12->1',
-  globalPieceNo: 12,
-  printedAt: 'Tue 1/9 08:15',
+  pieceSheet: '5->1',
+  globalPieceNo: 5,
+  printedAt: new Date().toLocaleString(),
   machines: 'CUT > EDG > TEM',
-  Dimensions: '1200×800',
-  contour: [
-    { x: 0, y: 0 },
-    { x: 900, y: 0 },
-    { x: 1200, y: 160 },
-    { x: 1200, y: 800 },
-    { x: 0, y: 800 },
-  ],
+  Dimensions: '2000x3000',
+  width: '2000',
+  height: '3000',
+  ...SAMPLE_NOTES,
+}
+
+/** Fill missing noteN.fieldM keys so mapped headers preview like Opti. Live piece notes win. */
+export function mergeOptiPreviewData(data = {}) {
+  const out = { ...OPTI_SAMPLE, ...data }
+  for (const key of Object.keys(SAMPLE_NOTES)) {
+    const incoming = data?.[key]
+    if (incoming && typeof incoming === 'object' && !Array.isArray(incoming)) {
+      out[key] = { ...SAMPLE_NOTES[key], ...incoming }
+    } else if (incoming == null || incoming === '') {
+      out[key] = { ...SAMPLE_NOTES[key] }
+    }
+  }
+  return out
 }
 
 /** ERP metro-style preview bag */

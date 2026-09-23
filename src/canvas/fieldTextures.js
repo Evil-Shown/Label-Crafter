@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import JsBarcode from 'jsbarcode'
 import QRCode from 'qrcode'
-import { interpolateTokens, resolveMappedPreview } from '../utils/template'
+import { isTextLikeType, resolveFieldDisplayText, resolveMappedPreview } from '../utils/template'
 
 /** Pixel ratio for offscreen field canvases — matches screen zoom so textures stay sharp. */
 export function getTexturePixelRatio(zoom = 1) {
@@ -46,86 +46,77 @@ function drawRoundRect(ctx, x, y, w, h, r) {
   ctx.closePath()
 }
 
-function parseDimensions(dims) {
-  const m = String(dims || '').match(/(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/i)
-  if (!m) return { w: 4, h: 3 }
-  const a = Number(m[1])
-  const b = Number(m[2])
-  const max = Math.max(a, b)
-  return { w: a / max, h: b / max }
+function isBoldWeight(weight) {
+  const w = String(weight || '').toLowerCase()
+  if (w === 'bold' || w === 'bolder') return true
+  const n = Number(weight)
+  return Number.isFinite(n) && n >= 600
+}
+
+function drawEmptyDxf(ctx, w, h) {
+  ctx.setLineDash([6, 4])
+  ctx.strokeStyle = '#888'
+  ctx.lineWidth = 1.25
+  ctx.strokeRect(1, 1, w - 2, h - 2)
+  ctx.setLineDash([])
+  ctx.fillStyle = '#888'
+  ctx.font = '11px Arial'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('No Shape', w / 2, h / 2)
 }
 
 function drawDxfPreview(ctx, w, h, labelData, field) {
+  const stored = Array.isArray(field.dxfShape) ? field.dxfShape : []
+  const contour = stored.length ? stored : (labelData?.contour || labelData?.shapeContour)
+  const hasContour = Array.isArray(contour) && contour.length >= 3 && stored.length > 0
+  if (!hasContour) {
+    drawEmptyDxf(ctx, w, h)
+    return
+  }
+
   const pad = 8
   const iw = w - pad * 2
   const ih = h - pad * 2
   const cx = w / 2
-  const cy = h / 2
 
   ctx.strokeStyle = field.strokeColor || '#111'
   ctx.lineWidth = field.strokeWidth || 1.5
 
-  const contour = labelData?.contour || labelData?.shapeContour
-  if (Array.isArray(contour) && contour.length >= 3) {
-    const xs = contour.map((p) => p.x ?? p[0])
-    const ys = contour.map((p) => p.y ?? p[1])
-    const minX = Math.min(...xs)
-    const maxX = Math.max(...xs)
-    const minY = Math.min(...ys)
-    const maxY = Math.max(...ys)
-    const rw = maxX - minX || 1
-    const rh = maxY - minY || 1
-    const scale = Math.min(iw / rw, ih / rh)
-    const ox = pad + (iw - rw * scale) / 2
-    const oy = pad + (ih - rh * scale) / 2
+  const xs = contour.map((p) => p.x ?? p[0] ?? p.x1)
+  const ys = contour.map((p) => p.y ?? p[1] ?? p.y1)
+  const minX = Math.min(...xs.filter((n) => Number.isFinite(n)))
+  const maxX = Math.max(...xs.filter((n) => Number.isFinite(n)))
+  const minY = Math.min(...ys.filter((n) => Number.isFinite(n)))
+  const maxY = Math.max(...ys.filter((n) => Number.isFinite(n)))
+  const rw = maxX - minX || 1
+  const rh = maxY - minY || 1
+  const scale = Math.min(iw / rw, ih / rh)
+  const ox = pad + (iw - rw * scale) / 2
+  const oy = pad + (ih - rh * scale) / 2
 
-    ctx.beginPath()
-    contour.forEach((p, i) => {
-      const px = ox + ((p.x ?? p[0]) - minX) * scale
-      const py = oy + ((p.y ?? p[1]) - minY) * scale
-      if (i === 0) ctx.moveTo(px, py)
-      else ctx.lineTo(px, py)
-    })
-    ctx.closePath()
-    if (field.fillEnabled) {
-      ctx.fillStyle = field.fillColor || '#f1f5f9'
-      ctx.fill()
-    }
-    ctx.stroke()
-
-    if (field.showBevel) {
-      ctx.setLineDash([3, 2])
-      ctx.strokeStyle = '#3b82f6'
-      ctx.stroke()
-      ctx.setLineDash([])
-    }
-  } else {
-    const ratio = parseDimensions(labelData?.Dimensions || labelData?.dimensions)
-    const gw = iw * ratio.w
-    const gh = ih * ratio.h
-    const gx = pad + (iw - gw) / 2
-    const gy = pad + (ih - gh) / 2
-
-    ctx.beginPath()
-    ctx.moveTo(gx, gy)
-    ctx.lineTo(gx + gw * 0.75, gy)
-    ctx.lineTo(gx + gw, gy + gh * 0.2)
-    ctx.lineTo(gx + gw, gy + gh)
-    ctx.lineTo(gx, gy + gh)
-    ctx.closePath()
-    if (field.fillEnabled) {
-      ctx.fillStyle = field.fillColor || '#f1f5f9'
-      ctx.fill()
-    }
-    ctx.stroke()
+  ctx.beginPath()
+  contour.forEach((p, i) => {
+    const px = ox + ((p.x ?? p[0]) - minX) * scale
+    const py = oy + ((p.y ?? p[1]) - minY) * scale
+    if (i === 0) ctx.moveTo(px, py)
+    else ctx.lineTo(px, py)
+  })
+  ctx.closePath()
+  if (field.fillEnabled) {
+    ctx.fillStyle = field.fillColor || '#f1f5f9'
+    ctx.fill()
   }
+  ctx.stroke()
 
   if (!field.hideEdgeLabels) {
-    const dims = String(labelData?.Dimensions || labelData?.dimensions || '1200×800')
-    ctx.font = '8px Arial'
-    ctx.fillStyle = '#475569'
-    ctx.textAlign = 'center'
-    ctx.fillText(dims, cx, pad + ih + 2)
+    const dims = String(labelData?.Dimensions || labelData?.dimensions || '')
+    if (dims) {
+      ctx.font = '8px Arial'
+      ctx.fillStyle = '#475569'
+      ctx.textAlign = 'center'
+      ctx.fillText(dims, cx, pad + ih + 2)
+    }
   }
 
   if (field.showOrientation) {
@@ -154,34 +145,38 @@ export async function buildFieldCanvas(
   const type = (field.type || 'text').toLowerCase()
   const data = showLiveTokens ? labelData : {}
 
-  if (type === 'text') {
-    const raw = field.value || field.label || ''
-    const mapped = resolveMappedPreview(field, data)
-    const text = mapped != null && mapped !== '' ? mapped : interpolateTokens(raw, data)
+  if (isTextLikeType(type)) {
+    const text = resolveFieldDisplayText(field, data, { showLiveTokens })
     const fs = field.fontSize || globalStyles?.defaultFontSize || 12
     const ff = field.fontFamily || globalStyles?.fontFamily || 'Arial'
-    const fw = field.fontWeight === 'bold' ? 'bold' : 'normal'
+    const fw = isBoldWeight(field.fontWeight) ? 'bold' : 'normal'
+    const inverted = !!(field.blackBox || field.isBlackBox)
 
-    if (field.blackBox) {
+    if (inverted) {
       ctx.fillStyle = '#000000'
       ctx.fillRect(0, 0, w, h)
-      ctx.fillStyle = field.color || '#ffffff'
+      ctx.fillStyle = field.color && field.color !== '#000000' ? field.color : '#ffffff'
     } else {
       ctx.fillStyle = field.color || globalStyles?.defaultColor || '#000'
     }
 
     ctx.font = `${fw} ${fs}px ${ff}`
-    ctx.textAlign = field.textAlign || 'left'
-    ctx.textBaseline = 'top'
-    const pad = field.blackBox ? 4 : 2
-    const lines = String(text).split('\n')
-    let y = pad
+    const align = String(field.textAlign || 'left').toLowerCase()
+    ctx.textAlign = align === 'center' || align === 'middle' ? 'center'
+      : align === 'right' || align === 'end' ? 'right'
+      : 'left'
+    ctx.textBaseline = 'middle'
+    const pad = inverted ? 4 : 2
+    const lines = String(text || '').split('\n')
+    const lineH = fs * 1.2
+    const totalH = Math.max(lineH, lines.length * lineH)
+    let y = (h - totalH) / 2 + lineH / 2
     for (const line of lines) {
       let x = pad
       if (ctx.textAlign === 'center') x = w / 2
       if (ctx.textAlign === 'right') x = w - pad
       ctx.fillText(line, x, y)
-      y += fs * 1.2
+      y += lineH
     }
     if (field.border) {
       ctx.strokeStyle = '#000'

@@ -15,7 +15,7 @@ import {
   createTableField,
   createTextField,
 } from '../elements/factories'
-import { ERP_SAMPLE, OPTI_SAMPLE } from '../data/sampleData'
+import { ERP_SAMPLE, OPTI_SAMPLE, mergeOptiPreviewData } from '../data/sampleData'
 import { buildExportTemplate, parseImportTemplate } from '../utils/template'
 import { fieldRect } from '../utils/geometry'
 import { computeFitView, mmToPx, toMm } from '../utils/units'
@@ -116,6 +116,13 @@ function templateSnapshot(state) {
 
 function snapshotKey(state) {
   return JSON.stringify(templateSnapshot(state))
+}
+
+function unwrapSessionTemplate(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  if (raw.sections || Array.isArray(raw.fields)) return raw
+  if (raw.template && typeof raw.template === 'object') return unwrapSessionTemplate(raw.template)
+  return raw
 }
 
 export function getTemplateFingerprint(state) {
@@ -296,8 +303,9 @@ export const useLabelStore = create(
     addField(factory, overrides = {}) {
       get().pushHistory()
       set((st) => {
-        const f = factory(overrides)
-        f.zIndex = st.fields.length
+        const n = st.fields.length
+        const f = factory({ x: 10 + n * 10, y: 10 + n * 10, ...overrides })
+        f.zIndex = n
         st.fields.push(f)
         st.selectedKeys = [f.fieldKey]
       })
@@ -582,15 +590,22 @@ export const useLabelStore = create(
     },
 
     importTemplate(json, { skipHistory = false, markSaved = false } = {}) {
-      if (!skipHistory) get().pushHistory()
       const parsed = parseImportTemplate(json)
+      if (skipHistory) {
+        const s = get()
+        if (s.id === parsed.id && s.fields?.length === parsed.fields?.length && s.name === parsed.name) {
+          return
+        }
+      } else {
+        get().pushHistory()
+      }
       set((st) => {
         applyTemplateSnapshot(st, parsed)
         st.selectedKeys = []
         st.updatedAt = new Date().toISOString()
         if (markSaved) st._savedSnapshot = snapshotKey(st)
       })
-      get().addToast({ message: 'Template loaded', type: 'success' })
+      if (!skipHistory) get().addToast({ message: 'Template loaded', type: 'success' })
     },
 
     exportTemplate() {
@@ -604,16 +619,28 @@ export const useLabelStore = create(
     addBoundField(field) {
       const key = field?.key
       if (!key) return
+      const noteMatch = String(key).match(/^note(\d+)\.field(\d+)$/i)
+      if (noteMatch) {
+        get().addField(createHeaderField, {
+          label: field.label || key,
+          noteField: Number(noteMatch[1]),
+          subField: Number(noteMatch[2]),
+        })
+        return
+      }
       const type = field.type || 'text'
       if (type === 'barcode') {
-        get().addField(createBarcodeField, { label: field.label || key, source: [key] })
+        get().addField(createBarcodeField, {
+          label: field.label || key,
+          source: [key, String(key).toLowerCase()].filter((v, i, a) => a.indexOf(v) === i),
+        })
         return
       }
       if (type === 'qrcode') {
         get().addField(createQrField, { label: field.label || key, source: [key] })
         return
       }
-      get().addField(createTextField, {
+      get().addField(createHeaderField, {
         label: field.label || key,
         value: `{{${key}}}`,
       })
@@ -674,8 +701,9 @@ export const useLabelStore = create(
       const catalog = session.fieldCatalog?.length
         ? session.fieldCatalog
         : await fetchFieldCatalog(get().printServiceUrl, session.client).catch(() => catalogForClient(session.client))
-      if (session.template) {
-        get().importTemplate(session.template, { skipHistory: true, markSaved: true })
+      const tpl = unwrapSessionTemplate(session.template)
+      if (tpl) {
+        get().importTemplate(tpl, { skipHistory: true, markSaved: true })
       }
       set((st) => {
         st.client = session.client === 'erp' ? 'erp' : 'opti'
@@ -688,17 +716,29 @@ export const useLabelStore = create(
         }
         st.fieldCatalog = catalog
         if (session.previewData && typeof session.previewData === 'object') {
-          st.labelData = session.previewData
+          st.labelData = session.client === 'erp' ? session.previewData : mergeOptiPreviewData(session.previewData)
         } else {
           st.labelData = st.client === 'erp' ? { ...ERP_SAMPLE } : { ...OPTI_SAMPLE }
         }
         if (session.labelType) st.labelType = session.labelType
-        if (session.templateId && !session.template) st.id = session.templateId
+        if (session.templateId && !tpl) st.id = session.templateId
       })
       get().addToast({
         message: `Opened ${session.client} design session`,
         type: 'success',
       })
+    },
+
+    applyHostTemplate(payload) {
+      const tpl = unwrapSessionTemplate(payload?.template || payload)
+      if (tpl) get().importTemplate(tpl, { skipHistory: true, markSaved: true })
+      if (payload?.previewData && typeof payload.previewData === 'object') {
+        const client = get().client
+        set({
+          labelData: client === 'erp' ? payload.previewData : mergeOptiPreviewData(payload.previewData),
+        })
+      }
+      if (payload?.labelType) set({ labelType: payload.labelType })
     },
 
     saveToLibrary() {

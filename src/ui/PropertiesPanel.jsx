@@ -1,15 +1,19 @@
-import { Trash2, MousePointer2, AlignLeft, Barcode, Shapes, Image, Table } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Trash2, MousePointer2, AlignLeft, Barcode, Shapes, Image, Table, Settings2 } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
 import { PanelHeader, EmptyState, PropGroup, SectionLabel } from './primitives'
 import TokenInput from './TokenInput'
+import MappingDialog from './MappingDialog'
 import { catalogForClient } from '../data/fieldCatalog'
+import { isMappableType, isTextLikeType, mappingLabel } from '../utils/template'
 
-const FONT_OPTIONS = ['Arial, sans-serif', 'Helvetica, sans-serif', 'Times New Roman, serif', 'Courier New, monospace', 'Verdana, sans-serif']
+const FONT_OPTIONS = ['Inter, sans-serif', 'Arial, sans-serif', 'Helvetica, sans-serif', 'Times New Roman, serif', 'Courier New, monospace', 'Verdana, sans-serif']
 const BARCODE_FORMATS = ['CODE128', 'CODE39', 'EAN13', 'ITF14', 'UPC']
 const QR_ECC = ['L', 'M', 'Q', 'H']
 
 const TYPE_META = {
   text: { icon: AlignLeft, label: 'Text Field' },
+  header: { icon: AlignLeft, label: 'Header' },
   barcode: { icon: Barcode, label: 'Barcode' },
   qrcode: { icon: Barcode, label: 'QR Code' },
   line: { icon: Shapes, label: 'Line' },
@@ -42,6 +46,12 @@ export default function PropertiesPanel() {
     ? fields.find((f) => f.fieldKey === selectedKeys[0])
     : null
 
+  const [mappingOpen, setMappingOpen] = useState(false)
+
+  useEffect(() => {
+    setMappingOpen(false)
+  }, [field?.fieldKey])
+
   if (!field) {
     return (
       <aside className="lc-sidebar lc-sidebar-right flex w-[280px] shrink-0 flex-col border-l border-[var(--lc-panel-border)] bg-[var(--lc-panel)]">
@@ -59,11 +69,20 @@ export default function PropertiesPanel() {
   const MetaIcon = meta.icon
   const isShape = field.type === 'shape'
   const isDxf = field.shapeType === 'dxf'
-  const isText = field.type === 'text'
+  const isText = isTextLikeType(field.type)
   const isTable = field.type === 'table'
+  const isMappable = isMappableType(field.type)
+  const mapHint = mappingLabel(field)
 
   return (
     <aside className="lc-sidebar lc-sidebar-right flex w-[280px] shrink-0 flex-col border-l border-[var(--lc-panel-border)] bg-[var(--lc-panel)]">
+      {mappingOpen ? (
+        <MappingDialog
+          field={field}
+          onClose={() => setMappingOpen(false)}
+          onSave={(patch) => updateField(field.fieldKey, patch)}
+        />
+      ) : null}
       <PanelHeader
         title="Properties"
         badge={
@@ -75,12 +94,29 @@ export default function PropertiesPanel() {
       />
 
       <div className="flex-1 space-y-3 overflow-y-auto p-3">
-        {(isText || field.type === 'barcode' || field.type === 'qrcode') && (
+        {isMappable && (
           <PropGroup title="Data mapping">
             <p className="mb-2 text-[10px] leading-snug text-[var(--lc-text-muted)]">
-              Bind a piece field the same way Opti printing does. Optional note + subfield is the old Configure Data Mapping path (noteN.fieldM). Tokens print first; notes fill when the token is empty.
+              Same as Opti: map a note + subfield, or bind a piece token. Tokens print first; notes fill when heading text is empty.
             </p>
-            <div>
+            <button
+              type="button"
+              onClick={() => setMappingOpen(true)}
+              className="lc-btn lc-btn-primary w-full !justify-center !text-xs"
+            >
+              <Settings2 size={13} />
+              Configure Data Mapping
+            </button>
+            {mapHint ? (
+              <p className="mt-2 rounded-md bg-[var(--lc-accent-soft)] px-2 py-1.5 font-mono text-[11px] font-semibold text-[var(--lc-accent)]">
+                {Number(field.noteField) > 0
+                  ? `note${field.noteField}.field${field.subField || 1} · ${mapHint}`
+                  : mapHint}
+              </p>
+            ) : (
+              <p className="mt-2 text-[10px] text-[var(--lc-text-muted)]">No note mapping yet.</p>
+            )}
+            <div className="pt-1">
               <FieldLabel>Bind to piece field</FieldLabel>
               <select
                 value=""
@@ -88,6 +124,16 @@ export default function PropertiesPanel() {
                   const key = e.target.value
                   if (!key) return
                   const item = catalog.find((c) => c.key === key)
+                  const noteMatch = String(key).match(/^note(\d+)\.field(\d+)$/i)
+                  if (noteMatch) {
+                    updateField(field.fieldKey, {
+                      noteField: Number(noteMatch[1]),
+                      subField: Number(noteMatch[2]),
+                      label: item?.label || field.label,
+                      value: '',
+                    })
+                    return
+                  }
                   if (item?.type === 'barcode' || field.type === 'barcode' || field.type === 'qrcode') {
                     updateField(field.fieldKey, { source: [key], label: item?.label || field.label })
                   } else {
@@ -102,35 +148,6 @@ export default function PropertiesPanel() {
                 ))}
               </select>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <FieldLabel>Note no.</FieldLabel>
-                <input
-                  type="number"
-                  min="0"
-                  max="20"
-                  value={field.noteField || 0}
-                  onChange={(e) => updateField(field.fieldKey, { noteField: Number(e.target.value) || 0 })}
-                  className="lc-input w-full"
-                />
-              </div>
-              <div>
-                <FieldLabel>Subfield</FieldLabel>
-                <input
-                  type="number"
-                  min="0"
-                  max="50"
-                  value={field.subField || 0}
-                  onChange={(e) => updateField(field.fieldKey, { subField: Number(e.target.value) || 0 })}
-                  className="lc-input w-full"
-                />
-              </div>
-            </div>
-            {(Number(field.noteField) > 0) && (
-              <p className="font-mono text-[10px] text-[var(--lc-text-muted)]">
-                Reads note{field.noteField}.field{field.subField || '?'}
-              </p>
-            )}
           </PropGroup>
         )}
         {/* Element name */}
@@ -155,12 +172,12 @@ export default function PropertiesPanel() {
         {isText && (
           <PropGroup title="Content">
             <div>
-              <FieldLabel>Text / token</FieldLabel>
+              <FieldLabel>{field.type === 'header' ? 'Heading text' : 'Text / token'}</FieldLabel>
               <TokenInput
                 value={field.value || ''}
                 onChange={(v) => updateField(field.fieldKey, { value: v })}
                 multiline
-                placeholder="{{orderNumber}}"
+                placeholder={Number(field.noteField) > 0 ? 'Leave empty to use note mapping' : '{{orderNumber}}'}
                 tokens={catalog.map((c) => c.key)}
               />
             </div>
@@ -199,7 +216,7 @@ export default function PropertiesPanel() {
               </select>
             </div>
             <label className="flex items-center gap-2 text-xs font-medium">
-              <input type="checkbox" checked={field.blackBox ?? false} onChange={(e) => updateField(field.fieldKey, { blackBox: e.target.checked, color: e.target.checked ? '#ffffff' : (field.color || '#000') })} className="rounded" />
+              <input type="checkbox" checked={!!(field.blackBox || field.isBlackBox)} onChange={(e) => updateField(field.fieldKey, { blackBox: e.target.checked, isBlackBox: e.target.checked, color: e.target.checked ? '#ffffff' : (field.color || '#000') })} className="rounded" />
               Black box (inverted text)
             </label>
           </PropGroup>
