@@ -41,11 +41,18 @@ export function buildExportTemplate(state) {
       defaultColor: '#000000',
     },
     sections: {
-      main: {
+      orderCustomerBlock: {
         enabled: true,
         display: 'block',
         position: 'relative',
-        fields: fields.map((f) => ({ ...f })),
+        fields: fields.map((f) => ({
+          ...f,
+          position: f.position || 'absolute',
+          left: `${Number(f.x) || 0}px`,
+          top: `${Number(f.y) || 0}px`,
+          x: Number(f.x) || 0,
+          y: Number(f.y) || 0,
+        })),
       },
     },
     createdAt: createdAt || now,
@@ -88,11 +95,36 @@ export function lookupPath(data, path) {
   return cur
 }
 
+export function isTextLikeType(type) {
+  const t = String(type || 'text').toLowerCase()
+  return t === 'text' || t === 'header'
+}
+
+export function isMappableType(type) {
+  const t = String(type || '').toLowerCase()
+  return t === 'text' || t === 'header' || t === 'barcode' || t === 'qrcode'
+}
+
+export function mappingLabel(field) {
+  const nf = Number(field?.noteField) || 0
+  const sf = Number(field?.subField) || 0
+  if (nf > 0) return `N${nf}F${sf || 1}`
+  if (field?.blackBox || field?.isBlackBox) return 'Black box'
+  return ''
+}
+
+function parseCoord(css, numeric) {
+  if (numeric != null && numeric !== '' && Number.isFinite(Number(numeric))) return Number(numeric)
+  if (css == null || css === '') return 0
+  const n = parseFloat(String(css))
+  return Number.isFinite(n) ? n : 0
+}
+
 export function resolveMappedPreview(field, data = {}) {
   const nf = Number(field?.noteField) || 0
   const sf = Number(field?.subField) || 0
   if (nf > 0) {
-    const note = lookupPath(data, `note${nf}`) ?? lookupPath(data, `Note${nf}`)
+    const note = lookupPath(data, `note${nf}`) ?? lookupPath(data, `Note${nf}`) ?? lookupPath(data, `noteFields.${nf}`)
     if (note != null) {
       if (typeof note === 'object' && !Array.isArray(note) && sf > 0) {
         const v =
@@ -120,39 +152,47 @@ export function resolveMappedPreview(field, data = {}) {
   return undefined
 }
 
+/** Canvas text: match Opti editor (tokens/static value first, then note mapping, then N2F3). */
+export function resolveFieldDisplayText(field, data = {}, { showLiveTokens = true } = {}) {
+  const raw = field?.value != null ? String(field.value) : ''
+  const hasTokens = raw.includes('{{')
+  if (hasTokens) {
+    return showLiveTokens ? interpolateTokens(raw, data) : raw
+  }
+  if (raw.trim() !== '') return raw
+  if (showLiveTokens) {
+    const mapped = resolveMappedPreview(field, data)
+    if (mapped != null && mapped !== '') return mapped
+  }
+  const nf = Number(field?.noteField) || 0
+  const sf = Number(field?.subField) || 0
+  if (nf > 0) return `N${nf}F${sf || 1}`
+  if (field?.fallbackValue) return String(field.fallbackValue)
+  return ''
+}
+
 /** Import template from Opti JSON (file or object). */
 export function parseImportTemplate(json) {
   const t = typeof json === 'string' ? JSON.parse(json) : json
   const fields = extractFields(t).map((f, i) => {
-    const {
-      fieldKey, type, shapeType, label, value, source, x, y, width, height, left, top,
-      zIndex, rotation, locked, hidden, fontSize, fontFamily, fontWeight, textAlign, color,
-      blackBox, border, borderRadius, padding, boxSizing, whiteSpace, fallbackValue,
-      editableField, displayValue, barcodeFormat, qrEcc, strokeColor, strokeWidth,
-      fillEnabled, fillColor, dashStyle, arrowEnd, cornerRadius, columns, rows, src,
-      hideEdgeLabels, showOrientation, showBevel, position,
-    } = f
-    const mapping = t.fieldMappings?.[fieldKey || `field_${i}`]
+    const fieldKey = f.fieldKey || f.editableField || `field_${i}`
+    const mapping = t.fieldMappings?.[fieldKey]
+    const blackBox = !!(f.blackBox || f.isBlackBox || mapping?.isBlackBox)
     return {
-      fieldKey: fieldKey || `field_${i}`,
-      type,
-      shapeType,
-      label: typeof label === 'string' ? label : String(label ?? ''),
-      value: typeof value === 'string' ? value : value == null ? undefined : String(value),
-      source,
-      zIndex: zIndex ?? i,
-      x: x ?? (parseFloat(String(left || '0')) || 0),
-      y: y ?? (parseFloat(String(top || '0')) || 0),
-      width: width ?? 80,
-      height: height ?? 24,
-      rotation, locked, hidden, fontSize, fontFamily, fontWeight, textAlign, color,
-      blackBox: blackBox ?? t.fieldMappings?.[fieldKey]?.isBlackBox ?? false,
-      noteField: Number(f.noteField ?? t.fieldMappings?.[fieldKey]?.noteField) || 0,
-      subField: Number(f.subField ?? t.fieldMappings?.[fieldKey]?.subField) || 0,
-      border, borderRadius, padding, boxSizing, whiteSpace, fallbackValue,
-      editableField, displayValue, barcodeFormat, qrEcc, strokeColor, strokeWidth,
-      fillEnabled, fillColor, dashStyle, arrowEnd, cornerRadius, columns, rows, src,
-      hideEdgeLabels, showOrientation, showBevel, position,
+      ...f,
+      fieldKey,
+      type: f.type || 'text',
+      label: typeof f.label === 'string' ? f.label : String(f.label ?? ''),
+      value: typeof f.value === 'string' ? f.value : f.value == null ? undefined : String(f.value),
+      zIndex: f.zIndex ?? i,
+      x: parseCoord(f.left, f.x),
+      y: parseCoord(f.top, f.y),
+      width: Number(f.width) || 80,
+      height: Number(f.height) || 24,
+      blackBox,
+      isBlackBox: blackBox,
+      noteField: Number(f.noteField ?? mapping?.noteField) || 0,
+      subField: Number(f.subField ?? mapping?.subField) || 0,
     }
   })
   const importUnit = t.unit || 'mm'
@@ -178,6 +218,7 @@ export function parseImportTemplate(json) {
       backgroundColor: '#ffffff',
       defaultColor: '#000000',
     },
+    fieldMappings: t.fieldMappings || {},
     fields,
   }
 }

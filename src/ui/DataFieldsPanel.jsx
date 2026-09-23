@@ -32,7 +32,7 @@ export default function DataFieldsPanel() {
         </div>
       </div>
       <p className="mb-2 text-[10px] leading-snug text-[var(--lc-text-muted)]">
-        {client === 'erp' ? 'ERP' : 'Opti'} fields. Click to place a component bound to that key. Preview data is not saved with the template.
+        Click to place an Opti header bound to that key. Use Configure Data Mapping on the field for noteN.fieldM, same as the Labels designer.
       </p>
       <div className="max-h-40 space-y-1 overflow-auto pr-1">
         {fields.map((field) => (

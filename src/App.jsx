@@ -23,6 +23,7 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 export default function App() {
   const theme = useLabelStore((s) => s.theme)
   const applyDesignSession = useLabelStore((s) => s.applyDesignSession)
+  const applyHostTemplate = useLabelStore((s) => s.applyHostTemplate)
   const addToast = useLabelStore((s) => s.addToast)
   useKeyboardShortcuts()
 
@@ -39,6 +40,19 @@ export default function App() {
       addToast({ message: err.message || 'Could not open design session', type: 'error' })
     })
   }, [applyDesignSession, addToast])
+
+  useEffect(() => {
+    const onMessage = (event) => {
+      const data = event.data
+      if (!data || data.type !== 'spil-label-open-template') return
+      applyHostTemplate(data)
+    }
+    window.addEventListener('message', onMessage)
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'spil-label-request-template' }, '*')
+    }
+    return () => window.removeEventListener('message', onMessage)
+  }, [applyHostTemplate])
 
   return (
     <div className="lc-app-shell relative flex h-full w-full flex-col overflow-hidden bg-[var(--lc-bg)]">

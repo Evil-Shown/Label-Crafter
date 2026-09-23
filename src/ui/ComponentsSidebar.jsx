@@ -22,9 +22,11 @@ import {
 import { useLabelStore } from '../store/labelStore'
 import { PanelHeader, SectionLabel } from './primitives'
 import DataFieldsPanel from './DataFieldsPanel'
+import { mappingLabel } from '../utils/template'
 
 const TYPE_ICONS = {
   text: Type,
+  header: Heading,
   barcode: Barcode,
   qrcode: QrCode,
   line: Minus,
@@ -121,7 +123,12 @@ export default function ComponentsSidebar() {
                   className={`lc-layer-row group ${isSelected ? 'selected' : ''} ${f.hidden ? 'opacity-40' : ''}`}
                 >
                   <LayerIcon size={12} className="shrink-0 opacity-60" />
-                  <span className="min-w-0 flex-1 truncate">{f.label || f.fieldKey}</span>
+                  <span className="min-w-0 flex-1 truncate">
+                    {f.label || f.fieldKey}
+                    {mappingLabel(f) ? (
+                      <span className="ml-1 font-mono text-[9px] text-[var(--lc-accent)]">{mappingLabel(f)}</span>
+                    ) : null}
+                  </span>
                   <div className="flex items-center">
                     <button
                       type="button"
