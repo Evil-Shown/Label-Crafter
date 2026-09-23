@@ -34,6 +34,14 @@ import {
   sanitizeFileName,
 } from '../utils/templateStorage'
 import { getBuiltinTemplateConfig } from '../data/builtinTemplates'
+import { catalogForClient } from '../data/fieldCatalog'
+import {
+  fetchDesignSession,
+  fetchFieldCatalog,
+  getServerTemplate,
+  listServerTemplates,
+  saveServerTemplate,
+} from '../services/designApi'
 
 const MAX_HISTORY = 80
 
@@ -146,6 +154,10 @@ export const useLabelStore = create(
     activeTool: 'select',
     client: 'opti',
     labelData: { ...OPTI_SAMPLE },
+    fieldCatalog: catalogForClient('opti'),
+    designSession: null,
+    serverTemplates: [],
+    showServerLibrary: false,
     printServiceUrl: localStorage.getItem('lc-print-service-url') || 'http://localhost:5088',
     printerBrand: localStorage.getItem('lc-printer-brand') || 'zebra',
     printerHost: localStorage.getItem('lc-printer-host') || '192.168.1.100',
@@ -259,9 +271,18 @@ export const useLabelStore = create(
     setTool(tool) { set({ activeTool: tool }) },
 
     setClient(client) {
+      const next = client === 'erp' ? 'erp' : 'opti'
+      const locked = get().designSession?.client
+      if (locked && locked !== next) {
+        get().addToast({ message: `This session is locked to ${locked}`, type: 'warning' })
+        return
+      }
       set((st) => {
-        st.client = client
-        st.labelData = client === 'erp' ? { ...ERP_SAMPLE } : { ...OPTI_SAMPLE }
+        st.client = next
+        if (!st.designSession?.previewData) {
+          st.labelData = next === 'erp' ? { ...ERP_SAMPLE } : { ...OPTI_SAMPLE }
+        }
+        if (!st.designSession) st.fieldCatalog = catalogForClient(next)
       })
     },
 
@@ -578,6 +599,100 @@ export const useLabelStore = create(
 
     refreshTemplateLibrary() {
       set({ templateLibrary: loadTemplates(), defaultTemplateId: getDefaultTemplateId() })
+    },
+
+    addBoundField(field) {
+      const key = field?.key
+      if (!key) return
+      const type = field.type || 'text'
+      if (type === 'barcode') {
+        get().addField(createBarcodeField, { label: field.label || key, source: [key] })
+        return
+      }
+      if (type === 'qrcode') {
+        get().addField(createQrField, { label: field.label || key, source: [key] })
+        return
+      }
+      get().addField(createTextField, {
+        label: field.label || key,
+        value: `{{${key}}}`,
+      })
+    },
+
+    async refreshServerLibrary() {
+      const s = get()
+      const templates = await listServerTemplates(s.printServiceUrl, s.client)
+      set({ serverTemplates: templates })
+      return templates
+    },
+
+    async loadServerTemplate(id) {
+      const s = get()
+      const record = await getServerTemplate(s.printServiceUrl, s.client, id)
+      get().importTemplate(record.template || record, { markSaved: true })
+      set((st) => {
+        st.id = record.id || st.id
+        st.client = record.client || st.client
+        st.showServerLibrary = false
+      })
+    },
+
+    async saveToDesignService() {
+      const s = get()
+      const tpl = buildExportTemplate(s)
+      const existingId = tpl.id && !String(tpl.id).startsWith('LBL_NEW') && !String(tpl.id).startsWith('__builtin')
+        ? tpl.id
+        : undefined
+      const saved = await saveServerTemplate(s.printServiceUrl, {
+        client: s.client,
+        id: existingId,
+        name: tpl.name,
+        labelType: tpl.labelType,
+        template: tpl,
+        sessionId: s.designSession?.sessionId,
+      })
+      set((st) => {
+        st.id = saved.id
+        st._savedSnapshot = snapshotKey(st)
+      })
+      get().addToast({ message: `Saved ${saved.id} on the label service`, type: 'success' })
+      return saved
+    },
+
+    async applyDesignSession(sessionId, serviceUrl) {
+      if (serviceUrl) {
+        set((st) => { st.printServiceUrl = serviceUrl })
+        localStorage.setItem('lc-print-service-url', serviceUrl)
+      }
+      const session = await fetchDesignSession(get().printServiceUrl, sessionId)
+      const catalog = session.fieldCatalog?.length
+        ? session.fieldCatalog
+        : await fetchFieldCatalog(get().printServiceUrl, session.client).catch(() => catalogForClient(session.client))
+      if (session.template) {
+        get().importTemplate(session.template, { skipHistory: true, markSaved: true })
+      }
+      set((st) => {
+        st.client = session.client === 'erp' ? 'erp' : 'opti'
+        st.designSession = {
+          sessionId: session.sessionId,
+          client: st.client,
+          expiresAt: session.expiresAt,
+          returnApp: session.returnApp || null,
+          templateId: session.templateId || null,
+        }
+        st.fieldCatalog = catalog
+        if (session.previewData && typeof session.previewData === 'object') {
+          st.labelData = session.previewData
+        } else {
+          st.labelData = st.client === 'erp' ? { ...ERP_SAMPLE } : { ...OPTI_SAMPLE }
+        }
+        if (session.labelType) st.labelType = session.labelType
+        if (session.templateId && !session.template) st.id = session.templateId
+      })
+      get().addToast({
+        message: `Opened ${session.client} design session`,
+        type: 'success',
+      })
     },
 
     saveToLibrary() {
