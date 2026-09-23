@@ -46,10 +46,29 @@ export default function App() {
       const data = event.data
       if (!data || data.type !== 'spil-label-open-template') return
       applyHostTemplate(data)
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage(
+          {
+            type: 'spil-label-template-received',
+            templateId: data.template?.id || null,
+          },
+          '*',
+        )
+      }
     }
     window.addEventListener('message', onMessage)
     if (window.parent && window.parent !== window) {
-      window.parent.postMessage({ type: 'spil-label-request-template' }, '*')
+      const requestTemplate = () => {
+        window.parent.postMessage({ type: 'spil-label-request-template' }, '*')
+      }
+      requestTemplate()
+      const retry100 = window.setTimeout(requestTemplate, 100)
+      const retry500 = window.setTimeout(requestTemplate, 500)
+      return () => {
+        window.removeEventListener('message', onMessage)
+        window.clearTimeout(retry100)
+        window.clearTimeout(retry500)
+      }
     }
     return () => window.removeEventListener('message', onMessage)
   }, [applyHostTemplate])
