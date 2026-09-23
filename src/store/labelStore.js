@@ -656,6 +656,12 @@ export const useLabelStore = create(
         st._savedSnapshot = snapshotKey(st)
       })
       get().addToast({ message: `Saved ${saved.id} on the label service`, type: 'success' })
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage(
+          { type: 'spil-label-template-saved', record: saved },
+          '*',
+        )
+      }
       return saved
     },
 

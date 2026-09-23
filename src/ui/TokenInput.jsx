@@ -1,9 +1,12 @@
 import { useState, useRef } from 'react'
 import { COMMON_TOKENS } from '../data/tokens'
 
-export default function TokenInput({ value, onChange, className = '', placeholder, multiline = false }) {
+export default function TokenInput({ value, onChange, className = '', placeholder, multiline = false, tokens }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
+  const list = (tokens && tokens.length ? tokens : COMMON_TOKENS).map((t) =>
+    typeof t === 'string' ? t : t.key,
+  )
 
   const insertToken = (token) => {
     const el = ref.current
@@ -19,7 +22,7 @@ export default function TokenInput({ value, onChange, className = '', placeholde
     setOpen(false)
   }
 
-  const filtered = COMMON_TOKENS.filter((t) =>
+  const filtered = list.filter((t) =>
     !value || value.includes('{{') || t.toLowerCase().includes(String(value).toLowerCase()),
   )
 
