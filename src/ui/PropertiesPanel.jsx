@@ -15,6 +15,7 @@ const TYPE_META = {
   text: { icon: AlignLeft, label: 'Text Field' },
   header: { icon: AlignLeft, label: 'Header' },
   barcode: { icon: Barcode, label: 'Barcode' },
+  checkbox: { icon: Settings2, label: 'Checkbox' },
   qrcode: { icon: Barcode, label: 'QR Code' },
   line: { icon: Shapes, label: 'Line' },
   shape: { icon: Shapes, label: 'Shape' },
@@ -54,7 +55,7 @@ export default function PropertiesPanel() {
 
   if (!field) {
     return (
-      <aside className="lc-sidebar lc-sidebar-right flex w-[280px] shrink-0 flex-col border-l border-[var(--lc-panel-border)] bg-[var(--lc-panel)]">
+      <aside className="lc-sidebar lc-sidebar-right flex h-full min-h-0 w-[280px] shrink-0 flex-col overflow-y-auto border-l border-[var(--lc-panel-border)] bg-[var(--lc-panel)]">
         <PanelHeader title="Properties" />
         <EmptyState
           icon={MousePointer2}
@@ -75,7 +76,7 @@ export default function PropertiesPanel() {
   const mapHint = mappingLabel(field)
 
   return (
-    <aside className="lc-sidebar lc-sidebar-right flex w-[280px] shrink-0 flex-col border-l border-[var(--lc-panel-border)] bg-[var(--lc-panel)]">
+    <aside className="lc-sidebar lc-sidebar-right flex h-full min-h-0 w-[280px] shrink-0 flex-col overflow-y-auto border-l border-[var(--lc-panel-border)] bg-[var(--lc-panel)]">
       {mappingOpen ? (
         <MappingDialog
           field={field}

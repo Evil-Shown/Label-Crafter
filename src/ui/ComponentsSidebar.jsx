@@ -12,6 +12,7 @@ import {
   ChevronDown,
   Trash2,
   Square,
+  SquareCheck,
   Circle,
   Table,
   Eye,
@@ -26,6 +27,7 @@ import { mappingLabel } from '../utils/template'
 
 const TYPE_ICONS = {
   text: Type,
+  checkbox: SquareCheck,
   header: Heading,
   barcode: Barcode,
   qrcode: QrCode,
@@ -40,6 +42,7 @@ export default function ComponentsSidebar() {
   const addTextField = useLabelStore((s) => s.addTextField)
   const addBlackBoxField = useLabelStore((s) => s.addBlackBoxField)
   const addBarcodeField = useLabelStore((s) => s.addBarcodeField)
+  const addCheckboxField = useLabelStore((s) => s.addCheckboxField)
   const addQrField = useLabelStore((s) => s.addQrField)
   const addHeaderField = useLabelStore((s) => s.addHeaderField)
   const addImageField = useLabelStore((s) => s.addImageField)
@@ -63,6 +66,7 @@ export default function ComponentsSidebar() {
     { label: 'Text', icon: Type, onClick: addTextField },
     { label: 'Black Box', icon: Square, onClick: addBlackBoxField },
     { label: 'Barcode', icon: Barcode, onClick: addBarcodeField },
+    { label: 'Checkbox', icon: SquareCheck, onClick: addCheckboxField },
     { label: 'QR Code', icon: QrCode, onClick: addQrField },
     { label: 'Header', icon: Heading, onClick: addHeaderField },
     { label: 'Image', icon: ImageIcon, onClick: addImageField },
@@ -77,7 +81,7 @@ export default function ComponentsSidebar() {
   const sortedFields = [...fields].sort((a, b) => (b.zIndex ?? 0) - (a.zIndex ?? 0))
 
   return (
-    <aside className="lc-sidebar lc-sidebar-left flex w-[236px] shrink-0 flex-col border-r border-[var(--lc-panel-border)] bg-[var(--lc-panel)]">
+    <aside className="lc-sidebar lc-sidebar-left flex h-full min-h-0 w-[248px] shrink-0 flex-col overflow-hidden border-r border-[var(--lc-panel-border)] bg-[var(--lc-panel)]">
       <PanelHeader
         title="Components"
         badge={
@@ -87,6 +91,7 @@ export default function ComponentsSidebar() {
         }
       />
 
+      <div className="min-h-0 flex-1 overflow-y-auto">
       <DataFieldsPanel />
 
       <div className="p-3">
@@ -103,13 +108,14 @@ export default function ComponentsSidebar() {
           })}
         </div>
       </div>
+      </div>
 
-      <div className="mt-auto flex min-h-0 flex-col border-t border-[var(--lc-panel-border)]">
+      <div className="flex h-[34%] min-h-[168px] max-h-[46%] shrink-0 flex-col border-t border-[var(--lc-panel-border)]">
         <div className="flex items-center gap-1.5 px-3 py-2.5">
           <Layers size={13} className="text-[var(--lc-text-muted)]" />
           <SectionLabel>Layers · {fields.length}</SectionLabel>
         </div>
-        <div className="flex-1 space-y-0.5 overflow-y-auto px-2 pb-3" style={{ maxHeight: '220px' }}>
+        <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 pb-3">
           {sortedFields.length === 0 ? (
             <p className="px-2 py-4 text-center text-[11px] text-[var(--lc-text-muted)]">No elements yet</p>
           ) : (
@@ -129,11 +135,11 @@ export default function ComponentsSidebar() {
                       <span className="ml-1 font-mono text-[9px] text-[var(--lc-accent)]">{mappingLabel(f)}</span>
                     ) : null}
                   </span>
-                  <div className="flex items-center">
+                  <div className="flex shrink-0 items-center">
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); toggleFieldVisible(f.fieldKey) }}
-                      className="lc-icon-btn !h-5 !w-5 opacity-60 group-hover:opacity-100"
+                      className="lc-icon-btn !h-5 !w-5"
                       title={f.hidden ? 'Show' : 'Hide'}
                     >
                       {f.hidden ? <EyeOff size={11} /> : <Eye size={11} />}
@@ -141,12 +147,12 @@ export default function ComponentsSidebar() {
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); toggleFieldLock(f.fieldKey) }}
-                      className="lc-icon-btn !h-5 !w-5 opacity-60 group-hover:opacity-100"
+                      className="lc-icon-btn !h-5 !w-5"
                       title={f.locked ? 'Unlock' : 'Lock'}
                     >
                       {f.locked ? <Lock size={11} /> : <Unlock size={11} />}
                     </button>
-                    <div className="flex items-center opacity-0 transition-opacity group-hover:opacity-100">
+                    <div className="flex items-center">
                       <button type="button" onClick={(e) => { e.stopPropagation(); reorderField(f.fieldKey, 'up') }} className="lc-icon-btn !h-5 !w-5">
                         <ChevronUp size={11} />
                       </button>

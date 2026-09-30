@@ -11,7 +11,10 @@ export default function BottomFooter() {
   const canRedo = useLabelStore((s) => s._future.length > 0)
   const saveToLibrary = useLabelStore((s) => s.saveToLibrary)
   const saveToDesignService = useLabelStore((s) => s.saveToDesignService)
+  const saveToHost = useLabelStore((s) => s.saveToHost)
   const designSession = useLabelStore((s) => s.designSession)
+  const hostedInApp = useLabelStore((s) => s.hostedInApp)
+  const client = useLabelStore((s) => s.client)
   const addToast = useLabelStore((s) => s.addToast)
   const name = useLabelStore((s) => s.name)
   const width = useLabelStore((s) => s.width)
@@ -68,15 +71,25 @@ export default function BottomFooter() {
                   saveToDesignService().catch((err) =>
                     addToast({ message: err.message || 'Save failed', type: 'error' }),
                   )
+                } else if (hostedInApp || (window.parent && window.parent !== window)) {
+                  saveToHost()
                 } else {
                   saveToLibrary()
                 }
               }}
               className="lc-btn lc-btn-primary !text-xs"
-              title={designSession ? 'Save this template to Opti' : 'Save this template to the local library'}
+              title={
+                designSession || hostedInApp
+                  ? `Save this template back to ${client === 'erp' ? 'ERP' : 'Opti'}`
+                  : 'Save this template to the local library'
+              }
             >
-              {designSession ? <Cloud size={14} /> : <Check size={14} />}
-              {designSession ? 'Save to Opti' : 'Save to Library'}
+              {designSession || hostedInApp ? <Cloud size={14} /> : <Check size={14} />}
+              {designSession
+                ? `Save to ${client === 'erp' ? 'ERP' : 'Opti'}`
+                : hostedInApp
+                  ? `Save to ${client === 'erp' ? 'ERP' : 'Opti'}`
+                  : 'Save to Library'}
             </button>
             <button type="button" onClick={() => requestConfirmation({
               title: 'Discard unsaved changes?',

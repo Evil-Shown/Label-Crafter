@@ -85,8 +85,8 @@ export default function CanvasSubBar() {
 
   return (
     <>
-      <div className="lc-canvas-toolbar flex h-[52px] shrink-0 items-center justify-between gap-2 overflow-x-auto border-b border-[var(--lc-panel-border)] bg-[var(--lc-panel)] px-3">
-        <div className="flex items-center gap-1.5">
+      <div className="lc-canvas-toolbar flex shrink-0 flex-wrap items-center gap-2 border-b border-[var(--lc-panel-border)] bg-[var(--lc-panel)] px-3 py-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           <button type="button" onClick={() => setPrintConfig({ showGrid: !showGrid })} className={`lc-pill-toggle ${showGrid ? 'active' : ''}`} title="Toggle grid">
             <Grid3x3 size={12} /> Grid
           </button>
@@ -104,7 +104,7 @@ export default function CanvasSubBar() {
           </button>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           <button type="button" onClick={() => setPrintConfig({ showLiveTokens: !showLiveTokens })} className={`lc-pill-toggle ${showLiveTokens ? 'active' : ''}`} title="Live token preview">
             <Eye size={12} /> Tokens
           </button>
@@ -125,7 +125,7 @@ export default function CanvasSubBar() {
           </button>
         </div>
 
-        <div className="flex items-center gap-2 text-xs font-medium text-[var(--lc-text-muted)]">
+        <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-[var(--lc-text-muted)]">
           <select
             className="lc-input lc-input-sm !w-[9.5rem] !py-1 !text-[10px]"
             defaultValue=""

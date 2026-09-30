@@ -102,7 +102,7 @@ export function isTextLikeType(type) {
 
 export function isMappableType(type) {
   const t = String(type || '').toLowerCase()
-  return t === 'text' || t === 'header' || t === 'barcode' || t === 'qrcode'
+  return t === 'text' || t === 'header' || t === 'barcode' || t === 'qrcode' || t === 'checkbox'
 }
 
 export function mappingLabel(field) {

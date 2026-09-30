@@ -5,7 +5,7 @@ function uid(prefix) {
   return `${prefix}_${id}`
 }
 
-const FONT = 'Inter, sans-serif'
+const FONT = 'Segoe UI, sans-serif'
 
 export function createTextField(overrides = {}) {
   const fieldKey = overrides.fieldKey || uid('text')
@@ -69,6 +69,30 @@ export function createHeaderField(overrides = {}) {
     ...overrides,
     fieldKey: overrides.fieldKey || fieldKey,
     type: 'header',
+  }
+}
+
+export function createCheckboxField(overrides = {}) {
+  const fieldKey = overrides.fieldKey || uid('checkbox')
+  return {
+    fieldKey,
+    editableField: fieldKey,
+    type: 'checkbox',
+    label: 'Checkbox',
+    x: 10,
+    y: 10,
+    width: 24,
+    height: 16,
+    noteField: 0,
+    subField: 0,
+    position: 'absolute',
+    rotation: 0,
+    zIndex: 0,
+    locked: false,
+    hidden: false,
+    ...overrides,
+    fieldKey: overrides.fieldKey || fieldKey,
+    type: 'checkbox',
   }
 }
 
