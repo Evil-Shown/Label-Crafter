@@ -4,7 +4,7 @@ import { SceneManager } from './SceneManager'
 import { buildFieldCanvas, getTexturePixelRatio } from './fieldTextures'
 import { screenToLabelLocal, labelLocalToCanvasPx } from './coords'
 import { useLabelStore } from '../store/labelStore'
-import { mmToPx, snapPx, computeMarginLayout, computeFitView } from '../utils/units'
+import { mmToPx, snapPx, computeFitView } from '../utils/units'
 import {
   hitTestHandle,
   applyResize,
@@ -81,35 +81,6 @@ function buildLabelBorder(overlayGroup, labelW, labelH, isDark) {
   overlayGroup.add(border)
 }
 
-function buildMargins(overlayGroup, widthMm, heightMm, margins, showMargins) {
-  if (!showMargins) return
-  const layout = computeMarginLayout(widthMm, heightMm, margins)
-  if (!layout.hasMargin) return
-
-  const x0 = layout.contentLeft
-  const y0 = layout.contentTop
-  const x1 = x0 + layout.guideW
-  const y1 = y0 + layout.guideH
-
-  const pts = [
-    new THREE.Vector3(x0, -y0, 1.2),
-    new THREE.Vector3(x1, -y0, 1.2),
-    new THREE.Vector3(x1, -y1, 1.2),
-    new THREE.Vector3(x0, -y1, 1.2),
-  ]
-  const line = new THREE.LineLoop(
-    new THREE.BufferGeometry().setFromPoints(pts),
-    new THREE.LineDashedMaterial({
-      color: 0x1976d2,
-      dashSize: 6,
-      gapSize: 4,
-      depthTest: false,
-    }),
-  )
-  line.computeLineDistances()
-  overlayGroup.add(line)
-}
-
 function buildSelectionGizmo(overlayGroup, f, isPrimary) {
   const { x, y, width: w, height: h } = f
   const cx = x + w / 2
@@ -180,7 +151,6 @@ export default function LabelCanvas() {
   const selectedKeys = useLabelStore((s) => s.selectedKeys)
   const width = useLabelStore((s) => s.width)
   const height = useLabelStore((s) => s.height)
-  const margins = useLabelStore((s) => s.margins)
   const globalStyles = useLabelStore((s) => s.globalStyles)
   const labelData = useLabelStore((s) => s.labelData)
   const showLiveTokens = useLabelStore((s) => s.showLiveTokens)
@@ -195,7 +165,6 @@ export default function LabelCanvas() {
   const activeTool = useLabelStore((s) => s.activeTool)
   const theme = useLabelStore((s) => s.theme)
   const thermalPreview = useLabelStore((s) => s.thermalPreview)
-  const showMargins = useLabelStore((s) => s.showMargins)
   const activeSnapGuides = useLabelStore((s) => s.activeSnapGuides)
 
   const isDark = theme === 'dark'
@@ -235,7 +204,6 @@ export default function LabelCanvas() {
     buildPaper(sm.contentGroup, labelW, labelH, isDark)
     clearGroup(sm.overlayGroup)
     buildLabelBorder(sm.overlayGroup, labelW, labelH, isDark)
-    buildMargins(sm.overlayGroup, width, height, margins, showMargins)
     const primary = selectedKeys[0]
     for (const key of selectedKeys) {
       const f = fields.find((x) => x.fieldKey === key)
@@ -243,7 +211,7 @@ export default function LabelCanvas() {
     }
     sm.setTransform(zoom, panX, panY)
     sm.render()
-  }, [fields, labelData, globalStyles, showLiveTokens, selectedKeys, labelW, labelH, width, height, margins, showMargins, gridMm, showGrid, texturePixelRatio, panX, panY, isDark])
+  }, [fields, labelData, globalStyles, showLiveTokens, selectedKeys, labelW, labelH, width, height, gridMm, showGrid, texturePixelRatio, panX, panY, isDark])
 
   useEffect(() => {
     const canvas = canvasRef.current
