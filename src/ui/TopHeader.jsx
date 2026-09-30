@@ -26,6 +26,8 @@ export default function TopHeader() {
   const exportCurrentTemplateJson = useLabelStore((s) => s.exportCurrentTemplateJson)
   const requestConfirmation = useLabelStore((s) => s.requestConfirmation)
   const saveToDesignService = useLabelStore((s) => s.saveToDesignService)
+  const saveToHost = useLabelStore((s) => s.saveToHost)
+  const hostedInApp = useLabelStore((s) => s.hostedInApp)
   const addToast = useLabelStore((s) => s.addToast)
   const designSession = useLabelStore((s) => s.designSession)
   const client = useLabelStore((s) => s.client)
@@ -47,7 +49,7 @@ export default function TopHeader() {
 
   return (
     <header
-      className="lc-top-header flex h-[64px] shrink-0 items-center justify-between border-b border-[var(--lc-panel-border)] bg-[var(--lc-toolbar-bg)] px-5 backdrop-blur-md"
+      className="lc-top-header flex min-h-[64px] shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-[var(--lc-panel-border)] bg-[var(--lc-toolbar-bg)] px-4 py-2 backdrop-blur-md"
       style={{ boxShadow: 'var(--lc-shadow-sm)' }}
     >
       <div className="flex items-center gap-3">
@@ -80,7 +82,7 @@ export default function TopHeader() {
         </div>
       </div>
 
-      <div className="flex items-center gap-1">
+      <div className="flex flex-wrap items-center justify-end gap-1">
         <IconButton icon={theme === 'dark' ? Sun : Moon} title={theme === 'dark' ? 'Light mode' : 'Dark mode'} onClick={toggleTheme} />
         <div className="mx-1 h-5 w-px bg-[var(--lc-panel-border)]" />
         <IconButton
@@ -90,8 +92,15 @@ export default function TopHeader() {
         />
         <IconButton
           icon={Cloud}
-          title="Save template to the label service"
+          title={hostedInApp || (typeof window !== 'undefined' && window.parent !== window)
+            ? 'Save template back to the host app'
+            : 'Save template to the label service'}
           onClick={() => {
+            const embedded = hostedInApp || (window.parent && window.parent !== window)
+            if (embedded && !designSession) {
+              saveToHost()
+              return
+            }
             saveToDesignService().catch((err) => addToast({ message: err.message || 'Save failed', type: 'error' }))
           }}
         />

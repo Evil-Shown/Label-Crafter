@@ -3,6 +3,7 @@ import { immer } from 'zustand/middleware/immer'
 import { current, isDraft } from 'immer'
 import {
   createBarcodeField,
+  createCheckboxField,
   createBlackBoxTextField,
   createDxfShapeField,
   createEllipseField,
@@ -163,6 +164,7 @@ export const useLabelStore = create(
     labelData: { ...OPTI_SAMPLE },
     fieldCatalog: catalogForClient('opti'),
     designSession: null,
+    hostedInApp: false,
     serverTemplates: [],
     showServerLibrary: false,
     printServiceUrl: localStorage.getItem('lc-print-service-url') || 'http://localhost:5088',
@@ -315,6 +317,7 @@ export const useLabelStore = create(
     addBlackBoxField() { get().addField(createBlackBoxTextField) },
     addHeaderField() { get().addField(createHeaderField) },
     addBarcodeField() { get().addField(createBarcodeField) },
+    addCheckboxField() { get().addField(createCheckboxField) },
     addQrField() { get().addField(createQrField) },
     addRectField(o) { get().addField(createRectField, o) },
     addRoundedRectField(o) { get().addField(createRoundedRectField, o) },
@@ -733,12 +736,38 @@ export const useLabelStore = create(
       const tpl = unwrapSessionTemplate(payload?.template || payload)
       if (tpl) get().importTemplate(tpl, { skipHistory: true, markSaved: true })
       if (payload?.previewData && typeof payload.previewData === 'object') {
-        const client = get().client
+        const client = payload.client === 'erp' ? 'erp' : get().client
         set({
+          client,
           labelData: client === 'erp' ? payload.previewData : mergeOptiPreviewData(payload.previewData),
         })
       }
       if (payload?.labelType) set({ labelType: payload.labelType })
+      set({ hostedInApp: true })
+    },
+
+    saveToHost() {
+      const s = get()
+      const tpl = buildExportTemplate(s)
+      const id = tpl.id && !String(tpl.id).startsWith('__builtin') ? tpl.id : generateNextTemplateId()
+      const record = {
+        id,
+        name: tpl.name,
+        labelType: tpl.labelType || 'production',
+        client: s.client || 'opti',
+        template: { ...tpl, id, builtin: false },
+      }
+      set((st) => {
+        st.id = id
+        st.hostedInApp = true
+        st._savedSnapshot = snapshotKey(st)
+      })
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: 'spil-label-template-saved', record }, '*')
+      }
+      const hostName = record.client === 'erp' ? 'ERP' : 'Opti'
+      get().addToast({ message: `Saved “${record.name || id}” to ${hostName}`, type: 'success' })
+      return record
     },
 
     saveToLibrary() {

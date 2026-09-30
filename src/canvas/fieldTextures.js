@@ -232,6 +232,30 @@ export async function buildFieldCanvas(
     return canvasTexture(canvas)
   }
 
+  if (type === 'checkbox') {
+    const raw = resolveMappedPreview(field, data)
+    const s = String(raw ?? '').trim().toLowerCase()
+    const checked = raw === true || raw === 1 || s === 'true' || s === '1'
+    const border = Math.max(1, Math.round(Math.min(w, h) * 0.1))
+    const xStroke = Math.max(border + 1, Math.round(Math.min(w, h) * 0.22))
+    const inset = border + Math.max(1, Math.round(Math.min(w, h) * 0.16))
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, w, h)
+    ctx.strokeStyle = '#000000'
+    ctx.lineWidth = border
+    ctx.strokeRect(border / 2, border / 2, w - border, h - border)
+    if (checked) {
+      ctx.lineWidth = xStroke
+      ctx.beginPath()
+      ctx.moveTo(inset, inset)
+      ctx.lineTo(w - inset, h - inset)
+      ctx.moveTo(w - inset, inset)
+      ctx.lineTo(inset, h - inset)
+      ctx.stroke()
+    }
+    return canvasTexture(canvas, { crisp: true })
+  }
+
   if (type === 'barcode') {
     const sources = field.source || ['Barcode', 'barcode']
     let val = resolveMappedPreview(field, data) || ''
