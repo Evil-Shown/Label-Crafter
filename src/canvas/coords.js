@@ -1,19 +1,18 @@
 import * as THREE from 'three'
 
-/** Convert screen/client coords to label-local design px (y-down). */
-export function screenToLabelLocal(sm, clientX, clientY, zoom, panX, panY) {
+/**
+ * Label space: origin at the label's top-left, +x right, +y down.
+ * One world unit equals one design pixel, so zoom 100 % draws a design pixel
+ * as one CSS pixel.
+ */
+export function screenToLabelLocal(sm, clientX, clientY) {
   const world = sm.screenToWorld(clientX, clientY)
-  return {
-    x: (world.x - panX) / zoom,
-    y: -(world.y - panY) / zoom,
-  }
+  return { x: world.x, y: -world.y }
 }
 
 /** Label-local px → canvas element pixel coords (for HTML overlays). */
-export function labelLocalToCanvasPx(sm, lx, ly, zoom, panX, panY) {
-  const wx = panX + lx * zoom
-  const wy = panY - ly * zoom
-  const v = new THREE.Vector3(wx, wy, 0)
+export function labelLocalToCanvasPx(sm, lx, ly) {
+  const v = new THREE.Vector3(lx, -ly, 0)
   v.project(sm.camera)
   const rect = sm.canvas.getBoundingClientRect()
   return {

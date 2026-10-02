@@ -22,6 +22,7 @@ import { computeFitView, mmToPx, toMm } from '../utils/units'
 import {
   loadTemplates,
   saveTemplate,
+  saveTemplates,
   deleteTemplate,
   generateNextTemplateId,
   detectLabelType,
@@ -34,6 +35,7 @@ import {
   sanitizeFileName,
 } from '../utils/templateStorage'
 import { catalogForClient } from '../data/fieldCatalog'
+import { SEED_TEMPLATES } from '../data/seedTemplates'
 import { checkServiceHealth } from '../services/printService'
 import {
   fetchDesignSession,
@@ -175,6 +177,23 @@ function applyTemplateSnapshot(st, data) {
 
 const initialTemplate = defaultTemplate()
 
+/**
+ * The shared database is not reachable until first-run setup finishes, so a new
+ * PC starts from the built-in catalogue instead of an empty library.
+ */
+function initialTemplateLibrary() {
+  const stored = loadTemplates()
+  if (stored.length) return stored
+  const now = new Date().toISOString()
+  const seeded = SEED_TEMPLATES.map((tpl, i) => ({
+    ...tpl,
+    createdAt: tpl.updatedAt || now,
+    updatedAt: tpl.updatedAt || new Date(Date.now() - (i + 1) * 86400000).toISOString(),
+  }))
+  saveTemplates(seeded)
+  return seeded
+}
+
 export const useLabelStore = create(
   immer((set, get) => ({
     ...initialTemplate,
@@ -224,7 +243,7 @@ export const useLabelStore = create(
     clipboard: null,
     groups: {},
     toasts: [],
-    templateLibrary: loadTemplates(),
+    templateLibrary: initialTemplateLibrary(),
     zplPreview: '',
     showNewModal: false,
     showAddShapeModal: false,
@@ -237,10 +256,10 @@ export const useLabelStore = create(
     dbLastOkAt: Date.now(),
     dbRetryIn: 0,
     dbRetryStep: 0,
-    dbServer: 'SPIL-SQL01',
-    dbDatabase: 'SpilProduction',
-    dbPort: 1433,
-    dbAuthType: 'windows', // 'windows' | 'sql'
+    dbServer: localStorage.getItem('lc-db-server') || 'SPIL-SQL01',
+    dbDatabase: localStorage.getItem('lc-db-database') || 'SpilProduction',
+    dbPort: Number(localStorage.getItem('lc-db-port')) || 1433,
+    dbAuthType: localStorage.getItem('lc-db-auth') || 'windows', // 'windows' | 'sql'
     printServiceStatus: 'connected', // 'connected' | 'unreachable'
     printServiceLastOkAt: Date.now(),
     showConnectionPopover: false,
@@ -678,7 +697,7 @@ export const useLabelStore = create(
     },
 
     refreshTemplateLibrary() {
-      set({ templateLibrary: loadTemplates(), defaultTemplateId: getDefaultTemplateId() })
+      set({ templateLibrary: initialTemplateLibrary(), defaultTemplateId: getDefaultTemplateId() })
     },
 
     addBoundField(field) {
@@ -1009,6 +1028,15 @@ st.lastSavedAt = Date.now()
       if (patch.printerBrand != null) localStorage.setItem('lc-printer-brand', patch.printerBrand)
       if (patch.printerHost != null) localStorage.setItem('lc-printer-host', patch.printerHost)
       if (patch.printerPort != null) localStorage.setItem('lc-printer-port', String(patch.printerPort))
+      set((st) => Object.assign(st, patch))
+    },
+
+    /** R5: database details can be changed later without reinstalling. */
+    setDbConfig(patch) {
+      if (patch.dbServer != null) localStorage.setItem('lc-db-server', patch.dbServer)
+      if (patch.dbPort != null) localStorage.setItem('lc-db-port', String(patch.dbPort))
+      if (patch.dbDatabase != null) localStorage.setItem('lc-db-database', patch.dbDatabase)
+      if (patch.dbAuthType != null) localStorage.setItem('lc-db-auth', patch.dbAuthType)
       set((st) => Object.assign(st, patch))
     },
 

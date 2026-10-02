@@ -32,6 +32,24 @@ export async function listServerTemplates(serviceUrl, client) {
   return data.templates || []
 }
 
+/** ERP orders come from the shared database, read-only (spec §5.1). */
+export async function listErpOrders(serviceUrl, { search = '' } = {}) {
+  const q = search ? `?search=${encodeURIComponent(search)}` : ''
+  const res = await fetch(`${baseUrl(serviceUrl)}/api/erp/orders${q}`)
+  if (!res.ok) throw new Error(await readError(res))
+  const data = await res.json()
+  return data.orders || []
+}
+
+/** One ERP order with its real piece values. Never written back. */
+export async function getErpOrder(serviceUrl, orderNo) {
+  const res = await fetch(
+    `${baseUrl(serviceUrl)}/api/erp/orders/${encodeURIComponent(orderNo)}`,
+  )
+  if (!res.ok) throw new Error(await readError(res))
+  return res.json()
+}
+
 export async function getServerTemplate(serviceUrl, client, id) {
   const res = await fetch(
     `${baseUrl(serviceUrl)}/api/templates/${encodeURIComponent(client)}/${encodeURIComponent(id)}`,

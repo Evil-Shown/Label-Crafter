@@ -67,8 +67,6 @@ export default function TopHeader() {
   const printServiceLastOkAt = useLabelStore((s) => s.printServiceLastOkAt)
   const checkServiceHealth = useLabelStore((s) => s.checkServiceHealth)
 
-  const [isRenaming, setIsRenaming] = useState(false)
-  const [editingName, setEditingName] = useState(name)
   const [showStatusPopover, setShowStatusPopover] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const statusRef = useRef(null)
@@ -175,46 +173,22 @@ export default function TopHeader() {
   })()
 
   return (
-    <header className="lc-top-header flex h-14 shrink-0 items-center justify-between gap-4 px-4 text-white select-none">
+    <header className="lc-top-header flex h-14 shrink-0 items-center justify-between gap-2 sm:gap-4 overflow-x-auto px-3 sm:px-4 text-white select-none no-scrollbar">
       {/* 1. App title + subtitle + new template */}
-      <div className="flex min-w-0 items-center gap-3">
-        <div className="flex h-9 w-9 flex-none items-center justify-center rounded-[10px] overflow-hidden shadow-sm ring-1 ring-white/20">
+      <div className="flex flex-none items-center gap-2.5">
+        <button
+          type="button"
+          onClick={() => useLabelStore.setState({ showSplashScreen: true })}
+          title="Click to replay startup opening splash screen"
+          className="flex h-8 w-8 sm:h-9 sm:w-9 flex-none items-center justify-center rounded-[10px] overflow-hidden shadow-sm ring-1 ring-white/20 transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+        >
           <img src={appIcon} alt="App Icon" className="h-full w-full object-cover scale-105" />
-        </div>
+        </button>
         <div className="min-w-0">
-          {isRenaming ? (
-            <input
-              type="text"
-              value={editingName}
-              autoFocus
-              onChange={(e) => setEditingName(e.target.value)}
-              onBlur={() => {
-                if (editingName.trim()) setTemplateMeta({ name: editingName.trim() })
-                setIsRenaming(false)
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  if (editingName.trim()) setTemplateMeta({ name: editingName.trim() })
-                  setIsRenaming(false)
-                }
-                if (e.key === 'Escape') setIsRenaming(false)
-              }}
-              className="h-6 w-40 rounded-[7px] border border-white/25 bg-black/25 px-2 text-[15px] font-bold text-white outline-none"
-            />
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                setEditingName(name)
-                setIsRenaming(true)
-              }}
-              className="block text-left text-[15px] font-bold leading-tight text-white hover:underline"
-              title="Click to rename the template"
-            >
-              Label Designer
-            </button>
-          )}
-          <p className="truncate text-[11px] font-medium text-[var(--nav-ink)]">
+          <span className="block text-[14px] sm:text-[15px] font-bold leading-tight text-white tracking-tight">
+            Label Designer
+          </span>
+          <p className="truncate text-[10.5px] sm:text-[11px] font-medium text-[var(--nav-ink)] max-w-[130px] sm:max-w-[200px]" title={`${name} · ${formatSize(width, height)}`}>
             {name} · {formatSize(width, height)}
           </p>
         </div>
@@ -222,16 +196,16 @@ export default function TopHeader() {
         <button
           type="button"
           onClick={() => setModal('showNewModal', true)}
-          className="ml-1 flex flex-none items-center gap-1.5 rounded-[7px] border border-white/20 bg-white/10 px-2.5 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-white/18"
+          className="ml-0.5 sm:ml-1 flex flex-none items-center gap-1 sm:gap-1.5 rounded-[7px] border border-white/20 bg-white/10 px-2 sm:px-2.5 py-1 sm:py-1.5 text-[11.5px] sm:text-[12.5px] font-semibold text-white transition-colors hover:bg-white/18"
           title="Create a new template"
         >
-          <Plus size={14} />
+          <Plus size={13} />
           <span>New</span>
         </button>
       </div>
 
       {/* 2. Text tabs */}
-      <nav className="flex flex-none items-center gap-1 rounded-[10px] border border-white/10 bg-black/25 p-1">
+      <nav className="flex flex-none items-center gap-0.5 sm:gap-1 rounded-[10px] border border-white/10 bg-black/25 p-0.5 sm:p-1">
         {tabs.map(({ id, label, Icon }) => {
           const on = activeTab === id
           return (
@@ -239,27 +213,27 @@ export default function TopHeader() {
               key={id}
               type="button"
               onClick={() => setActiveTab(id)}
-              className={`flex items-center gap-1.5 rounded-[7px] px-3 py-1.5 text-[13px] font-semibold transition-colors ${
+              className={`flex items-center gap-1 sm:gap-1.5 rounded-[7px] px-2.5 sm:px-3 py-1 sm:py-1.5 text-[12px] sm:text-[13px] font-semibold transition-colors ${
                 on ? 'bg-white/16 text-white' : 'text-[var(--nav-ink)] hover:bg-white/8 hover:text-white'
               }`}
             >
-              <Icon size={15} />
-              <span>{label}</span>
+              <Icon size={14} className="shrink-0" />
+              <span className="hidden sm:inline">{label}</span>
             </button>
           )
         })}
       </nav>
 
-      <div className="flex min-w-0 flex-1 items-center justify-end gap-2.5">
+      <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5 sm:gap-2.5">
         {hasUnsavedChanges && (
-          <div className="flex flex-none items-center gap-1.5 text-[12.5px] font-semibold text-[#FBBF24]">
-            <CircleAlert size={15} />
-            <span className="hidden lg:inline">Unsaved changes</span>
+          <div className="hidden xl:flex flex-none items-center gap-1.5 text-[12px] font-semibold text-[#FBBF24]">
+            <CircleAlert size={14} />
+            <span>Unsaved</span>
           </div>
         )}
 
         {/* 3. Opti / ERP switch */}
-        <div className="flex flex-none items-center rounded-[10px] border border-white/10 bg-black/25 p-1">
+        <div className="flex flex-none items-center rounded-[8px] sm:rounded-[10px] border border-white/10 bg-black/25 p-0.5 sm:p-1">
           {['opti', 'erp'].map((c) => {
             const on = client === c
             return (
