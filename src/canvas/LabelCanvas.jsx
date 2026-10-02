@@ -26,18 +26,35 @@ function clearGroup(group) {
   }
 }
 
+/**
+ * Two-tier grid: a very faint 1 mm guide for fine placement plus a slightly
+ * stronger line every 5 mm. A single dense tier reads as dither on screen.
+ */
 function buildGrid(gridGroup, labelW, labelH, gridMm, showGrid, isDark) {
   clearGroup(gridGroup)
   if (!showGrid) return
-  const step = mmToPx(gridMm)
-  const lines = []
-  for (let x = 0; x <= labelW; x += step) lines.push(x, 0, 0.6, x, -labelH, 0.6)
-  for (let y = 0; y <= labelH; y += step) lines.push(0, -y, 0.6, labelW, -y, 0.6)
-  const geo = new THREE.BufferGeometry()
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(lines, 3))
-  gridGroup.add(new THREE.LineSegments(geo, new THREE.LineBasicMaterial({
-    color: isDark ? 0x22304a : 0xe6ebf2, transparent: true, opacity: 0.9,
-  })))
+  const step = mmToPx(gridMm) || 1
+  const major = step * 5
+
+  const addLines = (spacing, color, z) => {
+    const verts = []
+    for (let x = 0; x <= labelW + 0.5; x += spacing) verts.push(x, 0, z, x, -labelH, z)
+    for (let y = 0; y <= labelH + 0.5; y += spacing) verts.push(0, -y, z, labelW, -y, z)
+    const geo = new THREE.BufferGeometry()
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3))
+    gridGroup.add(
+      new THREE.LineSegments(
+        geo,
+        new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.9 }),
+      ),
+    )
+  }
+
+  addLines(step, isDark ? 0x1b2436 : 0xf2f5f9, 0)
+  addLines(major, isDark ? 0x2b3a52 : 0xdfe6ef, 0.1)
+  // The grid sits between the paper (-1) and the content (0) so it never
+  // draws over the printed elements.
+  gridGroup.position.z = -0.5
 }
 
 /** One blurred plate gives a soft paper shadow without post-processing. */
@@ -199,7 +216,6 @@ export default function LabelCanvas() {
   const height = useLabelStore((s) => s.height)
   const globalStyles = useLabelStore((s) => s.globalStyles)
   const labelData = useLabelStore((s) => s.labelData)
-  const client = useLabelStore((s) => s.client)
   const showLiveTokens = useLabelStore((s) => s.showLiveTokens)
   const zoom = useLabelStore((s) => s.zoom)
   const panX = useLabelStore((s) => s.panX)

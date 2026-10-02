@@ -308,8 +308,9 @@ textarea.lc-input { height: auto; padding: 8px 10px; line-height: 1.5; }
   background-position: right 9px center;
   cursor: pointer;
 }
-.lc-input-unit { position: relative; }
-.lc-input-unit > .lc-input { padding-right: 40px; }
+.lc-input-unit { position: relative; min-width: 0; }
+.lc-input-unit > .lc-input { padding-right: 10px; }
+.lc-input-unit.has-unit > .lc-input { padding-right: 40px; }
 .lc-input-unit > span {
   position: absolute;
   right: 10px;

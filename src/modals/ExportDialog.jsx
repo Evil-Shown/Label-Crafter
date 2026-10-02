@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Printer, X, FileText, Image as ImageIcon, FileCode, Download, FolderOpen } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
+import { useEscape } from '../hooks/useEscape'
 import { renderLabelToCanvas, exportPdf, exportPng, downloadTextFile } from '../utils/export'
 import { compileLabel } from '../services/printService'
 import { buildExportTemplate } from '../utils/template'
@@ -37,6 +38,9 @@ export default function ExportDialog() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const objectUrl = useRef('')
+
+  const close = () => setPrintConfig({ showExportDialog: false })
+  useEscape(open, close)
 
   const state = useLabelStore()
 
@@ -122,8 +126,15 @@ export default function ExportDialog() {
 
   const totalPieces = realDataInfo?.totalPieces || 1
 
+  // Fit the preview into a 250 × 370 box keeping the label's own aspect ratio.
+  const ratio = (Number(width) || 1) / (Number(height) || 1)
+  const boxW = 250
+  const boxH = 370
+  const previewW = ratio >= 1 ? boxW : Math.round(boxH * ratio)
+  const previewH = ratio >= 1 ? Math.round(boxW / ratio) : boxH
+
   return createPortal(
-    <div className="lc-modal-overlay" onClick={() => setPrintConfig({ showExportDialog: false })}>
+    <div className="lc-modal-overlay" onClick={close}>
       <div
         className="lc-modal !max-w-[1024px]"
         onClick={(e) => e.stopPropagation()}
@@ -144,7 +155,7 @@ export default function ExportDialog() {
           <button
             type="button"
             className="lc-icon-btn"
-            onClick={() => setPrintConfig({ showExportDialog: false })}
+            onClick={close}
             title="Close"
           >
             <X size={16} />
@@ -154,9 +165,20 @@ export default function ExportDialog() {
         <div className="grid min-h-0 flex-1 grid-cols-[450px_1fr]">
           {/* Left: real preview */}
           <div className="flex items-center justify-center border-r border-[var(--line)] bg-[var(--bg)] p-6">
-            <div className="lc-preview-frame h-[370px] w-[250px]">
+            <div
+              className="lc-preview-frame"
+              style={{
+                // Match the label's real proportions so the preview is not distorted.
+                width: `${previewW}px`,
+                height: `${previewH}px`,
+              }}
+            >
               {preview ? (
-                <img src={preview} alt="Label preview with the loaded piece" className="max-h-full max-w-full object-contain" />
+                <img
+                  src={preview}
+                  alt="Label preview with the loaded piece"
+                  className="h-full w-full object-contain"
+                />
               ) : (
                 <span className="text-[12px] text-[var(--mut)]">No preview</span>
               )}
@@ -279,7 +301,7 @@ export default function ExportDialog() {
         </div>
 
         <div className="lc-modal-foot">
-          <button type="button" onClick={() => setPrintConfig({ showExportDialog: false })} className="lc-btn lc-btn-secondary !h-10">
+          <button type="button" onClick={close} className="lc-btn lc-btn-secondary !h-10">
             Cancel
           </button>
           <button

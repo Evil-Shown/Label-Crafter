@@ -1,201 +1,237 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   RefreshCw,
   ExternalLink,
-  CheckCircle2,
+  Tag,
+  Scissors,
+  Eye,
+  Check,
+  CircleCheck,
+  TriangleAlert,
+  PenTool,
 } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
+import { formatSize } from '../utils/units'
+import TemplatePreviewThumb from '../ui/TemplatePreviewThumb'
 
+/**
+ * Screen 10.1 — Opti no longer contains a designer. It lists the templates it
+ * can print and picks one default for production and one for offcut (R6).
+ */
 export default function OptiLabelsSettingsView() {
-  const [selectedProdId, setSelectedProdId] = useState('LBL_001')
-  const [selectedOffcutId, setSelectedOffcutId] = useState('LBL_OFF_001')
-
+  const client = useLabelStore((s) => s.client)
+  const templateLibrary = useLabelStore((s) => s.templateLibrary)
+  const defaultTemplateId = useLabelStore((s) => s.defaultTemplateId)
+  const setDefaultTemplate = useLabelStore((s) => s.setDefaultTemplate)
+  const refreshTemplateLibrary = useLabelStore((s) => s.refreshTemplateLibrary)
+  const refreshServerLibrary = useLabelStore((s) => s.refreshServerLibrary)
   const setActiveTab = useLabelStore((s) => s.setActiveTab)
   const addToast = useLabelStore((s) => s.addToast)
 
-  const prodTemplates = [
-    { id: 'LBL_001', name: 'MSG', size: '100 × 150 mm', date: 'edited 2 Oct', isDefault: true },
-    { id: 'LBL_002', name: 'Premium Showers', size: '100 × 111 mm', date: 'edited 11 Sep', isDefault: false },
-    { id: 'LBL_003', name: 'new latest tuffco', size: '99 × 149 mm', date: 'edited 11 Sep', isDefault: false },
-    { id: 'LBL_004', name: 'Standard Label', size: '90 × 43 mm', date: 'edited 11 Sep', isDefault: false },
-  ]
+  const [prodId, setProdId] = useState(null)
+  const [offcutId, setOffcutId] = useState(null)
+  const [refreshing, setRefreshing] = useState(false)
+  const [source, setSource] = useState('library')
 
-  const offcutTemplates = [
-    { id: 'LBL_OFF_001', name: 'Offcut small', size: '100 × 60 mm', isDefault: true },
-    { id: 'LBL_OFF_002', name: 'New Label', size: '100 × 60 mm', isDefault: false },
-  ]
+  const options = useMemo(
+    () => templateLibrary.filter((t) => (t.client || 'opti') === client),
+    [templateLibrary, client],
+  )
+  const production = options.filter((t) => (t.labelType || 'production') === 'production')
+  const offcut = options.filter((t) => t.labelType === 'offcut')
 
-  const handleSetProdDefault = (id) => {
-    setSelectedProdId(id)
-    addToast({ message: 'Default production template updated', type: 'success' })
+  // Default to whatever the database already has marked as default.
+  useEffect(() => {
+    const storeDefault = options.find((t) => t.id === defaultTemplateId)
+    if (storeDefault) {
+      if ((storeDefault.labelType || 'production') === 'production') setProdId(storeDefault.id)
+      else setOffcutId(storeDefault.id)
+      return
+    }
+    setProdId((p) => (p && production.some((t) => t.id === p) ? p : production[0]?.id || null))
+    setOffcutId((o) => (o && offcut.some((t) => t.id === o) ? o : offcut[0]?.id || null))
+  }, [options, defaultTemplateId, production, offcut])
+
+  const refresh = async () => {
+    setRefreshing(true)
+    setSource('library')
+    try {
+      // Prefer the shared database; fall back to the local library when offline.
+      await refreshServerLibrary()
+      setSource('server')
+      addToast({ message: 'Templates reloaded from the database', type: 'success' })
+    } catch {
+      refreshTemplateLibrary()
+      setSource('library')
+      addToast({
+        message: 'Database unreachable — showing the templates stored on this PC',
+        type: 'warning',
+      })
+    } finally {
+      setRefreshing(false)
+    }
   }
 
-  const handleSetOffcutDefault = (id) => {
-    setSelectedOffcutId(id)
-    addToast({ message: 'Default offcut template updated', type: 'success' })
+  const pick = (id, kind) => {
+    if (kind === 'production') setProdId(id)
+    else setOffcutId(id)
+    setDefaultTemplate(id)
+    const tpl = options.find((t) => t.id === id)
+    addToast({ message: `${kind === 'production' ? 'Production' : 'Offcut'} default set to ${tpl?.name || id}`, type: 'success' })
   }
+
+  const chosen = options.find((t) => t.id === prodId) || production[0] || options[0]
 
   return (
-    <div className="flex h-full flex-1 flex-col overflow-y-auto bg-[var(--bg)] p-8 text-[var(--tx)] select-none">
-      {/* Top Header */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto bg-[var(--bg)] px-8 py-7 text-[var(--tx)] select-none">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <div className="text-[11px] font-semibold text-[var(--mut)] mb-1">
-            SPIL Opti &gt; Settings &gt; Labels
-          </div>
-          <h1 className="text-2xl font-black tracking-tight text-[var(--tx)]">
-            Label templates
-          </h1>
-          <p className="mt-1 text-xs text-[var(--mut)]">
-            Templates are designed in Label Designer. Here you only choose which one Opti prints.
+          <p className="mb-1 text-[12px] font-semibold text-[var(--mut)]">
+            SPIL Opti › Settings › Labels
+          </p>
+          <h1 className="lc-page-title">Label templates</h1>
+          <p className="mt-1 text-[13px] text-[var(--mut)]">
+            Opti prints with these templates. Designing happens in the Label Designer.
           </p>
         </div>
-
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => addToast({ message: 'Refreshed templates list from database', type: 'info' })}
-            className="flex h-9 items-center gap-1.5 rounded-lg border border-[var(--line)] bg-[var(--panel)] px-3 text-xs font-semibold text-[var(--tx)] hover:bg-[var(--line-subtle)]"
-          >
-            <RefreshCw size={13} />
-            <span>Refresh</span>
+          <span className="lc-badge lc-badge-neutral">
+            {source === 'server' ? 'From database' : 'Stored on this PC'}
+          </span>
+          <button type="button" onClick={refresh} disabled={refreshing} className="lc-btn lc-btn-secondary !h-10">
+            <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} />
+            <span>{refreshing ? 'Refreshing…' : 'Refresh'}</span>
           </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('design')}
-            className="flex h-9 items-center gap-1.5 rounded-lg bg-[var(--pri)] px-4 text-xs font-bold text-white shadow-sm hover:bg-blue-700"
-          >
-            <ExternalLink size={13} />
+          <button type="button" onClick={() => setActiveTab('design')} className="lc-btn lc-btn-primary !h-10">
+            <PenTool size={15} />
             <span>Open Label Designer</span>
           </button>
         </div>
       </div>
 
-      {/* 3-Column Layout: Production | Offcut | Preview (screen 10.1 / opti.png) */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Col 1: Production label */}
-        <div className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5 shadow-xs">
-          <div className="flex items-center gap-2 mb-4 pb-2 border-b border-[var(--line)]">
-            <span className="text-sm">🏷️</span>
-            <h3 className="font-bold text-sm text-[var(--tx)]">Production label</h3>
-          </div>
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Picker
+          title="Production label"
+          hint="Printed on every finished piece."
+          icon={Tag}
+          items={production}
+          selectedId={prodId}
+          savedDefaultId={defaultTemplateId}
+          onSelect={(id) => pick(id, 'production')}
+        />
+        <Picker
+          title="Offcut label"
+          hint="Printed on offcuts."
+          icon={Scissors}
+          items={offcut}
+          selectedId={offcutId}
+          savedDefaultId={defaultTemplateId}
+          onSelect={(id) => pick(id, 'offcut')}
+          warn
+        />
 
-          <div className="space-y-2.5">
-            {prodTemplates.map((t) => {
-              const isSelected = selectedProdId === t.id
-              return (
-                <div
-                  key={t.id}
-                  onClick={() => handleSetProdDefault(t.id)}
-                  className={`flex items-center justify-between rounded-xl border p-3.5 cursor-pointer transition-all ${
-                    isSelected
-                      ? 'border-2 border-[var(--pri)] bg-blue-50/50 dark:bg-blue-950/30'
-                      : 'border-[var(--line)] bg-[var(--panel)] hover:border-slate-300 dark:hover:border-slate-700'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="radio"
-                      name="prod_template"
-                      checked={isSelected}
-                      onChange={() => handleSetProdDefault(t.id)}
-                      className="h-4 w-4 text-[var(--pri)] focus:ring-0"
-                    />
-                    <div>
-                      <h4 className="font-bold text-xs text-[var(--tx)]">{t.name}</h4>
-                      <p className="text-[10px] text-[var(--mut)]">
-                        {t.size} {t.date ? `· ${t.date}` : ''}
-                      </p>
-                    </div>
-                  </div>
-                  {isSelected && (
-                    <span className="rounded bg-emerald-100 px-2 py-0.5 text-[9px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                      Current default
-                    </span>
-                  )}
-                </div>
-              )
-            })}
+        <section className="lc-card flex flex-col p-5">
+          <div className="mb-3 flex items-center gap-2">
+            <Eye size={16} className="text-[var(--mut)]" />
+            <h2 className="lc-section-title">Preview · {chosen?.name || '—'}</h2>
           </div>
-        </div>
-
-        {/* Col 2: Offcut label */}
-        <div className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5 shadow-xs">
-          <div className="flex items-center gap-2 mb-4 pb-2 border-b border-[var(--line)]">
-            <span className="text-sm">✂️</span>
-            <h3 className="font-bold text-sm text-[var(--tx)]">Offcut label</h3>
-          </div>
-
-          <div className="space-y-2.5">
-            {offcutTemplates.map((t) => {
-              const isSelected = selectedOffcutId === t.id
-              return (
-                <div
-                  key={t.id}
-                  onClick={() => handleSetOffcutDefault(t.id)}
-                  className={`flex items-center justify-between rounded-xl border p-3.5 cursor-pointer transition-all ${
-                    isSelected
-                      ? 'border-2 border-[var(--pri)] bg-blue-50/50 dark:bg-blue-950/30'
-                      : 'border-[var(--line)] bg-[var(--panel)] hover:border-slate-300 dark:hover:border-slate-700'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="radio"
-                      name="offcut_template"
-                      checked={isSelected}
-                      onChange={() => handleSetOffcutDefault(t.id)}
-                      className="h-4 w-4 text-[var(--pri)] focus:ring-0"
-                    />
-                    <div>
-                      <h4 className="font-bold text-xs text-[var(--tx)]">{t.name}</h4>
-                      <p className="text-[10px] text-[var(--mut)]">{t.size}</p>
-                    </div>
-                  </div>
-                  {isSelected && (
-                    <span className="rounded bg-emerald-100 px-2 py-0.5 text-[9px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                      Current default
-                    </span>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Col 3: Live Preview of chosen template */}
-        <div className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5 shadow-xs flex flex-col">
-          <div className="flex items-center justify-between mb-4 pb-2 border-b border-[var(--line)]">
-            <div className="flex items-center gap-2">
-              <span className="text-sm">👁️</span>
-              <h3 className="font-bold text-sm text-[var(--tx)]">Preview · MSG</h3>
-            </div>
-          </div>
-
-          <div className="flex-1 flex items-center justify-center rounded-xl bg-[var(--bg)] p-4 border border-[var(--line-subtle)]">
-            {/* Paper Label Mockup */}
-            <div className="w-56 rounded-md bg-white p-4 shadow-md text-black border border-slate-200">
-              <div className="flex items-center justify-between border-b pb-1">
-                <span className="font-black text-sm">Route 12</span>
-                <span className="font-bold text-xs">TGH</span>
+          {chosen ? (
+            <>
+              <div className="lc-preview-frame flex-1 py-4">
+                <TemplatePreviewThumb template={chosen} large />
               </div>
-              <div className="my-1.5 bg-black py-0.5 text-center font-bold text-[9px] text-white">
-                TOUGHENED 10MM
-              </div>
-              <div className="text-[10px] font-bold text-purple-700">💎 MS GLASS</div>
-              <div className="my-2 flex flex-col items-center">
-                <div className="h-9 w-full bg-[repeating-linear-gradient(90deg,#000,#000_2px,transparent_2px,transparent_4px)]" />
-                <span className="font-mono text-[8px]">SO-24581-07</span>
-              </div>
-              <div className="text-[8px] space-y-0.5 text-slate-700">
-                <div>Marks: LEFT EDGE</div>
-                <div>Cust PO: PO-88213</div>
-                <div className="font-semibold text-black">Finished size 1200 × 800</div>
-              </div>
-            </div>
-          </div>
-        </div>
+              <p className="mt-3 text-[12px] text-[var(--mut)]">
+                {formatSize(chosen.width, chosen.height)} ·{' '}
+                {chosen.labelType === 'offcut' ? 'Offcut' : 'Production'} ·{' '}
+                <span className="lc-mono">{chosen.id}</span>
+              </p>
+            </>
+          ) : (
+            <p className="py-10 text-center text-[13px] text-[var(--mut)]">
+              No template is available yet.
+            </p>
+          )}
+        </section>
       </div>
+
+      {options.length === 0 && (
+        <div className="lc-card lc-empty-state mt-6">
+          <span className="lc-empty-icon">
+            <TriangleAlert size={22} />
+          </span>
+          <div>
+            <h2 className="lc-dialog-title">No templates yet</h2>
+            <p className="mt-1 max-w-[520px] text-[13px] text-[var(--mut)]">
+              Create a label template in the Label Designer, then come back to choose it as the
+              default. Opti can only read templates — it never creates or edits them.
+            </p>
+          </div>
+          <button type="button" onClick={() => setActiveTab('design')} className="lc-btn lc-btn-primary mt-1">
+            <PenTool size={15} />
+            <span>Open Label Designer</span>
+          </button>
+        </div>
+      )}
     </div>
+  )
+}
+
+function Picker({ title, hint, icon: Icon, items, selectedId, savedDefaultId, onSelect, warn }) {
+  return (
+    <section className="lc-card flex flex-col p-5">
+      <div className="mb-1 flex items-center gap-2">
+        <Icon size={16} className={warn ? 'text-[var(--warn)]' : 'text-[var(--mut)]'} />
+        <h2 className="lc-section-title">{title}</h2>
+      </div>
+      <p className="mb-4 text-[12px] text-[var(--mut)]">{hint}</p>
+
+      {items.length === 0 ? (
+        <p className="rounded-[10px] border border-dashed border-[var(--line)] px-4 py-6 text-center text-[13px] text-[var(--mut)]">
+          No {title.toLowerCase()} templates.
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {items.map((t) => {
+            const on = selectedId === t.id
+            return (
+              <li key={t.id}>
+                <button
+                  type="button"
+                  onClick={() => onSelect(t.id)}
+                  aria-pressed={on}
+                  className={`flex w-full items-center gap-3 rounded-[10px] border px-3 py-2.5 text-left transition-colors ${
+                    on
+                      ? 'border-[var(--pri)] bg-[var(--panel)]'
+                      : 'border-[var(--line)] bg-[var(--panel)] hover:border-[var(--mut)]'
+                  }`}
+                >
+                  <span
+                    className={`flex h-4 w-4 flex-none items-center justify-center rounded-full border-2 ${
+                      on ? 'border-[var(--pri)]' : 'border-[var(--line)]'
+                    }`}
+                  >
+                    {on && <span className="h-2 w-2 rounded-full bg-[var(--pri)]" />}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[13px] font-bold text-[var(--tx)]">
+                      {t.name}
+                    </span>
+                    <span className="block text-[12px] text-[var(--mut)]">
+                      {formatSize(t.width, t.height)}
+                    </span>
+                  </span>
+                  {t.id === savedDefaultId && (
+                    <span className={`lc-badge flex-none ${warn ? 'lc-badge-warn' : 'lc-badge-ok'}`}>
+                      <Check size={11} />
+                      Current
+                    </span>
+                  )}
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </section>
   )
 }

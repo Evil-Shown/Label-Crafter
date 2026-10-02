@@ -73,6 +73,12 @@ export default function App() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
+    // `?view=opti` opens the Opti-side default template picker (screen 10.1).
+    // Opti never gets the designer — it only lists and picks a default.
+    const view = params.get('view')
+    if (view === 'opti' || view === 'templates' || view === 'settings' || view === 'design') {
+      useLabelStore.getState().setActiveTab(view)
+    }
     const sessionId = params.get('session')
     if (!sessionId) return
     const service = params.get('service') || undefined

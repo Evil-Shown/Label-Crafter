@@ -52,16 +52,31 @@ function Field({ label, children, hint }) {
   )
 }
 
-/** All geometry is stored in design pixels; the UI always speaks mm (spec §1.6). */
+/** Geometry is stored in design pixels; the UI always speaks mm (spec §1.6). */
 function MmInput({ value, onCommit, unit, step = 0.1, className = '' }) {
   const mm = pxToMm(value)
   return (
-    <div className={`lc-input-unit ${className}`}>
+    <div className={`lc-input-unit ${unit ? 'has-unit' : ''} ${className}`}>
       <input
         type="number"
         step={step}
         value={Number.isFinite(mm) ? Number(mm.toFixed(2)) : 0}
         onChange={(e) => onCommit(mmToPx(Number(e.target.value)))}
+      />
+      {unit && <span>{unit}</span>}
+    </div>
+  )
+}
+
+/** A value the printer understands in its own unit, shown with that unit. */
+function RawInput({ value, onCommit, unit, step = 1 }) {
+  return (
+    <div className={`lc-input-unit ${unit ? 'has-unit' : ''}`}>
+      <input
+        type="number"
+        step={step}
+        value={value ?? 0}
+        onChange={(e) => onCommit(Number(e.target.value))}
       />
       {unit && <span>{unit}</span>}
     </div>
