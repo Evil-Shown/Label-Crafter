@@ -117,7 +117,7 @@ export default function CanvasSubBar() {
           <button type="button" onClick={() => setPrintConfig({ showRulers: !showRulers })} className={`lc-pill-toggle ${showRulers ? 'active' : ''}`} title="Rulers">
             <Ruler size={12} />
           </button>
-          <button type="button" onClick={() => setPrintConfig({ showSampleDataEditor: true })} className="lc-pill-toggle" title="Edit sample data">
+          <button type="button" onClick={() => setPrintConfig({ showSampleDataEditor: true })} className="lc-pill-toggle" title="View / tweak live preview data">
             <Database size={12} /> Data
           </button>
           <button type="button" onClick={() => setPrintConfig({ showShortcuts: true })} className="lc-icon-btn" title="Keyboard shortcuts (?)">

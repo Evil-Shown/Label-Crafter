@@ -9,6 +9,7 @@ export default function DataFieldsPanel() {
   const addBoundField = useLabelStore((s) => s.addBoundField)
   const setClient = useLabelStore((s) => s.setClient)
   const designSession = useLabelStore((s) => s.designSession)
+  const hasHostPreviewData = useLabelStore((s) => s.hasHostPreviewData)
   const fields = fieldCatalog?.length ? fieldCatalog : catalogForClient(client)
 
   return (
@@ -31,8 +32,13 @@ export default function DataFieldsPanel() {
           ))}
         </div>
       </div>
+      <p className={`mb-2 text-[10px] leading-snug ${hasHostPreviewData ? 'text-emerald-600' : 'text-[var(--lc-text-muted)]'}`}>
+        {hasHostPreviewData
+          ? `Live preview data from ${client === 'erp' ? 'ERP' : 'Opti'} — bindings resolve against real values.`
+          : 'No live preview yet. Open from Opti/ERP to load real piece/order data (canvas stays empty of fake samples).'}
+      </p>
       <p className="mb-2 text-[10px] leading-snug text-[var(--lc-text-muted)]">
-        Click to place an Opti header bound to that key. Use Configure Data Mapping on the field for noteN.fieldM, same as the Labels designer.
+        Click to place a header bound to that key. Use Configure Data Mapping on the field for noteN.fieldM, same as the Labels designer.
       </p>
       <div className="max-h-40 space-y-1 overflow-auto pr-1">
         {fields.map((field) => (

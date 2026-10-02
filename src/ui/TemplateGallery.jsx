@@ -3,7 +3,6 @@ import {
   X, Upload, Download, Plus, Pencil, Trash2, Star, Eye, FolderDown, Save,
 } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
-import { BUILTIN_TEMPLATES, getBuiltinTemplateConfig, isBuiltinId } from '../data/builtinTemplates'
 import { SIZE_PRESET_GROUPS } from '../data/templatePresets'
 import { formatTemplateSize } from '../utils/units'
 import TemplatePreviewThumb from './TemplatePreviewThumb'
@@ -22,7 +21,6 @@ function TemplateCard({
   onExport,
   onDelete,
   onSetDefault,
-  builtin = false,
 }) {
   const labelType = template.labelType || 'production'
   const badgeClass = TYPE_BADGE[labelType] || TYPE_BADGE.production
@@ -33,7 +31,7 @@ function TemplateCard({
         isDefault ? 'is-default' : 'border-[var(--lc-panel-border)]'
       }`}
     >
-      <TemplatePreviewThumb template={builtin ? getBuiltinTemplateConfig(template.id) : template} />
+      <TemplatePreviewThumb template={template} />
 
       <div className="mt-2 flex flex-wrap items-center gap-1">
         <span className="text-xs font-bold text-[var(--lc-text)]">{template.name}</span>
@@ -58,17 +56,17 @@ function TemplateCard({
         <button type="button" onClick={onPreview} className="lc-btn lc-btn-outline !py-0.5 !px-2 !text-[10px]">
           <Eye size={11} /> Preview
         </button>
-        {!builtin && onExport && (
+        {onExport && (
           <button type="button" onClick={onExport} className="lc-btn lc-btn-ghost !py-0.5 !px-2 !text-[10px]" title="Download template JSON">
             <Download size={11} /> JSON
           </button>
         )}
-        {!builtin && onSetDefault && (
+        {onSetDefault && (
           <button type="button" onClick={onSetDefault} className="lc-btn lc-btn-ghost !py-0.5 !px-2 !text-[10px]" title="Set as default">
             <Star size={11} />
           </button>
         )}
-        {!builtin && onDelete && (
+        {onDelete && (
           <button type="button" onClick={onDelete} className="lc-btn lc-btn-ghost !py-0.5 !px-2 !text-[10px] !text-red-500">
             <Trash2 size={11} />
           </button>
@@ -85,7 +83,6 @@ export default function TemplateGallery() {
   const templateLibrary = useLabelStore((s) => s.templateLibrary)
   const defaultTemplateId = useLabelStore((s) => s.defaultTemplateId)
   const loadFromLibrary = useLabelStore((s) => s.loadFromLibrary)
-  const loadBuiltinTemplate = useLabelStore((s) => s.loadBuiltinTemplate)
   const saveToLibrary = useLabelStore((s) => s.saveToLibrary)
   const deleteFromLibrary = useLabelStore((s) => s.deleteFromLibrary)
   const setDefaultTemplate = useLabelStore((s) => s.setDefaultTemplate)
@@ -100,11 +97,11 @@ export default function TemplateGallery() {
 
   if (!open) return null
 
-  const userTemplates = templateLibrary.filter((t) => !t.builtin && !isBuiltinId(t.id))
+  const userTemplates = templateLibrary.filter((t) => !t.builtin && !String(t.id || '').startsWith('__builtin'))
   const byType = (type) => userTemplates.filter((t) => (t.labelType || 'production') === type)
 
-  const openPreview = (tpl, builtin) => {
-    setPreviewTpl(builtin ? getBuiltinTemplateConfig(tpl.id) : tpl)
+  const openPreview = (tpl) => {
+    setPreviewTpl(tpl)
   }
 
   return (
@@ -162,24 +159,6 @@ export default function TemplateGallery() {
               </section>
             ))}
 
-            {/* Built-in */}
-            <section>
-              <h3 className="lc-section-label">Designed templates (built-in)</h3>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {BUILTIN_TEMPLATES.map((t) => (
-                  <TemplateCard
-                    key={t.id}
-                    template={t}
-                    builtin
-                    isDefault={defaultTemplateId === t.id}
-                    onOpen={() => loadBuiltinTemplate(t.id)}
-                    onPreview={() => openPreview(t, true)}
-                    onSetDefault={() => setDefaultTemplate(t.id)}
-                  />
-                ))}
-              </div>
-            </section>
-
             {/* User templates by type */}
             {[
               { key: 'production', title: 'Production labels' },
@@ -198,7 +177,7 @@ export default function TemplateGallery() {
                         template={t}
                         isDefault={defaultTemplateId === t.id}
                         onOpen={() => loadFromLibrary(t.id)}
-                        onPreview={() => openPreview(t, false)}
+                        onPreview={() => openPreview(t)}
                         onExport={() => exportTemplateJsonById(t.id)}
                         onDelete={() => requestConfirmation({
                           title: 'Delete template?',
