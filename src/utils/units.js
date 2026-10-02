@@ -92,18 +92,14 @@ export function computeMarginLayout(widthMm, heightMm, margins) {
 }
 
 /** Center label in orthographic viewport (world origin = screen center). */
-export function computeFitView(labelW, labelH, canvasW, canvasH, padding = 56) {
+export function computeFitView(labelW, labelH, canvasW, canvasH, fill = 0.78) {
   const view = 300
   const aspect = Math.max(0.1, canvasW / Math.max(1, canvasH))
   const worldW = 2 * view * aspect
   const worldH = 2 * view
-  const padX = (padding / Math.max(1, canvasW)) * worldW
-  const padY = (padding / Math.max(1, canvasH)) * worldH
-  const zoom = Math.min(
-    (worldW - padX) / labelW,
-    (worldH - padY) / labelH,
-    8,
-  )
+  const targetW = worldW * fill
+  const targetH = worldH * fill
+  const zoom = Math.min(targetW / labelW, targetH / labelH, 8)
   const clampedZoom = Math.max(0.15, zoom)
   return {
     zoom: clampedZoom,
