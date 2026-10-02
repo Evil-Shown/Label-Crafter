@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { renderLabelToCanvas } from '../utils/export'
 import { parseImportTemplate } from '../utils/template'
-import { OPTI_SAMPLE } from '../data/sampleData'
+import { useLabelStore } from '../store/labelStore'
 
+/** Gallery thumb — uses live host preview when present; otherwise tokens only (no fake samples). */
 export default function TemplatePreviewThumb({ template, className = '', large = false }) {
   const [src, setSrc] = useState(null)
+  const labelData = useLabelStore((s) => s.labelData)
 
   useEffect(() => {
     let cancelled = false
@@ -13,7 +15,7 @@ export default function TemplatePreviewThumb({ template, className = '', large =
         const parsed = parseImportTemplate(template)
         const canvas = await renderLabelToCanvas({
           ...parsed,
-          labelData: OPTI_SAMPLE,
+          labelData: labelData && typeof labelData === 'object' ? labelData : {},
           showLiveTokens: true,
           globalStyles: parsed.globalStyles,
         })
@@ -23,7 +25,7 @@ export default function TemplatePreviewThumb({ template, className = '', large =
       }
     })()
     return () => { cancelled = true }
-  }, [template])
+  }, [template, labelData])
 
   const h = large ? 'h-48' : 'h-24'
 

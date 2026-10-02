@@ -153,6 +153,13 @@ export default function LabelCanvas() {
   const height = useLabelStore((s) => s.height)
   const globalStyles = useLabelStore((s) => s.globalStyles)
   const labelData = useLabelStore((s) => s.labelData)
+  const hasHostPreviewData = useLabelStore((s) => s.hasHostPreviewData)
+  const client = useLabelStore((s) => s.client)
+  const hasBoundFields = useLabelStore((s) => s.fields.some((f) => (
+    (typeof f.value === 'string' && f.value.includes('{{'))
+    || Number(f.noteField) > 0
+    || (Array.isArray(f.source) && f.source.length > 0)
+  )))
   const showLiveTokens = useLabelStore((s) => s.showLiveTokens)
   const zoom = useLabelStore((s) => s.zoom)
   const panX = useLabelStore((s) => s.panX)
@@ -560,6 +567,20 @@ export default function LabelCanvas() {
         const p = labelLocalToCanvasPx(sm, 0, g.pos, zoom, panX, panY)
         return <div key={i} className="pointer-events-none absolute left-0 right-0 h-px bg-pink-500 opacity-80" style={{ top: p.y }} />
       })}
+
+      {!hasHostPreviewData && hasBoundFields && (
+        <div className="pointer-events-none absolute inset-x-0 top-3 z-20 flex justify-center px-4">
+          <div className="max-w-md rounded-md border border-dashed border-[var(--lc-panel-border)] bg-[var(--lc-panel)]/92 px-3 py-2 text-center shadow-sm backdrop-blur-sm">
+            <p className="text-[11px] font-semibold text-[var(--lc-text)]">
+              No live preview data from {client === 'erp' ? 'ERP' : 'Opti'}
+            </p>
+            <p className="mt-0.5 text-[10px] leading-snug text-[var(--lc-text-muted)]">
+              Bound fields render blank until the host sends real values. Crafter never fills in sample
+              records — open it from {client === 'erp' ? 'ERP' : 'Opti'} with a piece or order selected.
+            </p>
+          </div>
+        </div>
+      )}
 
       <StatusBar />
       <Minimap />

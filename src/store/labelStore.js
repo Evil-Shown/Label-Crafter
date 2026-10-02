@@ -16,7 +16,6 @@ import {
   createTableField,
   createTextField,
 } from '../elements/factories'
-import { ERP_SAMPLE, OPTI_SAMPLE, mergeOptiPreviewData } from '../data/sampleData'
 import { buildExportTemplate, parseImportTemplate } from '../utils/template'
 import { fieldRect } from '../utils/geometry'
 import { computeFitView, mmToPx, toMm } from '../utils/units'
@@ -34,7 +33,6 @@ import {
   setDefaultTemplateId,
   sanitizeFileName,
 } from '../utils/templateStorage'
-import { getBuiltinTemplateConfig } from '../data/builtinTemplates'
 import { catalogForClient } from '../data/fieldCatalog'
 import {
   fetchDesignSession,
@@ -119,6 +117,25 @@ function snapshotKey(state) {
   return JSON.stringify(templateSnapshot(state))
 }
 
+/**
+ * A host bag only counts as live data when it actually carries a printable value.
+ * Opti sends `{ customerName: '', orderNumber: '' }` when no piece is loaded, so
+ * key-count alone would wrongly claim "live data". Booleans are ignored: piece
+ * flags (selected/locked/visible) are not printable label values.
+ */
+function hasRenderableData(data) {
+  if (!data || typeof data !== 'object') return false
+  const walk = (v) => {
+    if (v == null) return false
+    if (Array.isArray(v)) return v.some(walk)
+    if (typeof v === 'object') return Object.values(v).some(walk)
+    if (typeof v === 'number') return Number.isFinite(v)
+    if (typeof v === 'string') return v.trim() !== ''
+    return false
+  }
+  return Object.values(data).some(walk)
+}
+
 function unwrapSessionTemplate(raw) {
   if (!raw || typeof raw !== 'object') return null
   if (raw.sections || Array.isArray(raw.fields)) return raw
@@ -161,10 +178,13 @@ export const useLabelStore = create(
     selectedKeys: [],
     activeTool: 'select',
     client: 'opti',
-    labelData: { ...OPTI_SAMPLE },
+    /** Real host/session bag only — never fake OPTI_SAMPLE / ERP_SAMPLE. */
+    labelData: {},
     fieldCatalog: catalogForClient('opti'),
     designSession: null,
     hostedInApp: false,
+    /** True when Opti/ERP (or a design session) supplied previewData. */
+    hasHostPreviewData: false,
     serverTemplates: [],
     showServerLibrary: false,
     printServiceUrl: localStorage.getItem('lc-print-service-url') || 'http://localhost:5088',
@@ -288,14 +308,21 @@ export const useLabelStore = create(
       }
       set((st) => {
         st.client = next
-        if (!st.designSession?.previewData) {
-          st.labelData = next === 'erp' ? { ...ERP_SAMPLE } : { ...OPTI_SAMPLE }
+        if (!st.designSession) {
+          st.fieldCatalog = catalogForClient(next)
+          // Standalone toggle: do not carry or invent sample bags across clients.
+          st.labelData = {}
+          st.hasHostPreviewData = false
         }
-        if (!st.designSession) st.fieldCatalog = catalogForClient(next)
       })
     },
 
-    setLabelData(data) { set({ labelData: data }) },
+    setLabelData(data) {
+      set({
+        labelData: data && typeof data === 'object' ? data : {},
+        hasHostPreviewData: hasRenderableData(data),
+      })
+    },
     select(keys) { set({ selectedKeys: Array.isArray(keys) ? keys : [keys] }) },
     clearSelection() { set({ selectedKeys: [] }) },
     setCursorPos(pos) { set({ cursorPos: pos }) },
@@ -719,16 +746,21 @@ export const useLabelStore = create(
         }
         st.fieldCatalog = catalog
         if (session.previewData && typeof session.previewData === 'object') {
-          st.labelData = session.client === 'erp' ? session.previewData : mergeOptiPreviewData(session.previewData)
+          st.labelData = { ...session.previewData }
+          st.hasHostPreviewData = hasRenderableData(session.previewData)
         } else {
-          st.labelData = st.client === 'erp' ? { ...ERP_SAMPLE } : { ...OPTI_SAMPLE }
+          st.labelData = {}
+          st.hasHostPreviewData = false
         }
         if (session.labelType) st.labelType = session.labelType
         if (session.templateId && !tpl) st.id = session.templateId
       })
+      const hasPreview = hasRenderableData(session.previewData)
       get().addToast({
-        message: `Opened ${session.client} design session`,
-        type: 'success',
+        message: hasPreview
+          ? `Opened ${session.client} session with live preview data`
+          : `Opened ${session.client} session — no preview data from host`,
+        type: hasPreview ? 'success' : 'warning',
       })
     },
 
@@ -737,13 +769,28 @@ export const useLabelStore = create(
       if (tpl) get().importTemplate(tpl, { skipHistory: true, markSaved: true })
       if (payload?.previewData && typeof payload.previewData === 'object') {
         const client = payload.client === 'erp' ? 'erp' : get().client
+        const live = hasRenderableData(payload.previewData)
         set({
           client,
-          labelData: client === 'erp' ? payload.previewData : mergeOptiPreviewData(payload.previewData),
+          labelData: { ...payload.previewData },
+          hasHostPreviewData: live,
+          hostedInApp: true,
         })
+        if (live) {
+          get().addToast({
+            message: `Loaded live preview data from ${client === 'erp' ? 'ERP' : 'Opti'}`,
+            type: 'success',
+          })
+        } else {
+          get().addToast({
+            message: `${client === 'erp' ? 'ERP' : 'Opti'} sent no printable values — open a piece or order to load real preview data`,
+            type: 'warning',
+          })
+        }
+      } else {
+        set({ hostedInApp: true })
       }
       if (payload?.labelType) set({ labelType: payload.labelType })
-      set({ hostedInApp: true })
     },
 
     saveToHost() {
@@ -787,13 +834,6 @@ export const useLabelStore = create(
       const tpl = loadTemplates().find((t) => t.id === id)
       if (!tpl) return
       get().importTemplate(tpl, { markSaved: true })
-      set({ showTemplateGallery: false })
-    },
-
-    loadBuiltinTemplate(id) {
-      const cfg = getBuiltinTemplateConfig(id)
-      if (!cfg) return
-      get().importTemplate(cfg)
       set({ showTemplateGallery: false })
     },
 
