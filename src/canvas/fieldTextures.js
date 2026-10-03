@@ -166,37 +166,44 @@ function drawEmptyDxf(ctx, w, h, field) {
   ctx.restore()
 }
 
-function drawPlaceholderImage(ctx, w, h, field) {
+function drawPlaceholderImage(ctx, w, h, field, data) {
   ctx.save()
-  ctx.fillStyle = '#ffffff'
+  // Clean neutral image / logo frame
+  ctx.fillStyle = '#fafbfc'
   ctx.fillRect(0, 0, w, h)
+  ctx.strokeStyle = '#cbd5e1'
+  ctx.lineWidth = 1
+  ctx.setLineDash([3, 3])
+  ctx.strokeRect(0.5, 0.5, w - 1, h - 1)
+  ctx.setLineDash([])
 
-  // Geometric layered logo icon
-  const iconH = Math.min(22, h - 8)
-  const iconW = iconH
-  const ix = 4
-  const iy = (h - iconH) / 2
+  // Neutral photo/logo icon
+  const iconSz = Math.min(18, Math.max(10, h * 0.5), Math.max(10, w * 0.3))
+  const ix = 8
+  const iy = (h - iconSz) / 2
 
-  ctx.lineWidth = 1.5
-  const colors = ['#c084fc', '#818cf8', '#60a5fa', '#38bdf8']
-  for (let i = 0; i < colors.length; i++) {
-    ctx.strokeStyle = colors[i]
-    ctx.beginPath()
-    const offset = i * (iconW * 0.12)
-    ctx.moveTo(ix + offset, iy + iconH)
-    ctx.lineTo(ix + offset + iconW * 0.4, iy)
-    ctx.lineTo(ix + offset + iconW * 0.6, iy + iconH * 0.3)
-    ctx.lineTo(ix + offset + iconW * 0.2, iy + iconH)
-    ctx.closePath()
-    ctx.stroke()
-  }
+  ctx.strokeStyle = '#94a3b8'
+  ctx.lineWidth = 1.25
+  ctx.strokeRect(ix, iy, iconSz, iconSz)
+  // Mountain
+  ctx.beginPath()
+  ctx.moveTo(ix + 2, iy + iconSz - 2)
+  ctx.lineTo(ix + iconSz * 0.45, iy + iconSz * 0.35)
+  ctx.lineTo(ix + iconSz * 0.7, iy + iconSz * 0.6)
+  ctx.lineTo(ix + iconSz - 2, iy + iconSz - 2)
+  ctx.stroke()
+  // Sun circle
+  ctx.beginPath()
+  ctx.arc(ix + iconSz * 0.7, iy + iconSz * 0.35, iconSz * 0.12, 0, Math.PI * 2)
+  ctx.stroke()
 
-  // Label text (e.g. "MS GLASS")
-  ctx.fillStyle = '#0f172a'
-  ctx.font = 'bold 13px "Segoe UI", Arial, sans-serif'
+  // Dynamic label: uses database company name if present, otherwise field label or 'Logo'
+  const text = data?.companyName || data?.company || field?.label || 'Logo'
+  ctx.fillStyle = '#64748b'
+  ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif'
   ctx.textAlign = 'left'
   ctx.textBaseline = 'middle'
-  ctx.fillText(field?.label && field.label !== 'Image' ? field.label : 'MS GLASS', ix + iconW + 6, h / 2)
+  ctx.fillText(text, ix + iconSz + 8, h / 2, Math.max(1, w - ix - iconSz - 12))
   ctx.restore()
 }
 
@@ -586,7 +593,11 @@ export async function buildFieldCanvas(
   }
 
   if (type === 'image') {
-    if (field.src) {
+    let imgSrc = field.src
+    if (!imgSrc) {
+      imgSrc = resolveMappedPreview(field, data) || lookupPath(data, 'logo') || lookupPath(data, 'companyLogo') || lookupPath(data, 'image')
+    }
+    if (imgSrc && typeof imgSrc === 'string' && imgSrc.trim()) {
       return new Promise((resolve) => {
         const img = new Image()
         img.crossOrigin = 'anonymous'
@@ -595,13 +606,13 @@ export async function buildFieldCanvas(
           resolve(canvasTexture(canvas))
         }
         img.onerror = () => {
-          drawPlaceholderImage(ctx, w, h, field)
+          drawPlaceholderImage(ctx, w, h, field, data)
           resolve(canvasTexture(canvas))
         }
-        img.src = field.src
+        img.src = imgSrc
       })
     }
-    drawPlaceholderImage(ctx, w, h, field)
+    drawPlaceholderImage(ctx, w, h, field, data)
     return canvasTexture(canvas)
   }
 
