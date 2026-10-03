@@ -167,9 +167,20 @@ export default function ZplPreviewPanel() {
           </div>
 
           {hasData && status === 'done' && (
-            <span className="lc-badge lc-badge-ok">
+            <span
+              className="lc-badge lc-badge-ok"
+              title={
+                ['tspl', 'godex', 'datamax', 'epl', 'sbpl'].includes(activeLang.toLowerCase())
+                  ? 'Non-ZPL target spools full-page 1-bit bitmap (~540 KB)'
+                  : 'Target uses native printer vector commands (~33 KB)'
+              }
+            >
               <CircleCheck size={13} />
-              {formatSize(width, height)} · {printerDpi} DPI · {byteLabel}
+              {formatSize(width, height)} · {printerDpi} DPI · {byteLabel} ({
+                ['tspl', 'godex', 'datamax', 'epl', 'sbpl'].includes(activeLang.toLowerCase())
+                  ? 'Bitmap spool'
+                  : 'Native'
+              })
             </span>
           )}
         </div>
