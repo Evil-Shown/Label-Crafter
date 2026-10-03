@@ -442,9 +442,14 @@ export default function SettingsView() {
                   <Field label="Brand">
                     <select value={draft.printerBrand} onChange={patch('printerBrand')} className="lc-select !h-10">
                       <option value="zebra">Zebra · ZPL</option>
+                      <option value="honeywell">Honeywell · ZPL</option>
+                      <option value="citizen">Citizen · ZPL</option>
+                      <option value="sato">SATO · ZPL</option>
+                      <option value="sato-sbpl">SATO · SBPL</option>
                       <option value="tsc">TSC · TSPL</option>
-                      <option value="epl">Zebra · EPL</option>
+                      <option value="godex">Godex · EZPL</option>
                       <option value="datamax">Datamax · DPL</option>
+                      <option value="epl">Eltron · EPL2</option>
                     </select>
                   </Field>
                   <Field label="Resolution">
