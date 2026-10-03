@@ -272,8 +272,15 @@ export default function TopHeader() {
             />
           </div>
 
-          {showStatusPopover && (
-            <div className="lc-pop absolute right-0 top-11 w-[408px] p-3">
+          {/* Rendered in a portal: the header is a scroll container, so an
+              absolutely-positioned popover would be clipped by it. */}
+          {showStatusPopover &&
+            createPortal(
+              <div
+                ref={popoverRef}
+                className="lc-pop fixed z-[70] w-[408px] p-3"
+                style={popoverStyle}
+              >
               <div className="flex items-center justify-between pb-2">
                 <span className="lc-dialog-title !text-[13px]">Connection status</span>
                 <button
