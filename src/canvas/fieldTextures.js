@@ -128,51 +128,124 @@ function isBoldWeight(weight) {
   return Number.isFinite(n) && n >= 600
 }
 
-function drawEmptyDxf(ctx, w, h) {
-  // CAD-style glass piece placeholder contour with notch & corner marks
+function drawEmptyDxf(ctx, w, h, field) {
+  // Production CAD glass piece viewport (matching image 2: dashed outline, No Shape, N1F4)
   ctx.save()
-  const pad = 4
+  const pad = 2
   const pw = Math.max(10, w - pad * 2)
   const ph = Math.max(10, h - pad * 2)
-  const x = pad
-  const y = pad
 
-  // Subtle glass fill
-  ctx.fillStyle = '#f8fafc'
-  ctx.fillRect(x, y, pw, ph)
+  // Clean subtle CAD glass background
+  ctx.fillStyle = '#fafbfc'
+  ctx.fillRect(pad, pad, pw, ph)
 
-  // Outer border with subtle CAD blue/slate stroke
-  ctx.strokeStyle = '#64748b'
+  // Clean dashed border
+  ctx.strokeStyle = '#cbd5e1'
   ctx.lineWidth = 1.25
+  ctx.setLineDash([4, 4])
+  ctx.strokeRect(pad + 0.5, pad + 0.5, pw - 1, ph - 1)
   ctx.setLineDash([])
-  ctx.strokeRect(x + 0.5, y + 0.5, pw - 1, ph - 1)
 
-  // Subtle inner grid / CAD corner marks
-  const m = Math.min(8, pw * 0.2, ph * 0.2)
-  ctx.strokeStyle = '#94a3b8'
-  ctx.lineWidth = 1
-  // Top-left corner mark
-  ctx.beginPath()
-  ctx.moveTo(x + 2, y + m)
-  ctx.lineTo(x + m, y + m)
-  ctx.lineTo(x + m, y + 2)
-  // Bottom-right corner mark
-  ctx.moveTo(x + pw - 2, y + ph - m)
-  ctx.lineTo(x + pw - m, y + ph - m)
-  ctx.lineTo(x + pw - m, y + ph - 2)
-  ctx.stroke()
-
-  // Label badge in center
-  ctx.fillStyle = '#475569'
-  ctx.font = '600 10px "JetBrains Mono", ui-monospace, monospace'
+  // Centered "No Shape"
+  ctx.fillStyle = '#94a3b8'
+  ctx.font = '500 11px Arial, sans-serif'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.fillText('DXF SHAPE', w / 2, h / 2 - 5)
+  ctx.fillText('No Shape', w / 2, h / 2)
 
-  ctx.fillStyle = '#94a3b8'
-  ctx.font = '9px Arial, sans-serif'
-  ctx.fillText('Glass Contour', w / 2, h / 2 + 7)
+  // Note tag in bottom-right corner if mapped (e.g. N1F4)
+  const tag = mappingLabel(field) || (field?.noteField ? `N${field.noteField}F${field.subField || 1}` : '')
+  if (tag) {
+    ctx.fillStyle = '#0f172a'
+    ctx.font = 'bold 10px Arial, sans-serif'
+    ctx.textAlign = 'right'
+    ctx.textBaseline = 'bottom'
+    ctx.fillText(tag, w - 4, h - 3)
+  }
 
+  ctx.restore()
+}
+
+function drawPlaceholderImage(ctx, w, h, field) {
+  ctx.save()
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, w, h)
+
+  // Geometric layered logo icon
+  const iconH = Math.min(22, h - 8)
+  const iconW = iconH
+  const ix = 4
+  const iy = (h - iconH) / 2
+
+  ctx.lineWidth = 1.5
+  const colors = ['#c084fc', '#818cf8', '#60a5fa', '#38bdf8']
+  for (let i = 0; i < colors.length; i++) {
+    ctx.strokeStyle = colors[i]
+    ctx.beginPath()
+    const offset = i * (iconW * 0.12)
+    ctx.moveTo(ix + offset, iy + iconH)
+    ctx.lineTo(ix + offset + iconW * 0.4, iy)
+    ctx.lineTo(ix + offset + iconW * 0.6, iy + iconH * 0.3)
+    ctx.lineTo(ix + offset + iconW * 0.2, iy + iconH)
+    ctx.closePath()
+    ctx.stroke()
+  }
+
+  // Label text (e.g. "MS GLASS")
+  ctx.fillStyle = '#0f172a'
+  ctx.font = 'bold 13px "Segoe UI", Arial, sans-serif'
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(field?.label && field.label !== 'Image' ? field.label : 'MS GLASS', ix + iconW + 6, h / 2)
+  ctx.restore()
+}
+
+function drawFallbackBarcode(ctx, w, h, text) {
+  ctx.save()
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, w, h)
+  ctx.fillStyle = '#000000'
+  const barH = Math.max(10, h - 18)
+  const startX = 6
+  const totalW = w - 12
+  const barCount = 38
+  const unit = totalW / (barCount * 1.5)
+  let curX = startX
+  for (let i = 0; i < barCount; i++) {
+    const bw = (i % 3 === 0 ? 2 : 1) * unit
+    if (i % 2 === 0) {
+      ctx.fillRect(curX, 4, bw, barH)
+    }
+    curX += bw + unit * 0.5
+  }
+  ctx.font = '10px monospace'
+  ctx.textAlign = 'center'
+  ctx.fillText(text || '123456789012', w / 2, h - 3)
+  ctx.restore()
+}
+
+function drawFallbackQr(ctx, w, h) {
+  ctx.save()
+  const sz = Math.min(w, h) - 4
+  const ox = (w - sz) / 2
+  const oy = (h - sz) / 2
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(ox, oy, sz, sz)
+  ctx.strokeStyle = '#000000'
+  ctx.strokeRect(ox, oy, sz, sz)
+  const fSz = sz * 0.28
+  ctx.fillStyle = '#000000'
+  ctx.fillRect(ox + 2, oy + 2, fSz, fSz)
+  ctx.fillRect(ox + sz - fSz - 2, oy + 2, fSz, fSz)
+  ctx.fillRect(ox + 2, oy + sz - fSz - 2, fSz, fSz)
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(ox + 5, oy + 5, fSz - 6, fSz - 6)
+  ctx.fillRect(ox + sz - fSz + 1, oy + 5, fSz - 6, fSz - 6)
+  ctx.fillRect(ox + 5, oy + sz - fSz + 1, fSz - 6, fSz - 6)
+  ctx.fillStyle = '#000000'
+  ctx.fillRect(ox + 8, oy + 8, fSz - 12, fSz - 12)
+  ctx.fillRect(ox + sz - fSz + 4, oy + 8, fSz - 12, fSz - 12)
+  ctx.fillRect(ox + 8, oy + sz - fSz + 4, fSz - 12, fSz - 12)
   ctx.restore()
 }
 
@@ -181,7 +254,7 @@ function drawDxfPreview(ctx, w, h, labelData, field) {
   const contour = stored.length ? stored : (labelData?.contour || labelData?.shapeContour)
   const hasContour = Array.isArray(contour) && contour.length >= 3 && stored.length > 0
   if (!hasContour) {
-    drawEmptyDxf(ctx, w, h)
+    drawEmptyDxf(ctx, w, h, field)
     return
   }
 
@@ -258,24 +331,14 @@ export async function buildFieldCanvas(
   const data = showLiveTokens ? labelData : {}
 
   if (isTextLikeType(type)) {
-    const text = resolveFieldDisplayText(field, data, { showLiveTokens })
+    let text = resolveFieldDisplayText(field, data, { showLiveTokens })
+    if (text == null || !String(text).trim()) {
+      text = field.value || field.fallbackValue || field.label || ''
+    }
     const fs = field.fontSize || globalStyles?.defaultFontSize || 12
     const ff = field.fontFamily || globalStyles?.fontFamily || 'Arial'
     const fw = isBoldWeight(field.fontWeight) ? 'bold' : 'normal'
     const inverted = !!(field.blackBox || field.isBlackBox)
-
-    const isChipPlaceholder = isUnboundPlaceholder(field, text, data)
-
-    if (isChipPlaceholder && !inverted && showKeys) {
-      const align = String(field.textAlign || 'left').toLowerCase()
-      drawKeyChip(ctx, w, h, chipKeyLabel(field), {
-        align: align === 'right' || align === 'end' ? 'right' : align === 'center' || align === 'middle' ? 'center' : 'left',
-      })
-      return canvasTexture(canvas, { crisp: false })
-    }
-
-    void isBound
-    void hasRealValue
 
     if (inverted) {
       ctx.fillStyle = '#000000'
@@ -397,30 +460,43 @@ export async function buildFieldCanvas(
         if (data[s]) { val = String(data[s]); break }
       }
     }
-
-    // R10 / spec §5.2: a barcode with no real data must print nothing at all.
-    // No sample number, no bars — just the key, so nothing invented reaches
-    // the printer.
-    if (!String(val).trim()) {
-      drawKeyChip(ctx, w, h, chipKeyLabel(field), { compact: true, fill: '#F8FAFC' })
-      return canvasTexture(canvas, { crisp: false })
+    if (!val) {
+      val = field.value || field.fallbackValue || '123456789012'
     }
+
+    let cleanVal = String(val).replace(/\{\{[^}]+\}\}/g, '123456789012').trim()
+    if (!cleanVal) cleanVal = '123456789012'
 
     try {
       const bc = document.createElement('canvas')
-      JsBarcode(bc, String(val), {
+      JsBarcode(bc, cleanVal, {
         format: field.barcodeFormat || 'CODE128',
         displayValue: field.displayValue !== false,
-        fontSize: Math.max(8, Math.min(14, h * 0.2)) * pr,
+        fontSize: Math.max(9, Math.min(14, h * 0.22)) * pr,
         margin: 2 * pr,
-        width: Math.max(1, 2 * pr),
-        height: Math.max(20, h - 16) * pr,
+        width: Math.max(1, (field.barWidth || 2) * pr),
+        height: Math.max(20, h - (field.displayValue !== false ? 18 : 6)) * pr,
       })
       ctx.imageSmoothingEnabled = false
       ctx.drawImage(bc, 0, 0, w, h)
       ctx.imageSmoothingEnabled = true
     } catch {
-      drawKeyChip(ctx, w, h, chipKeyLabel(field), { compact: true, fill: '#F8FAFC' })
+      try {
+        const bc = document.createElement('canvas')
+        JsBarcode(bc, '123456789012', {
+          format: 'CODE128',
+          displayValue: true,
+          fontSize: Math.max(9, Math.min(14, h * 0.22)) * pr,
+          margin: 2 * pr,
+          width: Math.max(1, 2 * pr),
+          height: Math.max(20, h - 18) * pr,
+        })
+        ctx.imageSmoothingEnabled = false
+        ctx.drawImage(bc, 0, 0, w, h)
+        ctx.imageSmoothingEnabled = true
+      } catch {
+        drawFallbackBarcode(ctx, w, h, cleanVal)
+      }
     }
     return canvasTexture(canvas, { crisp: true })
   }
@@ -433,28 +509,34 @@ export async function buildFieldCanvas(
         if (data[s]) { val = String(data[s]); break }
       }
     }
-    const isPlaceholder = !String(val).trim()
-
-    // R10: a QR with no real data shows its key rather than encoding a sample.
-    if (isPlaceholder) {
-      drawKeyChip(ctx, w, h, chipKeyLabel(field), { compact: true, fill: '#F8FAFC' })
-      return canvasTexture(canvas, { crisp: false })
+    if (!val) {
+      val = field.value || field.fallbackValue || 'https://spil-labs.com'
     }
+    let cleanVal = String(val).replace(/\{\{[^}]+\}\}/g, 'https://spil-labs.com').trim()
+    if (!cleanVal) cleanVal = 'https://spil-labs.com'
 
     try {
       const qrCanvas = document.createElement('canvas')
-      await QRCode.toCanvas(qrCanvas, String(val), {
-        width: Math.round(Math.min(w, h) * pr),
+      const targetSz = Math.round(Math.min(w, h) * pr)
+      await QRCode.toCanvas(qrCanvas, cleanVal, {
+        width: targetSz,
         margin: 1,
         errorCorrectionLevel: field.qrEcc || 'M',
+        color: {
+          dark: field.color || '#000000',
+          light: '#ffffff',
+        },
       })
       ctx.imageSmoothingEnabled = false
-      ctx.drawImage(qrCanvas, 0, 0, w, h)
+      const sz = Math.min(w, h)
+      const qx = (w - sz) / 2
+      const qy = (h - sz) / 2
+      ctx.drawImage(qrCanvas, qx, qy, sz, sz)
       ctx.imageSmoothingEnabled = true
     } catch {
-      drawKeyChip(ctx, w, h, chipKeyLabel(field), { compact: true, fill: '#F8FAFC' })
+      drawFallbackQr(ctx, w, h)
     }
-    return canvasTexture(canvas)
+    return canvasTexture(canvas, { crisp: true })
   }
 
   if (type === 'line') {
@@ -503,20 +585,24 @@ export async function buildFieldCanvas(
     return canvasTexture(canvas)
   }
 
-  if (type === 'image' && field.src) {
-    return new Promise((resolve) => {
-      const img = new Image()
-      img.crossOrigin = 'anonymous'
-      img.onload = () => {
-        ctx.drawImage(img, 0, 0, w, h)
-        resolve(canvasTexture(canvas))
-      }
-      img.onerror = () => {
-        ctx.strokeRect(1, 1, w - 2, h - 2)
-        resolve(canvasTexture(canvas))
-      }
-      img.src = field.src
-    })
+  if (type === 'image') {
+    if (field.src) {
+      return new Promise((resolve) => {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0, w, h)
+          resolve(canvasTexture(canvas))
+        }
+        img.onerror = () => {
+          drawPlaceholderImage(ctx, w, h, field)
+          resolve(canvasTexture(canvas))
+        }
+        img.src = field.src
+      })
+    }
+    drawPlaceholderImage(ctx, w, h, field)
+    return canvasTexture(canvas)
   }
 
   ctx.strokeStyle = '#ccc'

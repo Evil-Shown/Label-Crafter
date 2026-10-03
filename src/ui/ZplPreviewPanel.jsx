@@ -10,13 +10,19 @@ import {
   CircleCheck,
 } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
-import { compileLabel } from '../services/printService'
+import {
+  compileLabel,
+  brandForLanguage,
+  brandLanguage,
+  LANGUAGE_LABELS,
+  PRINTER_LANGUAGES,
+} from '../services/printService'
 import { buildExportTemplate } from '../utils/template'
 import { renderLabelToCanvas } from '../utils/export'
 import { formatSize } from '../utils/units'
 
-const LANGS = ['ZPL', 'TSPL', 'EPL']
-const EXT = { ZPL: 'zpl', TSPL: 'tspl', EPL: 'epl' }
+/** Languages the Print Service can emit: ZPL, TSPL, EZPL, SBPL, DPL, EPL. */
+const EXT = { zpl: 'zpl', tspl: 'tspl', ezpl: 'ezpl', sbpl: 'sbpl', dpl: 'dpl', epl: 'epl' }
 
 /** Colour one line of printer code: commands blue, field data amber. */
 function highlightLine(line) {
@@ -49,7 +55,9 @@ export default function ZplPreviewPanel() {
   const height = useLabelStore((s) => s.height)
   const addToast = useLabelStore((s) => s.addToast)
 
-  const [activeLang, setActiveLang] = useState('ZPL')
+  // The service takes a brand, not a language. Start on the language the
+  // chosen printer actually speaks.
+  const [activeLang, setActiveLang] = useState(() => brandLanguage(printerBrand) || 'zpl')
   const [code, setCode] = useState('')
   const [status, setStatus] = useState('idle') // idle | working | done | error
   const [error, setError] = useState('')
@@ -88,12 +96,12 @@ export default function ZplPreviewPanel() {
         const res = await compileLabel({
           baseUrl: printServiceUrl,
           client,
-          brand: activeLang.toLowerCase(),
+          brand: brandForLanguage(activeLang, state.printerBrand),
           printerDpi,
           template: buildExportTemplate(state),
           labelData,
         })
-        setCode(res?.code || res?.zpl || res?.printerCode || '')
+        setCode(res?.payload || res?.zpl || res?.code || res?.printerCode || '')
         setStatus('done')
       } catch (e) {
         setError(e.message || 'The Print Service could not compile this label.')
@@ -140,18 +148,19 @@ export default function ZplPreviewPanel() {
           </span>
 
           <div className="flex items-center rounded-[7px] border border-[var(--line)] bg-[var(--bg)] p-0.5">
-            {LANGS.map((lang) => (
+            {PRINTER_LANGUAGES.map((lang) => (
               <button
                 key={lang}
                 type="button"
                 onClick={() => setActiveLang(lang)}
+                title={`Compile ${LANGUAGE_LABELS[lang] || lang.toUpperCase()} for ${brandForLanguage(lang, printerBrand)}`}
                 className={`rounded-[5px] px-2.5 py-1 text-[12.5px] font-semibold transition-colors ${
                   activeLang === lang
                     ? 'bg-[var(--panel)] text-[var(--pri)] shadow-[var(--sh-sm)]'
                     : 'text-[var(--mut)] hover:text-[var(--tx)]'
                 }`}
               >
-                {lang}
+                {LANGUAGE_LABELS[lang] || lang.toUpperCase()}
               </button>
             ))}
           </div>
@@ -259,7 +268,7 @@ export default function ZplPreviewPanel() {
                 className="lc-btn lc-btn-primary !h-10"
               >
                 <Code size={14} />
-                <span>Compile {activeLang} with the Print Service</span>
+                <span>Compile {LANGUAGE_LABELS[activeLang] || activeLang.toUpperCase()} with the Print Service</span>
               </button>
             )}
 
