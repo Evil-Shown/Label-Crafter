@@ -1,0 +1,53 @@
+/**
+ * Label Designer mark: a lightbulb drawn as a quill pen.
+ *
+ * Inline SVG rather than an <img> so it can inherit the design tokens
+ * (--pri / --nav), scale without a network request, and work identically in
+ * Vite dev, the production build and the Tauri shell.
+ */
+export default function BrandMark({ size = 32, className = '', title = 'Label Designer' }) {
+  return (
+    <svg
+      viewBox="0 0 64 64"
+      width={size}
+      height={size}
+      className={className}
+      role="img"
+      aria-label={title}
+      fill="none"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {/* Bulb, rays and square accent — primary blue */}
+      <g stroke="var(--pri)" strokeWidth="2.6">
+        <path d="M32 9c-9.1 0-16.5 7.3-16.5 16.4 0 5.6 2.8 9 6.2 12.4 1.6 1.6 2.1 3 2.1 4.6h16.4c0-1.6.5-3 2.1-4.6 3.4-3.4 6.2-6.8 6.2-12.4C48.5 16.3 41.1 9 32 9Z" />
+        <path d="M23.8 45.4h16.4" />
+        <path d="M25.6 49.4h12.8" />
+        {/* filament */}
+        <path d="M27.4 30.6 32 35.2l4.6-4.6" strokeWidth="2.2" />
+        <path d="M32 35.2v7.4" strokeWidth="2.2" />
+        {/* rays */}
+        <g strokeWidth="2.2">
+          <path d="M32 4.4V1.8" />
+          <path d="M20.6 7.1 19.1 4.8" />
+          <path d="M43.4 7.1l1.5-2.3" />
+          <path d="M12.6 14.9l-2.2-1.2" />
+          <path d="M51.4 14.9l2.2-1.2" />
+          <path d="M9.6 26.6H6.8" />
+        </g>
+        {/* square accent */}
+        <path d="M45.6 39.4h7.2v7.2h-7.2z" strokeWidth="2.2" />
+      </g>
+
+      {/* Quill — navy */}
+      <path
+        d="M47.4 5.6c-1 8.6-4.2 19.6-9.8 28.4-3.6 5.6-7 9.8-9.4 12.2 1-4.6 1.4-9.6 1.4-14.8 0-9.6 3.2-18.8 8.6-25.4 3 2.6 6.2 4.2 9.2 4.6Z"
+        fill="var(--nav)"
+      />
+      <g stroke="var(--nav)" strokeWidth="2.2">
+        <path d="M47.4 5.6c-3 4.4-6.4 8-10.2 10.8-3.8 2.8-8.2 4.4-13.2 4.8" />
+        <path d="M28.2 56.2c3.6-3 6.4-6.8 8.4-11.2 2-4.4 3.2-9 3.6-13.8" />
+      </g>
+    </svg>
+  )
+}

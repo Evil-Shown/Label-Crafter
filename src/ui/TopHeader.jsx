@@ -22,8 +22,8 @@ import {
   Cloud,
 } from 'lucide-react'
 import { useLabelStore, getTemplateFingerprint } from '../store/labelStore'
-import appIcon from '../assets/app_icon.png'
 import { formatSize } from '../utils/units'
+import BrandMark from './BrandMark'
 
 function StatusPill({ label, ok, onClick, title }) {
   return (
@@ -207,9 +207,9 @@ export default function TopHeader() {
           type="button"
           onClick={() => useLabelStore.setState({ showSplashScreen: true })}
           title="Click to replay startup opening splash screen"
-          className="flex h-8 w-8 sm:h-9 sm:w-9 flex-none items-center justify-center rounded-[10px] overflow-hidden shadow-sm ring-1 ring-white/20 transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+          className="flex h-8 w-8 sm:h-9 sm:w-9 flex-none items-center justify-center rounded-[10px] bg-white p-[3px] ring-1 ring-white/25 transition-transform hover:scale-105 active:scale-95 cursor-pointer"
         >
-          <img src={appIcon} alt="App Icon" className="h-full w-full object-cover scale-105" />
+          <BrandMark size={26} className="h-full w-full" />
         </button>
         <div className="min-w-0">
           <span className="block text-[14px] sm:text-[15px] font-bold leading-tight text-white tracking-tight">
