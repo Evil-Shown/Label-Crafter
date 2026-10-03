@@ -29,8 +29,12 @@ function clearGroup(group) {
 /**
  * Two-tier grid: a very faint 1 mm guide for fine placement plus a slightly
  * stronger line every 5 mm. A single dense tier reads as dither on screen.
+ *
+ * The paper is always white — even in dark mode (spec §1.8) — so the grid is
+ * always drawn in light greys. Using theme-dark grid colours on white paper
+ * turns the label into a checkerboard.
  */
-function buildGrid(gridGroup, labelW, labelH, gridMm, showGrid, isDark) {
+function buildGrid(gridGroup, labelW, labelH, gridMm, showGrid) {
   clearGroup(gridGroup)
   if (!showGrid) return
   const step = mmToPx(gridMm) || 1
@@ -50,8 +54,8 @@ function buildGrid(gridGroup, labelW, labelH, gridMm, showGrid, isDark) {
     )
   }
 
-  addLines(step, isDark ? 0x1b2436 : 0xf2f5f9, 0)
-  addLines(major, isDark ? 0x2b3a52 : 0xdfe6ef, 0.1)
+  addLines(step, 0xf4f7fa, 0)
+  addLines(major, 0xe4e9f0, 0.1)
   // The grid sits between the paper (-1) and the content (0) so it never
   // draws over the printed elements.
   gridGroup.position.z = -0.5
@@ -217,6 +221,7 @@ export default function LabelCanvas() {
   const globalStyles = useLabelStore((s) => s.globalStyles)
   const labelData = useLabelStore((s) => s.labelData)
   const showLiveTokens = useLabelStore((s) => s.showLiveTokens)
+  const showKeysOnCanvas = useLabelStore((s) => s.showKeysOnCanvas)
   const zoom = useLabelStore((s) => s.zoom)
   const panX = useLabelStore((s) => s.panX)
   const panY = useLabelStore((s) => s.panY)
@@ -237,7 +242,6 @@ export default function LabelCanvas() {
   const getLocal = (clientX, clientY) => {
     const sm = sceneRef.current
     if (!sm) return { x: 0, y: 0 }
-    const s = useLabelStore.getState()
     return screenToLabelLocal(sm, clientX, clientY)
   }
 
@@ -249,7 +253,7 @@ export default function LabelCanvas() {
     const sorted = [...visible].sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0))
     const pr = getTexturePixelRatio(useLabelStore.getState().zoom)
     for (const field of sorted) {
-      const tex = await buildFieldCanvas(field, labelData, globalStyles, showLiveTokens, pr)
+      const tex = await buildFieldCanvas(field, labelData, globalStyles, showLiveTokens, pr, { showKeysOnCanvas })
       const w = Math.max(1, field.width)
       const h = Math.max(1, field.height)
       const mesh = new THREE.Mesh(
@@ -261,7 +265,7 @@ export default function LabelCanvas() {
       mesh.userData.zIndex = field.zIndex ?? 0
       sm.registerMesh(field.fieldKey, mesh)
     }
-    buildGrid(sm.gridGroup, labelW, labelH, gridMm, showGrid, isDark)
+    buildGrid(sm.gridGroup, labelW, labelH, gridMm, showGrid)
     buildPaper(sm.contentGroup, labelW, labelH, isDark)
     clearGroup(sm.overlayGroup)
     buildLabelBorder(sm.overlayGroup, labelW, labelH, isDark)
@@ -272,7 +276,7 @@ export default function LabelCanvas() {
     }
     sm.setTransform(zoom, panX, panY)
     sm.render()
-  }, [fields, labelData, globalStyles, showLiveTokens, selectedKeys, labelW, labelH, gridMm, showGrid, zoom, panX, panY, isDark])
+  }, [fields, labelData, globalStyles, showLiveTokens, showKeysOnCanvas, selectedKeys, labelW, labelH, gridMm, showGrid, zoom, panX, panY, isDark])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -381,7 +385,8 @@ export default function LabelCanvas() {
 
       if (e.shiftKey) {
         const set = new Set(selectedKeys)
-        set.has(hitKey) ? set.delete(hitKey) : set.add(hitKey)
+        if (set.has(hitKey)) set.delete(hitKey)
+        else set.add(hitKey)
         store.select([...set])
       } else if (!selectedKeys.includes(hitKey)) {
         store.select([hitKey])
