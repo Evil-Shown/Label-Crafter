@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body { margin: 0; background: #F4F6FA; font: 13px/1.4 'Segoe UI', sans-serif; }
+      .row { display: flex; align-items: center; gap: 16px; padding: 14px 16px; }
+      .light { background: #F4F6FA; color: #0F172A; }
+      .navy { background: #0F2240; color: #fff; }
+      .dark { background: #0B1220; color: #E6EDF7; }
+      img { display: block; }
+      .tile { background: #fff; border-radius: 10px; box-shadow: 0 1px 3px rgba(15,23,42,.2); }
+      .tile img { padding: 5px; }
+      .sq { border-radius: 10px; background: #fff; }
+      h3 { margin: 0; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; opacity: .6; }
+    </style>
+  </head>
+  <body>
+    <div class="row light">
+      <h3>light</h3>
+      <img src="../src/assets/app_icon.svg" width="64" height="64" />
+      <div class="sq"><img src="../src/assets/app_icon.svg" width="40" height="40" /></div>
+      <div class="tile"><img src="../src/assets/app_icon.svg" width="40" height="40" /></div>
+      <img src="../src/assets/app_icon.svg" width="24" height="24" />
+      <img src="../src/assets/app_icon.svg" width="16" height="16" />
+    </div>
+    <div class="row navy">
+      <h3>navy header</h3>
+      <div class="tile" style="width:36px;height:36px"><img src="../src/assets/app_icon.svg" width="30" height="30" style="margin:3px" /></div>
+      <div class="tile" style="width:28px;height:28px"><img src="../src/assets/app_icon.svg" width="22" height="22" style="margin:3px" /></div>
+    </div>
+    <div class="row dark">
+      <h3>dark</h3>
+      <img src="../src/assets/app_icon.svg" width="48" height="48" />
+      <div class="tile"><img src="../src/assets/app_icon.svg" width="32" height="32" /></div>
+    </div>
+  </body>
+</html>
