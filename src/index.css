@@ -324,6 +324,18 @@ textarea.lc-input { height: auto; padding: 8px 10px; line-height: 1.5; }
 input[type='checkbox'],
 input[type='radio'] { accent-color: var(--pri); }
 
+/* Hide the number spinners: the mm fields are too narrow for them and the
+   reference design shows plain inputs. */
+.lc-input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.lc-input[type='number']::-webkit-outer-spin-button,
+.lc-input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 /* ─── Buttons ───────────────────────────────────────────────── */
 .lc-btn {
   display: inline-flex;
