@@ -224,13 +224,31 @@ export default function SettingsView() {
                 >
                   <div className="grid grid-cols-3 gap-4">
                     <Field label="Server">
-                      <input type="text" value={draft.server} onChange={patch('server')} className="lc-input !h-10" />
+                      <input
+                        type="text"
+                        value={draft.server || ''}
+                        onChange={patch('server')}
+                        placeholder="e.g. localhost or SQL-SERVER"
+                        className="lc-input !h-10"
+                      />
                     </Field>
                     <Field label="Port">
-                      <input type="number" value={draft.port} onChange={patch('port')} className="lc-input !h-10" />
+                      <input
+                        type="number"
+                        value={draft.port || ''}
+                        onChange={patch('port')}
+                        placeholder="1433"
+                        className="lc-input !h-10"
+                      />
                     </Field>
                     <Field label="Database">
-                      <input type="text" value={draft.database} onChange={patch('database')} className="lc-input !h-10" />
+                      <input
+                        type="text"
+                        value={draft.database || ''}
+                        onChange={patch('database')}
+                        placeholder="e.g. SpilProduction"
+                        className="lc-input !h-10"
+                      />
                     </Field>
                   </div>
 
@@ -378,13 +396,25 @@ export default function SettingsView() {
               {erpMode === 'different' && (
                 <div className="mt-4 grid gap-4 rounded-[10px] border border-[var(--erp-line)] bg-[var(--erp-s)] p-4 sm:grid-cols-3">
                   <Field label="ERP server">
-                    <input type="text" defaultValue={draft.server} className="lc-input !h-10" />
+                    <input
+                      type="text"
+                      placeholder="e.g. ERP-SQL01"
+                      className="lc-input !h-10"
+                    />
                   </Field>
                   <Field label="ERP port">
-                    <input type="number" defaultValue={draft.port} className="lc-input !h-10" />
+                    <input
+                      type="number"
+                      placeholder="1433"
+                      className="lc-input !h-10"
+                    />
                   </Field>
                   <Field label="ERP database">
-                    <input type="text" defaultValue="SpilErp" className="lc-input !h-10" />
+                    <input
+                      type="text"
+                      placeholder="e.g. SpilErp"
+                      className="lc-input !h-10"
+                    />
                   </Field>
                 </div>
               )}
