@@ -36,6 +36,7 @@ import {
   createBlackBoxTextField,
 } from '../elements/factories'
 import { toMm } from '../utils/units'
+import { StylePreviewCard } from './StylePreviewCard'
 
 const SIZES = [
   { id: '100x150', w: 100, h: 150, label: '100 × 150 mm' },
@@ -961,22 +962,23 @@ export default function OifTemplateWizardModal() {
                   <span className="text-[11.5px] text-[var(--mut)]">Select draft template style</span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {DESIGN_STYLES.map((ds) => {
                     const isSelected = layoutStyle === ds.id
                     return (
                       <div
                         key={ds.id}
                         onClick={() => setLayoutStyle(ds.id)}
-                        className={`group cursor-pointer rounded-[10px] border p-3 transition-all relative flex flex-col justify-between ${
+                        className={`group cursor-pointer rounded-xl border p-2.5 transition-all relative flex flex-col justify-between ${
                           isSelected
-                            ? 'border-[var(--pri)] bg-[var(--pri-s)]/60 shadow-sm ring-1 ring-[var(--pri)]'
-                            : 'border-[var(--line)] bg-[var(--panel)] hover:border-[var(--pri)]/60 hover:bg-[var(--bg)]'
+                            ? 'border-[var(--pri)] bg-[var(--pri-s)] shadow-md ring-2 ring-[var(--pri)]/40'
+                            : 'border-[var(--line)] bg-[var(--panel)] hover:border-[var(--pri)]/60 hover:bg-[var(--bg)] hover:shadow-xs'
                         }`}
                       >
                         <div>
-                          <div className="flex items-center justify-between gap-1.5 pb-1">
-                            <span className="text-[12.5px] font-bold text-[var(--tx)] flex items-center gap-1.5">
+                          {/* Title & Tag */}
+                          <div className="flex items-center justify-between gap-1.5 pb-2">
+                            <span className="text-[13px] font-bold text-[var(--tx)] flex items-center gap-1.5">
                               <span
                                 className="h-2 w-2 rounded-full flex-none"
                                 style={{ backgroundColor: ds.accent }}
@@ -984,35 +986,40 @@ export default function OifTemplateWizardModal() {
                               {ds.name}
                             </span>
                             <span
-                              className={`lc-badge !h-4 !px-1.5 !text-[9.5px] font-bold ${
+                              className={`lc-badge !h-4.5 !px-2 !text-[9.5px] font-bold ${
                                 isSelected ? 'lc-badge-opti !bg-[var(--pri)] !text-white' : 'lc-badge-erp'
                               }`}
                             >
                               {ds.tag}
                             </span>
                           </div>
-                          <p className="text-[11px] font-semibold text-[var(--tx-2)] leading-tight mb-1">
+
+                          {/* Visual Miniature Label Preview */}
+                          <div className="my-1.5">
+                            <StylePreviewCard styleId={ds.id} accent={ds.accent} />
+                          </div>
+
+                          {/* Concise 1-line summary */}
+                          <p className="text-[11px] font-medium text-[var(--mut)] leading-tight mt-1 line-clamp-1">
                             {ds.subtitle}
-                          </p>
-                          <p className="text-[10.5px] text-[var(--mut)] leading-snug line-clamp-2">
-                            {ds.desc}
                           </p>
                         </div>
 
-                        <div className="mt-2.5 pt-2 border-t border-[var(--line)] flex items-center justify-between text-[11px]">
-                          <span className="text-[var(--mut)]">
+                        {/* Card Footer Selection state */}
+                        <div className="mt-2 pt-2 border-t border-[var(--line)] flex items-center justify-between text-[11px]">
+                          <span className="text-[var(--mut)] font-medium">
                             {ds.id === 'blank'
-                              ? 'Empty canvas'
+                              ? 'Manual'
                               : ds.id === 'minimal_clean'
-                              ? '1-Column Flow'
-                              : 'Dividers + Badges'}
+                              ? '1-Col Flow'
+                              : 'Structured'}
                           </span>
                           <span
-                            className={`font-semibold flex items-center gap-1 ${
+                            className={`font-bold flex items-center gap-1 ${
                               isSelected ? 'text-[var(--pri)]' : 'text-[var(--mut)] group-hover:text-[var(--tx)]'
                             }`}
                           >
-                            {isSelected && <Check size={12} />}
+                            {isSelected && <Check size={13} />}
                             {isSelected ? 'Selected' : 'Use style'}
                           </span>
                         </div>
