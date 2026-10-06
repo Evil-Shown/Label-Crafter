@@ -32,10 +32,12 @@ const ROTATIONS = [0, 90, 180, 270]
 
 function Group({ n, title, children }) {
   return (
-    <section className="lc-card lc-card-pad mb-4">
-      <div className="lc-prop-head">
-        <span className="lc-prop-num">{n}</span>
-        <h3 className="lc-section-title">{title}</h3>
+    <section className="lc-card lc-card-pad mb-3.5 !rounded-2xl">
+      <div className="lc-prop-head mb-2.5">
+        <span className="lc-prop-num !h-5 !w-5 !rounded-full !bg-[var(--pri)] !text-[11px] !font-black !shadow-xs">
+          {n}
+        </span>
+        <h3 className="lc-section-title !text-[13px] !font-bold tracking-tight">{title}</h3>
       </div>
       {children}
     </section>
@@ -139,7 +141,7 @@ export default function PropertiesPanel() {
         </header>
 
         <div className="flex-1 px-4 py-4">
-          <section className="lc-card lc-card-pad mb-4">
+          <section className="lc-card lc-card-pad mb-4 !rounded-2xl">
             <div className="mb-3 flex items-center gap-2">
               <Ruler size={15} className="text-[var(--mut)]" />
               <h3 className="lc-section-title">Size</h3>
@@ -163,14 +165,14 @@ export default function PropertiesPanel() {
                     aria-label={`${side} margin`}
                     value={margins?.[side] ?? 0}
                     onChange={(e) => setMargins({ [side]: Number(e.target.value) })}
-                    className="lc-input !h-[32px] !px-2 text-center"
+                    className="lc-input !h-[32px] !px-2 text-center !rounded-xl"
                   />
                 ))}
               </div>
             </div>
           </section>
 
-          <section className="lc-card lc-card-pad mb-4">
+          <section className="lc-card lc-card-pad mb-4 !rounded-2xl">
             <div className="mb-3 flex items-center gap-2">
               <Printer size={15} className="text-[var(--mut)]" />
               <h3 className="lc-section-title">Printer</h3>
@@ -180,7 +182,7 @@ export default function PropertiesPanel() {
                 <select
                   value={printerBrand}
                   onChange={(e) => setPrintConfig({ printerBrand: e.target.value })}
-                  className="lc-select"
+                  className="lc-select !rounded-xl"
                 >
                   <option value="zebra">Zebra</option>
                   <option value="tsc">TSC</option>
@@ -197,7 +199,7 @@ export default function PropertiesPanel() {
                 <select
                   value={printerDpi}
                   onChange={(e) => setPrintConfig({ printerDpi: Number(e.target.value) })}
-                  className="lc-select"
+                  className="lc-select !rounded-xl"
                 >
                   <option value={203}>203 DPI</option>
                   <option value={300}>300 DPI</option>
@@ -207,7 +209,7 @@ export default function PropertiesPanel() {
             </div>
           </section>
 
-          <section className="lc-card lc-card-pad">
+          <section className="lc-card lc-card-pad !rounded-2xl">
             <div className="mb-3 flex items-center gap-2">
               <FileText size={15} className="text-[var(--mut)]" />
               <h3 className="lc-section-title">Template</h3>
