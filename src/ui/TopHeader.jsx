@@ -25,19 +25,56 @@ import {
 import { useLabelStore, getTemplateFingerprint } from '../store/labelStore'
 import { formatSize } from '../utils/units'
 import BrandMark from './BrandMark'
+import {
+  AppBar,
+  Toolbar,
+  Tabs,
+  Tab,
+  Button,
+  IconButton,
+  Tooltip,
+  Chip,
+  Box,
+  Typography,
+} from '@mui/material'
 
 function StatusPill({ label, ok, onClick, title, btnRef }) {
   return (
-    <button
+    <Chip
       ref={btnRef}
-      type="button"
+      component="button"
       onClick={onClick}
       title={title}
-      className="flex items-center gap-2 rounded-full border border-white/12 bg-white/8 px-3 py-1.5 text-[12.5px] font-semibold text-[#D6E2F0] transition-colors hover:bg-white/14"
-    >
-      <span className={`h-1.5 w-1.5 rounded-full ${ok ? 'bg-[#22C55E]' : 'bg-[#F87171]'}`} />
-      {label}
-    </button>
+      size="small"
+      icon={
+        <span
+          style={{
+            width: 7,
+            height: 7,
+            borderRadius: '50%',
+            backgroundColor: ok ? '#4caf50' : '#f44336',
+            boxShadow: ok ? '0 0 6px #4caf50' : '0 0 6px #f44336',
+          }}
+        />
+      }
+      label={label}
+      sx={{
+        backgroundColor: 'rgba(255, 255, 255, 0.08)',
+        color: '#E2E8F0',
+        fontWeight: 600,
+        fontSize: '0.78rem',
+        border: '1px solid rgba(255, 255, 255, 0.14)',
+        cursor: 'pointer',
+        transition: 'all 0.2s',
+        '&:hover': {
+          backgroundColor: 'rgba(255, 255, 255, 0.16)',
+          borderColor: 'rgba(255, 255, 255, 0.3)',
+        },
+        '& .MuiChip-icon': {
+          marginLeft: '8px',
+        },
+      }}
+    />
   )
 }
 
@@ -205,54 +242,147 @@ export default function TopHeader() {
   })()
 
   return (
-    <header className="lc-top-header flex h-14 shrink-0 items-center justify-between gap-2 overflow-visible px-3 sm:px-4 text-white select-none">
-      {/* 1. App title + subtitle + new template */}
-      <div className="flex flex-none items-center gap-2.5">
-        <div
-          className="flex h-8 w-8 sm:h-9 sm:w-9 flex-none items-center justify-center rounded-[10px] bg-white p-[3px] ring-1 ring-white/25 select-none"
-          title="SPIL Label Designer"
-        >
-          <BrandMark size={26} className="h-full w-full" />
-        </div>
-        <div className="min-w-0">
-          <span className="block text-[14px] sm:text-[15px] font-bold leading-tight text-white tracking-tight">
-            Label Designer
-          </span>
-          <p className="truncate text-[10.5px] sm:text-[11px] font-medium text-[var(--nav-ink)] max-w-[130px] sm:max-w-[200px]" title={`${name} · ${formatSize(width, height)}`}>
-            {name} · {formatSize(width, height)}
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setModal('showNewModal', true)}
-          className="ml-0.5 sm:ml-1 flex flex-none items-center gap-1 sm:gap-1.5 rounded-[7px] border border-white/20 bg-white/10 px-2 sm:px-2.5 py-1 sm:py-1.5 text-[11.5px] sm:text-[12.5px] font-semibold text-white transition-colors hover:bg-white/18"
-          title="Create a new template"
-        >
-          <Plus size={13} />
-          <span>New</span>
-        </button>
-      </div>
-
-      {/* 2. Text tabs */}
-      <nav className="flex flex-none items-center gap-0.5 sm:gap-1 rounded-[10px] border border-white/10 bg-black/25 p-0.5 sm:p-1">
-        {tabs.map(({ id, label, Icon }) => {
-          const on = activeTab === id
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setActiveTab(id)}
-              className={`flex items-center gap-1 sm:gap-1.5 rounded-[7px] px-2.5 sm:px-3 py-1 sm:py-1.5 text-[12px] sm:text-[13px] font-semibold transition-colors ${
-                on ? 'bg-white/16 text-white' : 'text-[var(--nav-ink)] hover:bg-white/8 hover:text-white'
-              }`}
+    <AppBar
+      position="static"
+      elevation={2}
+      className="lc-top-header"
+      sx={{
+        height: 56,
+        justifyContent: 'center',
+        background: 'linear-gradient(90deg, var(--nav) 0%, var(--nav-end) 100%)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
+        px: { xs: 1.5, sm: 2 },
+      }}
+    >
+      <Toolbar
+        variant="dense"
+        disableGutters
+        sx={{
+          minHeight: 56,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 1.5,
+        }}
+      >
+        {/* 1. App title + subtitle + new template */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexShrink: 0 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              height: 36,
+              width: 36,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: 2,
+              bgcolor: '#FFFFFF',
+              p: 0.5,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+            }}
+            title="SPIL Label Designer"
+          >
+            <BrandMark size={26} className="h-full w-full" />
+          </Box>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography
+              variant="subtitle2"
+              sx={{ fontWeight: 800, color: '#FFFFFF', lineHeight: 1.15, letterSpacing: '-0.01em' }}
             >
-              <Icon size={14} className="shrink-0" />
-              <span className="hidden sm:inline">{label}</span>
-            </button>
-          )
-        })}
-      </nav>
+              Label Designer
+            </Typography>
+            <Typography
+              variant="caption"
+              noWrap
+              sx={{
+                display: 'block',
+                color: 'var(--nav-ink)',
+                fontWeight: 500,
+                fontSize: '0.72rem',
+                maxWidth: { xs: 120, sm: 180 },
+              }}
+              title={`${name} · ${formatSize(width, height)}`}
+            >
+              {name} · {formatSize(width, height)}
+            </Typography>
+          </Box>
+
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<Plus size={14} />}
+            onClick={() => setModal('showNewModal', true)}
+            sx={{
+              color: '#FFFFFF',
+              borderColor: 'rgba(255, 255, 255, 0.25)',
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              py: 0.4,
+              px: 1.2,
+              borderRadius: 2,
+              '&:hover': {
+                backgroundColor: 'rgba(255, 255, 255, 0.18)',
+                borderColor: 'rgba(255, 255, 255, 0.4)',
+              },
+            }}
+          >
+            New
+          </Button>
+        </Box>
+
+        {/* 2. Material Tabs */}
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            bgcolor: 'rgba(0, 0, 0, 0.25)',
+            p: 0.5,
+            borderRadius: 2,
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+          }}
+        >
+          <Tabs
+            value={tabs.findIndex((t) => t.id === activeTab)}
+            onChange={(_, idx) => setActiveTab(tabs[idx].id)}
+            sx={{
+              minHeight: 32,
+              '& .MuiTabs-indicator': {
+                backgroundColor: '#90CAF9',
+                height: 3,
+                borderRadius: '3px 3px 0 0',
+              },
+            }}
+          >
+            {tabs.map(({ id, label, Icon }) => (
+              <Tab
+                key={id}
+                icon={<Icon size={15} />}
+                iconPosition="start"
+                label={<span className="hidden sm:inline">{label}</span>}
+                sx={{
+                  minHeight: 32,
+                  minWidth: { xs: 40, sm: 84 },
+                  py: 0.5,
+                  px: 1.5,
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  color: 'var(--nav-ink)',
+                  textTransform: 'none',
+                  borderRadius: 1.5,
+                  transition: 'all 0.15s ease',
+                  '&.Mui-selected': {
+                    color: '#FFFFFF',
+                    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                  },
+                  '&:hover': {
+                    color: '#FFFFFF',
+                    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                  },
+                }}
+              />
+            ))}
+          </Tabs>
+        </Box>
 
       <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5 sm:gap-2.5">
         {hasUnsavedChanges && (
@@ -263,27 +393,45 @@ export default function TopHeader() {
         )}
 
         {/* 3. Opti / ERP switch */}
-        <div className="flex flex-none items-center rounded-[8px] sm:rounded-[10px] border border-white/10 bg-black/25 p-0.5 sm:p-1">
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            bgcolor: 'rgba(0, 0, 0, 0.25)',
+            p: 0.4,
+            borderRadius: 2,
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            flexShrink: 0,
+          }}
+        >
           {['opti', 'erp'].map((c) => {
             const on = client === c
             return (
-              <button
+              <Button
                 key={c}
-                type="button"
+                size="small"
                 onClick={() => setClient(c)}
-                className={`rounded-[7px] px-3.5 py-1 text-[13px] font-bold transition-colors ${
-                  on
-                    ? c === 'opti'
-                      ? 'bg-[var(--pri)] text-white'
-                      : 'bg-[var(--erp)] text-white'
-                    : 'text-[var(--nav-ink)] hover:text-white'
-                }`}
+                sx={{
+                  minWidth: 46,
+                  py: 0.3,
+                  px: 1.2,
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  borderRadius: 1.5,
+                  color: on ? '#FFFFFF' : 'var(--nav-ink)',
+                  bgcolor: on ? (c === 'opti' ? 'var(--pri)' : 'var(--erp)') : 'transparent',
+                  boxShadow: on ? '0 1px 4px rgba(0,0,0,0.3)' : 'none',
+                  '&:hover': {
+                    bgcolor: on ? (c === 'opti' ? 'var(--pri-hover)' : 'var(--erp-hover)') : 'rgba(255, 255, 255, 0.08)',
+                    color: '#FFFFFF',
+                  },
+                }}
               >
                 {c === 'opti' ? 'Opti' : 'ERP'}
-              </button>
+              </Button>
             )
           })}
-        </div>
+        </Box>
 
         {/* 4. Status dots with dedicated details dropdown */}
         <div className="relative flex flex-none items-center gap-1.5">
@@ -450,8 +598,8 @@ export default function TopHeader() {
             )}
         </div>
 
-        {/* Utility icon-only actions (universal actions, tooltiped per §1.4) */}
-        <div className="flex flex-none items-center gap-1">
+        {/* Utility IconButtons with Tooltips */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
           <input
             type="file"
             id="header-import-json"
@@ -459,100 +607,129 @@ export default function TopHeader() {
             className="hidden"
             onChange={handleImportJson}
           />
-          <button
-            type="button"
-            onClick={() => document.getElementById('header-import-json')?.click()}
-            className="lc-icon-btn !text-[#C7D6E8] hover:!bg-white/12 hover:!text-white"
-            title="Import template JSON"
-          >
-            <FolderOpen size={16} />
-          </button>
-          <button
-            type="button"
-            onClick={() => setModal('showOifImportModal', true)}
-            className="lc-icon-btn !text-[#C7D6E8] hover:!bg-white/12 hover:!text-white"
-            title="Import OIF project & create template"
-          >
-            <FileCode size={16} />
-          </button>
-          <button
-            type="button"
-            onClick={handleExportJson}
-            className="lc-icon-btn !text-[#C7D6E8] hover:!bg-white/12 hover:!text-white"
-            title="Download template JSON"
-          >
-            <FileDown size={16} />
-          </button>
-          <button
-            type="button"
-            onClick={() => setPrintConfig({ showBatchPreview: true })}
-            className="lc-icon-btn !text-[#C7D6E8] hover:!bg-white/12 hover:!text-white"
-            title="Live host preview"
-          >
-            <Eye size={16} />
-          </button>
-          <button
-            type="button"
-            onClick={() => setModal('showServerLibrary', true)}
-            className="lc-icon-btn !text-[#C7D6E8] hover:!bg-white/12 hover:!text-white"
-            title="Template library sync"
-          >
-            <Cloud size={16} />
-          </button>
-          <button
-            type="button"
-            onClick={toggleFullscreen}
-            className="lc-icon-btn !text-[#C7D6E8] hover:!bg-white/12 hover:!text-white"
-            title={isFullscreen ? 'Exit full screen' : 'Full screen (F11)'}
-          >
-            {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
-          </button>
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="lc-icon-btn !text-[#C7D6E8] hover:!bg-white/12 hover:!text-white"
-            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-          >
-            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-          </button>
-          <button
-            type="button"
-            onClick={() => setPrintConfig({ showShortcuts: true })}
-            className="lc-icon-btn !text-[#C7D6E8] hover:!bg-white/12 hover:!text-white"
-            title="Keyboard shortcuts (?)"
-          >
-            <Keyboard size={16} />
-          </button>
-        </div>
+          <Tooltip title="Import template JSON" arrow>
+            <IconButton
+              size="small"
+              onClick={() => document.getElementById('header-import-json')?.click()}
+              sx={{ color: '#C7D6E8', '&:hover': { bgcolor: 'rgba(255,255,255,0.12)', color: '#fff' } }}
+            >
+              <FolderOpen size={16} />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Import OIF project & create template" arrow>
+            <IconButton
+              size="small"
+              onClick={() => setModal('showOifImportModal', true)}
+              sx={{ color: '#C7D6E8', '&:hover': { bgcolor: 'rgba(255,255,255,0.12)', color: '#fff' } }}
+            >
+              <FileCode size={16} />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Download template JSON" arrow>
+            <IconButton
+              size="small"
+              onClick={handleExportJson}
+              sx={{ color: '#C7D6E8', '&:hover': { bgcolor: 'rgba(255,255,255,0.12)', color: '#fff' } }}
+            >
+              <FileDown size={16} />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Live host preview" arrow>
+            <IconButton
+              size="small"
+              onClick={() => setPrintConfig({ showBatchPreview: true })}
+              sx={{ color: '#C7D6E8', '&:hover': { bgcolor: 'rgba(255,255,255,0.12)', color: '#fff' } }}
+            >
+              <Eye size={16} />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Template library sync" arrow>
+            <IconButton
+              size="small"
+              onClick={() => setModal('showServerLibrary', true)}
+              sx={{ color: '#C7D6E8', '&:hover': { bgcolor: 'rgba(255,255,255,0.12)', color: '#fff' } }}
+            >
+              <Cloud size={16} />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title={isFullscreen ? 'Exit full screen' : 'Full screen (F11)'} arrow>
+            <IconButton
+              size="small"
+              onClick={toggleFullscreen}
+              sx={{ color: '#C7D6E8', '&:hover': { bgcolor: 'rgba(255,255,255,0.12)', color: '#fff' } }}
+            >
+              {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
+            </IconButton>
+          </Tooltip>
+          <Tooltip title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} arrow>
+            <IconButton
+              size="small"
+              onClick={toggleTheme}
+              sx={{ color: '#C7D6E8', '&:hover': { bgcolor: 'rgba(255,255,255,0.12)', color: '#fff' } }}
+            >
+              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Keyboard shortcuts (?)" arrow>
+            <IconButton
+              size="small"
+              onClick={() => setPrintConfig({ showShortcuts: true })}
+              sx={{ color: '#C7D6E8', '&:hover': { bgcolor: 'rgba(255,255,255,0.12)', color: '#fff' } }}
+            >
+              <Keyboard size={16} />
+            </IconButton>
+          </Tooltip>
+        </Box>
 
-        <button
-          type="button"
+        {/* Export Button */}
+        <Button
+          variant="outlined"
+          size="small"
           onClick={() => useLabelStore.setState({ showExportDialog: true })}
-          className="lc-btn flex-none border-white/18 bg-white/10 text-white hover:bg-white/18"
+          sx={{
+            color: '#FFFFFF',
+            borderColor: 'rgba(255, 255, 255, 0.25)',
+            bgcolor: 'rgba(255, 255, 255, 0.08)',
+            fontWeight: 600,
+            fontSize: '0.8rem',
+            py: 0.5,
+            px: 1.5,
+            borderRadius: 2,
+            flexShrink: 0,
+            '&:hover': {
+              bgcolor: 'rgba(255, 255, 255, 0.16)',
+              borderColor: 'rgba(255, 255, 255, 0.4)',
+            },
+          }}
         >
           Export
-        </button>
+        </Button>
 
-        {/* 5. Save */}
-        <button
-          type="button"
+        {/* 5. Save Button (Material Contained with Elevation) */}
+        <Button
+          variant="contained"
+          size="small"
+          startIcon={<SaveIcon size={15} />}
           disabled={isDbOffline}
           onClick={handleSave}
-          className={`lc-btn flex-none ${
-            isDbOffline
-              ? 'border-white/20 bg-white/8 text-[#9FB3CA]'
-              : 'border-[var(--ok)] bg-[var(--ok)] text-white hover:border-[#15803D] hover:bg-[#15803D]'
-          }`}
-          title={
-            isDbOffline
-              ? 'Read-only: the database is offline, so saving is paused'
-              : 'Save template to the shared database (Ctrl+S)'
-          }
+          color="success"
+          sx={{
+            fontWeight: 700,
+            fontSize: '0.82rem',
+            py: 0.5,
+            px: 2,
+            borderRadius: 2,
+            flexShrink: 0,
+            boxShadow: '0 2px 8px rgba(46, 125, 50, 0.35)',
+            '&:hover': {
+              boxShadow: '0 4px 12px rgba(46, 125, 50, 0.5)',
+            },
+          }}
         >
-          <SaveIcon size={15} />
-          <span>Save</span>
-        </button>
+          Save
+        </Button>
       </div>
-    </header>
+    </Toolbar>
+  </AppBar>
   )
 }

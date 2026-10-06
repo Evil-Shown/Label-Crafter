@@ -1,4 +1,7 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
+import { ThemeProvider } from '@mui/material/styles'
+import CssBaseline from '@mui/material/CssBaseline'
+import { getMuiTheme } from './theme/muiTheme'
 import TopHeader from './ui/TopHeader'
 import CanvasSubBar from './ui/CanvasSubBar'
 import ComponentsSidebar from './ui/ComponentsSidebar'
@@ -35,6 +38,7 @@ export default function App() {
   const showSplashScreen = useLabelStore((s) => s.showSplashScreen)
   const theme = useLabelStore((s) => s.theme)
   const activeTab = useLabelStore((s) => s.activeTab)
+  const muiTheme = useMemo(() => getMuiTheme(theme), [theme])
   const applyDesignSession = useLabelStore((s) => s.applyDesignSession)
   const applyHostTemplate = useLabelStore((s) => s.applyHostTemplate)
   const addToast = useLabelStore((s) => s.addToast)
@@ -118,60 +122,63 @@ export default function App() {
   }, [applyHostTemplate])
 
   return (
-    <div className="lc-app-shell relative flex h-full w-full flex-col overflow-hidden font-sans">
-      {/* 1-5: Top header — title, tabs, Opti/ERP switch, status dots, Export, Save */}
-      <TopHeader />
+    <ThemeProvider theme={muiTheme}>
+      <CssBaseline />
+      <div className="lc-app-shell relative flex h-full w-full flex-col overflow-hidden font-sans">
+        {/* 1-5: Top header — title, tabs, Opti/ERP switch, status dots, Export, Save */}
+        <TopHeader />
 
-      {activeTab === 'design' && (
-        <>
-          <div className="flex min-h-0 flex-1 overflow-hidden">
-            {/* 6-8: Add element, fields, layers */}
-            <ComponentsSidebar />
+        {activeTab === 'design' && (
+          <>
+            <div className="flex min-h-0 flex-1 overflow-hidden">
+              {/* 6-8: Add element, fields, layers */}
+              <ComponentsSidebar />
 
-            <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-              {/* 9: Canvas toolbar */}
-              <CanvasSubBar />
-              {/* 10: Data and status banners */}
-              <CanvasDataBanner />
+              <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+                {/* 9: Canvas toolbar */}
+                <CanvasSubBar />
+                {/* 10: Data and status banners */}
+                <CanvasDataBanner />
 
-              <div className="lc-canvas-wrap relative min-h-0 flex-1 overflow-hidden">
-                <LabelCanvas />
+                <div className="lc-canvas-wrap relative min-h-0 flex-1 overflow-hidden">
+                  <LabelCanvas />
+                </div>
+
+                {/* 6.1 / 6.2: docked printer code */}
+                <ZplPreviewPanel />
               </div>
 
-              {/* 6.1 / 6.2: docked printer code */}
-              <ZplPreviewPanel />
+              {/* 11: Properties */}
+              <PropertiesPanel />
             </div>
 
-            {/* 11: Properties */}
-            <PropertiesPanel />
-          </div>
+            {/* 12: Status bar */}
+            <BottomFooter />
+          </>
+        )}
 
-          {/* 12: Status bar */}
-          <BottomFooter />
-        </>
-      )}
+        {activeTab === 'templates' && <TemplateLibraryView />}
+        {activeTab === 'settings' && <SettingsView />}
+        {activeTab === 'opti' && <OptiLabelsSettingsView />}
 
-      {activeTab === 'templates' && <TemplateLibraryView />}
-      {activeTab === 'settings' && <SettingsView />}
-      {activeTab === 'opti' && <OptiLabelsSettingsView />}
+        <NewTemplateModal />
+        <AddShapeModal />
+        <LoadRealDataModal />
+        <OifTemplateWizardModal />
+        <ExportDialog />
+        <FieldPickerModal />
+        <FirstRunWizardModal />
+        <ShortcutsOverlay />
+        <BatchPreview />
+        <ServerLibraryModal />
+        <ToastContainer />
+        <ConfirmationDialog />
 
-      <NewTemplateModal />
-      <AddShapeModal />
-      <LoadRealDataModal />
-      <OifTemplateWizardModal />
-      <ExportDialog />
-      <FieldPickerModal />
-      <FirstRunWizardModal />
-      <ShortcutsOverlay />
-      <BatchPreview />
-      <ServerLibraryModal />
-      <ToastContainer />
-      <ConfirmationDialog />
-
-      {/* Windows App Startup Opening Animation Window */}
-      {showSplashScreen && (
-        <StartupSplashScreen onComplete={() => useLabelStore.setState({ showSplashScreen: false })} />
-      )}
-    </div>
+        {/* Windows App Startup Opening Animation Window */}
+        {showSplashScreen && (
+          <StartupSplashScreen onComplete={() => useLabelStore.setState({ showSplashScreen: false })} />
+        )}
+      </div>
+    </ThemeProvider>
   )
 }
