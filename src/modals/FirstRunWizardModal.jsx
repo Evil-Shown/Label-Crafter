@@ -1,254 +1,452 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
-  Tag,
   Check,
   ArrowRight,
   ArrowLeft,
-  Database,
-  Printer,
-  Sparkles,
+  Monitor,
+  KeyRound,
   Zap,
+  CircleCheck,
+  Printer,
+  Database,
+  Tag,
 } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
 import appIcon from '../assets/app_icon.png'
+import { useEscape } from '../hooks/useEscape'
 
+const STEPS = [
+  { n: 1, label: 'Database' },
+  { n: 2, label: 'Print service' },
+  { n: 3, label: 'Finish' },
+]
+
+const HERO_POINTS = [
+  'Templates shared by Opti and ERP',
+  'Password kept in Windows Credential Manager',
+  'Change any time in Settings',
+]
+
+/**
+ * Screen 9.2 / 9.3 — first-run setup. Shown only on a new PC or when no valid
+ * connection exists (R3). Three steps, so the designer is designing in under a
+ * minute.
+ */
 export default function FirstRunWizardModal() {
   const isOpen = useLabelStore((s) => s.firstTimeSetupOpen)
-  const [step, setStep] = useState(1) // 1: Database, 2: Print service, 3: Done
-  const [server, setServer] = useState('SPIL-SQL01')
-  const [port, setPort] = useState(1433)
-  const [dbName, setDbName] = useState('SpilProduction')
-  const [authType, setAuthType] = useState('windows')
-  const [printUrl, setPrintUrl] = useState('http://localhost:5088')
-  const [testedDb, setTestedDb] = useState(true)
-  const [testedService, setTestedService] = useState(true)
+  const dbServer = useLabelStore((s) => s.dbServer)
+  const dbPort = useLabelStore((s) => s.dbPort)
+  const dbDatabase = useLabelStore((s) => s.dbDatabase)
+  const dbAuthType = useLabelStore((s) => s.dbAuthType)
+  const printServiceUrl = useLabelStore((s) => s.printServiceUrl)
+  const printerBrand = useLabelStore((s) => s.printerBrand)
+  const printerDpi = useLabelStore((s) => s.printerDpi)
+  const setDbConfig = useLabelStore((s) => s.setDbConfig)
+  const setPrintConfig = useLabelStore((s) => s.setPrintConfig)
+  const runHealthCheck = useLabelStore((s) => s.checkServiceHealth)
+  const setSetupDone = useLabelStore((s) => s.setSetupDone)
+
+  const [step, setStep] = useState(1)
+  const [server, setServer] = useState(dbServer)
+  const [port, setPort] = useState(dbPort)
+  const [dbName, setDbName] = useState(dbDatabase)
+  const [authType, setAuthType] = useState(dbAuthType)
+  const [printUrl, setPrintUrl] = useState(printServiceUrl)
+  const [brand, setBrand] = useState(printerBrand)
+  const [dpi, setDpi] = useState(printerDpi)
+  const [dbOk, setDbOk] = useState(null)
+  const [svcOk, setSvcOk] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [counts, setCounts] = useState({ opti: 0, erp: 0 })
+
+  // Reset to step 1 whenever the wizard opens.
+  useEffect(() => {
+    if (!isOpen) return
+    setStep(1)
+    setServer(dbServer)
+    setPort(dbPort)
+    setDbName(dbDatabase)
+    setAuthType(dbAuthType)
+    setPrintUrl(printServiceUrl)
+    setBrand(printerBrand)
+    setDpi(printerDpi)
+    setDbOk(null)
+    setSvcOk(null)
+    setBusy(false)
+  }, [isOpen, dbServer, dbPort, dbDatabase, dbAuthType, printServiceUrl, printerBrand, printerDpi])
+
+  const close = () => setSetupDone(true)
+  useEscape(isOpen, close)
 
   if (!isOpen) return null
 
-  const handleFinish = () => {
-    useLabelStore.setState({ firstTimeSetupOpen: false })
+  /** Writes the typed values, then really talks to both services. */
+  const test = async () => {
+    setBusy(true)
+    setDbConfig({ dbServer: server, dbPort: port, dbDatabase: dbName, dbAuthType: authType })
+    setPrintConfig({ printServiceUrl: printUrl, printerBrand: brand, printerDpi: dpi })
+    await runHealthCheck()
+    const s = useLabelStore.getState()
+    setDbOk(s.dbStatus === 'connected')
+    setSvcOk(s.printServiceStatus === 'connected')
+    setCounts({
+      opti: s.templateLibrary.filter((t) => (t.client || 'opti') === 'opti').length,
+      erp: s.templateLibrary.filter((t) => t.client === 'erp').length,
+    })
+    setBusy(false)
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-[#061122] via-[#0B1E38] to-[#122E54] p-6 select-none">
-      <div className="flex w-full max-w-4xl overflow-hidden rounded-3xl bg-transparent">
-        {/* Left Hero Welcome */}
-        <div className="flex w-5/12 flex-col justify-center p-8 text-white">
-          <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/20">
-            <img src={appIcon} alt="App Icon" className="h-full w-full object-cover scale-105" />
-          </div>
+  const testService = async () => {
+    setBusy(true)
+    setPrintConfig({ printServiceUrl: printUrl, printerBrand: brand, printerDpi: dpi })
+    await runHealthCheck()
+    setSvcOk(useLabelStore.getState().printServiceStatus === 'connected')
+    setBusy(false)
+  }
 
-          <h1 className="text-3xl font-black leading-tight tracking-tight">
-            Welcome to<br />Label Designer
+  const canContinue1 = server.trim() !== '' && dbName.trim() !== '' && dbOk === true
+
+  return createPortal(
+    <div className="lc-modal-overlay !items-stretch !justify-stretch !p-0">
+      <div className="m-auto flex w-full max-w-[1080px] overflow-hidden rounded-[16px] bg-[var(--panel)] shadow-[var(--sh-pop)]">
+        {/* Hero — flat navy, no gradient (spec §2) */}
+        <div
+          className="hidden w-5/12 flex-col justify-center p-8 text-white md:flex"
+          style={{ background: 'linear-gradient(160deg, var(--nav) 0%, var(--nav-end) 100%)' }}
+        >
+          <div className="mb-6 h-16 w-16 overflow-hidden rounded-[10px] ring-1 ring-white/20">
+            <img src={appIcon} alt="Label Designer" className="h-full w-full scale-105 object-cover" />
+          </div>
+          <h1 className="text-[30px] font-extrabold leading-tight tracking-tight text-white">
+            Welcome to
+            <br />
+            Label Designer
           </h1>
-          <p className="mt-3 text-xs leading-relaxed text-slate-300">
+          <p className="mt-3 text-[13px] leading-relaxed text-[#C6D6E8]">
             Connect once to the shared database. Opti and ERP templates will be ready in under a minute.
           </p>
-
-          <div className="mt-8 space-y-2.5 text-xs text-slate-300">
-            <div className="flex items-center gap-2">
-              <span className="text-emerald-400 font-bold">✓</span>
-              <span>Templates shared by Opti and ERP</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-emerald-400 font-bold">✓</span>
-              <span>Password kept in Windows Credential Manager</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-emerald-400 font-bold">✓</span>
-              <span>Change any time in Settings</span>
-            </div>
-          </div>
+          <ul className="mt-8 space-y-2.5">
+            {HERO_POINTS.map((p) => (
+              <li key={p} className="flex items-center gap-2 text-[13px] text-[#C6D6E8]">
+                <Check size={15} className="flex-none text-[#4ADE80]" />
+                {p}
+              </li>
+            ))}
+          </ul>
         </div>
 
-        {/* Right Step Card */}
-        <div className="flex w-7/12 flex-col rounded-3xl bg-white p-8 text-slate-900 shadow-2xl">
-          {/* Step Breadcrumbs */}
-          <div className="mb-6 flex items-center gap-6 border-b border-slate-100 pb-4 text-xs font-semibold text-slate-400">
-            <div className={`flex items-center gap-2 ${step >= 1 ? 'text-blue-600' : ''}`}>
-              <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] ${step >= 1 ? 'bg-blue-600 text-white' : 'bg-slate-200'}`}>
-                1
-              </span>
-              <span>Database</span>
-            </div>
-            <div className={`flex items-center gap-2 ${step >= 2 ? 'text-blue-600' : ''}`}>
-              <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] ${step >= 2 ? 'bg-blue-600 text-white' : 'bg-slate-200'}`}>
-                2
-              </span>
-              <span>Print service</span>
-            </div>
-            <div className={`flex items-center gap-2 ${step === 3 ? 'text-blue-600' : ''}`}>
-              <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] ${step === 3 ? 'bg-blue-600 text-white' : 'bg-slate-200'}`}>
-                3
-              </span>
-              <span>Done</span>
-            </div>
+        {/* Steps */}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex items-center gap-6 border-b border-[var(--line)] px-8 py-4">
+            {STEPS.map((s) => (
+              <div key={s.n} className="flex items-center gap-2">
+                <span
+                  className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold ${
+                    step > s.n
+                      ? 'bg-[var(--ok)] text-white'
+                      : step === s.n
+                        ? 'bg-[var(--pri)] text-white'
+                        : 'border border-[var(--line)] bg-[var(--panel)] text-[var(--mut)]'
+                  }`}
+                >
+                  {step > s.n ? <Check size={13} /> : s.n}
+                </span>
+                <span
+                  className={`text-[13px] ${
+                    step === s.n ? 'font-bold text-[var(--tx)]' : 'text-[var(--mut)]'
+                  }`}
+                >
+                  {s.label}
+                </span>
+              </div>
+            ))}
           </div>
 
-          {/* Step 1: Database (screen 9.2 / setup1.png) */}
-          {step === 1 && (
-            <div className="space-y-4">
+          <div className="min-h-0 flex-1 overflow-y-auto px-8 py-6">
+            {step === 1 && (
               <div>
-                <h2 className="text-lg font-bold text-slate-900">Connect to the database</h2>
-                <p className="text-xs text-slate-500">Ask IT for the server name if you don't know it.</p>
-              </div>
+                <h2 className="lc-dialog-title">Where are your templates stored?</h2>
+                <p className="mt-1 text-[13px] text-[var(--mut)]">
+                  Ask IT for the server name if you do not know it.
+                </p>
 
-              <div className="grid grid-cols-3 gap-3">
-                <div className="col-span-2">
-                  <label className="text-xs font-semibold text-slate-600">Server</label>
+                <div className="mt-6 grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="lc-label mb-1.5 block" htmlFor="fw-server">
+                      Server
+                    </label>
+                    <input
+                      id="fw-server"
+                      type="text"
+                      value={server}
+                      onChange={(e) => setServer(e.target.value)}
+                      className="lc-input !h-10"
+                    />
+                  </div>
+                  <div>
+                    <label className="lc-label mb-1.5 block" htmlFor="fw-port">
+                      Port
+                    </label>
+                    <input
+                      id="fw-port"
+                      type="number"
+                      value={port}
+                      onChange={(e) => setPort(Number(e.target.value))}
+                      className="lc-input !h-10"
+                    />
+                  </div>
+                  <div>
+                    <label className="lc-label mb-1.5 block" htmlFor="fw-db">
+                      Database
+                    </label>
+                    <input
+                      id="fw-db"
+                      type="text"
+                      value={dbName}
+                      onChange={(e) => setDbName(e.target.value)}
+                      className="lc-input !h-10"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-5">
+                  <label className="lc-label mb-1.5 block">Sign in with</label>
+                  <div className="lc-segment !max-w-[420px]">
+                    <button
+                      type="button"
+                      className={authType === 'windows' ? 'is-on' : ''}
+                      onClick={() => setAuthType('windows')}
+                    >
+                      <Monitor size={14} />
+                      Windows account
+                    </button>
+                    <button
+                      type="button"
+                      className={authType === 'sql' ? 'is-on' : ''}
+                      onClick={() => setAuthType('sql')}
+                    >
+                      <KeyRound size={14} />
+                      SQL user
+                    </button>
+                  </div>
+                  <p className="mt-2 text-[12px] text-[var(--mut)]">
+                    The password is stored in Windows Credential Manager, never in a plain text file.
+                  </p>
+                </div>
+
+                {dbOk === true && (
+                  <div className="lc-msg lc-msg-ok mt-5">
+                    <CircleCheck size={15} className="flex-none" />
+                    <span className="text-[13px] font-medium">
+                      Connected. Found {counts.opti} Opti and {counts.erp} ERP templates.
+                    </span>
+                  </div>
+                )}
+                {dbOk === false && (
+                  <div className="lc-msg lc-msg-err mt-5">
+                    <Database size={15} className="flex-none" />
+                    <span className="text-[13px] font-medium">
+                      Could not connect. Check the server name, then test again.
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {step === 2 && (
+              <div>
+                <h2 className="lc-dialog-title">Print service</h2>
+                <p className="mt-1 text-[13px] text-[var(--mut)]">
+                  The service that sends labels to the printers. Usually on this PC.
+                </p>
+
+                <div className="mt-6">
+                  <label className="lc-label mb-1.5 block" htmlFor="fw-svc">
+                    Service address
+                  </label>
                   <input
+                    id="fw-svc"
                     type="text"
-                    value={server}
-                    onChange={(e) => setServer(e.target.value)}
-                    className="mt-1 h-9 w-full rounded-lg border border-slate-300 px-3 text-xs font-semibold text-slate-900 focus:border-blue-600 focus:outline-none"
+                    value={printUrl}
+                    onChange={(e) => setPrintUrl(e.target.value)}
+                    className="lc-input !h-10 !max-w-[420px]"
                   />
                 </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-600">Port</label>
-                  <input
-                    type="number"
-                    value={port}
-                    onChange={(e) => setPort(Number(e.target.value))}
-                    className="mt-1 h-9 w-full rounded-lg border border-slate-300 px-3 text-xs font-semibold text-slate-900 focus:border-blue-600 focus:outline-none"
+
+                {svcOk === true && (
+                  <div className="lc-msg lc-msg-ok mt-4">
+                    <CircleCheck size={15} className="flex-none" />
+                    <span className="text-[13px] font-medium">
+                      Service is running. Printer code and export will work.
+                    </span>
+                  </div>
+                )}
+                {svcOk === false && (
+                  <div className="lc-msg lc-msg-warn mt-4">
+                    <Printer size={15} className="flex-none" />
+                    <span className="text-[13px] font-medium">
+                      Not reachable. You can still design and save — only printer code and export are
+                      paused.
+                    </span>
+                  </div>
+                )}
+
+                <div className="mt-5 grid max-w-[520px] grid-cols-2 gap-4">
+                  <div>
+                    <label className="lc-label mb-1.5 block" htmlFor="fw-brand">
+                      Default printer
+                    </label>
+                    <select
+                      id="fw-brand"
+                      value={brand}
+                      onChange={(e) => setBrand(e.target.value)}
+                      className="lc-select !h-10"
+                    >
+                      {[
+                        ['zebra', 'Zebra · ZPL'],
+                        ['honeywell', 'Honeywell · ZPL'],
+                        ['citizen', 'Citizen · ZPL'],
+                        ['sato', 'SATO · ZPL'],
+                        ['sato-sbpl', 'SATO · SBPL'],
+                        ['tsc', 'TSC · TSPL'],
+                        ['godex', 'Godex · EZPL'],
+                        ['datamax', 'Datamax · DPL'],
+                        ['epl', 'Eltron · EPL2'],
+                      ].map(([v, l]) => (
+                        <option key={v} value={v}>
+                          {l}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="lc-label mb-1.5 block" htmlFor="fw-dpi">
+                      Resolution
+                    </label>
+                    <select
+                      id="fw-dpi"
+                      value={dpi}
+                      onChange={(e) => setDpi(Number(e.target.value))}
+                      className="lc-select !h-10"
+                    >
+                      <option value={203}>203 DPI</option>
+                      <option value={300}>300 DPI</option>
+                      <option value={600}>600 DPI</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {step === 3 && (
+              <div>
+                <h2 className="lc-dialog-title">You are ready</h2>
+                <p className="mt-1 text-[13px] text-[var(--mut)]">
+                  Everything below can be changed later in Settings.
+                </p>
+
+                <div className="mt-6 space-y-3">
+                  <SummaryRow
+                    icon={Database}
+                    label="Database"
+                    value={`${server}:${port} · ${dbName}`}
+                    ok={dbOk === true}
+                  />
+                  <SummaryRow
+                    icon={Printer}
+                    label="Print service"
+                    value={printUrl}
+                    ok={svcOk === true}
+                  />
+                  <SummaryRow
+                    icon={Tag}
+                    label="Saved for"
+                    value="Opti · switch in the top bar"
+                    ok
                   />
                 </div>
-              </div>
 
-              <div>
-                <label className="text-xs font-semibold text-slate-600">Database</label>
-                <input
-                  type="text"
-                  value={dbName}
-                  onChange={(e) => setDbName(e.target.value)}
-                  className="mt-1 h-9 w-full rounded-lg border border-slate-300 px-3 text-xs font-semibold text-slate-900 focus:border-blue-600 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-slate-600">Sign in with</label>
-                <div className="mt-1 grid grid-cols-2 rounded-lg bg-slate-100 p-1">
-                  <button
-                    type="button"
-                    onClick={() => setAuthType('windows')}
-                    className={`rounded-md py-1.5 text-xs font-semibold ${authType === 'windows' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-500'}`}
-                  >
-                    Windows account
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAuthType('sql')}
-                    className={`rounded-md py-1.5 text-xs font-semibold ${authType === 'sql' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-500'}`}
-                  >
-                    SQL user & password
-                  </button>
+                <div className="lc-msg lc-msg-info mt-6">
+                  <CircleCheck size={15} className="flex-none" />
+                  <span className="text-[13px] font-medium">
+                    Open a template from the Templates tab, or press New to start one.
+                  </span>
                 </div>
               </div>
+            )}
+          </div>
 
-              {testedDb && (
-                <div className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-xs font-semibold text-emerald-800 border border-emerald-200">
-                  <Check size={15} className="text-emerald-600" />
-                  <span>Connected in 18 ms · found <strong>12 Opti</strong> and <strong>4 ERP</strong> templates</span>
-                </div>
+          <div className="flex items-center justify-between gap-3 border-t border-[var(--line)] bg-[var(--panel-2)] px-8 py-4">
+            <button
+              type="button"
+              onClick={() => setStep((s) => Math.max(1, s - 1))}
+              disabled={step === 1}
+              className="lc-btn lc-btn-secondary !h-10"
+            >
+              <ArrowLeft size={15} />
+              <span>Back</span>
+            </button>
+
+            <div className="flex items-center gap-2">
+              {(step === 1 || step === 2) && (
+                <button type="button" onClick={test} disabled={busy} className="lc-btn lc-btn-secondary !h-10">
+                  <Zap size={15} />
+                  <span>{busy ? 'Checking…' : 'Test connection'}</span>
+                </button>
               )}
 
-              <div className="mt-6 flex items-center justify-end gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setTestedDb(true)}
-                  className="flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                >
-                  <Zap size={13} />
-                  <span>Test connection</span>
-                </button>
+              {step === 1 && (
                 <button
                   type="button"
                   onClick={() => setStep(2)}
-                  className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-5 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700"
+                  disabled={!canContinue1}
+                  className="lc-btn lc-btn-primary !h-10"
+                  title={canContinue1 ? undefined : 'Test the connection first'}
                 >
                   <span>Continue</span>
-                  <ArrowRight size={13} />
+                  <ArrowRight size={15} />
                 </button>
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: Print service (screen 9.3 / setup2.png) */}
-          {step === 2 && (
-            <div className="space-y-4">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900">Connect the print service</h2>
-                <p className="text-xs text-slate-500">The service that sends labels to the printers. Usually on this PC.</p>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-slate-600">Print service address</label>
-                <input
-                  type="text"
-                  value={printUrl}
-                  onChange={(e) => setPrintUrl(e.target.value)}
-                  className="mt-1 h-9 w-full rounded-lg border border-slate-300 px-3 text-xs font-semibold text-slate-900 focus:border-blue-600 focus:outline-none"
-                />
-              </div>
-
-              {testedService && (
-                <div className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-xs font-semibold text-emerald-800 border border-emerald-200">
-                  <Check size={15} className="text-emerald-600" />
-                  <span>Print service running · Zebra, TSC, Datamax supported</span>
-                </div>
               )}
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-slate-600">Default printer</label>
-                  <select className="mt-1 h-9 w-full rounded-lg border border-slate-300 px-3 text-xs font-medium text-slate-900 focus:outline-none">
-                    <option>Zebra · ZPL</option>
-                    <option>TSC · TSPL</option>
-                    <option>Datamax · DPL</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-600">Resolution</label>
-                  <select className="mt-1 h-9 w-full rounded-lg border border-slate-300 px-3 text-xs font-medium text-slate-900 focus:outline-none">
-                    <option>300 DPI</option>
-                    <option>203 DPI</option>
-                    <option>600 DPI</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="mt-6 flex items-center justify-between pt-4">
+              {step === 2 && (
                 <button
                   type="button"
-                  onClick={() => setStep(1)}
-                  className="flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  onClick={() => {
+                    testService()
+                    setStep(3)
+                  }}
+                  className="lc-btn lc-btn-primary !h-10"
                 >
-                  <ArrowLeft size={13} />
-                  <span>Back</span>
+                  <span>Continue</span>
+                  <ArrowRight size={15} />
                 </button>
+              )}
 
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setTestedService(true)}
-                    className="flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                  >
-                    <Zap size={13} />
-                    <span>Test connection</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleFinish}
-                    className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-5 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700"
-                  >
-                    <span>Get started</span>
-                    <Sparkles size={13} />
-                  </button>
-                </div>
-              </div>
+              {step === 3 && (
+                <button type="button" onClick={close} className="lc-btn lc-btn-primary !h-10">
+                  <Check size={15} />
+                  <span>Start designing</span>
+                </button>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
+    </div>,
+    document.body,
+  )
+}
+
+function SummaryRow({ icon: Icon, label, value, ok }) {
+  return (
+    <div className="lc-card flex items-center gap-3 px-4 py-3">
+      <Icon size={16} className="flex-none text-[var(--mut)]" />
+      <span className="w-[110px] flex-none text-[13px] font-semibold text-[var(--tx)]">{label}</span>
+      <span className="lc-mono min-w-0 flex-1 truncate text-[12px] text-[var(--mut)]">{value}</span>
+      <span className={`lc-badge flex-none ${ok ? 'lc-badge-ok' : 'lc-badge-warn'}`}>
+        {ok ? 'Ready' : 'Not connected'}
+      </span>
     </div>
   )
 }
