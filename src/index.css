@@ -8,52 +8,61 @@
    no glass, no glow. Icons Lucide 14-16px. Radius 7/10/16.
    ═══════════════════════════════════════════════════════════════ */
 :root {
-  --nav: #0F2240;
-  --nav-end: #16305A;
-  --nav-soft: #1B3557;
-  --nav-ink: #93A3BB;
+  /* ════ Material UI (MUI v5 / Material 3) Design Tokens ════ */
+  --nav: #121E36;
+  --nav-end: #1B2B4A;
+  --nav-soft: #23355A;
+  --nav-ink: #A3B5CC;
 
-  --pri: #2563EB;
-  --pri-hover: #1D4ED8;
-  --pri-s: #EFF6FF;
-  --pri-line: #BFDBFE;
+  /* MUI Primary: Material Indigo / Blue (#1976D2 standard MUI Primary) */
+  --pri: #1976D2;
+  --pri-hover: #1565C0;
+  --pri-s: rgba(25, 118, 210, 0.08);
+  --pri-line: #90CAF9;
 
-  --erp: #7C3AED;
-  --erp-hover: #6D28D9;
-  --erp-s: #F5F3FF;
-  --erp-line: #DDD6FE;
+  /* MUI Secondary / ERP: Material Purple (#9C27B0) */
+  --erp: #7B1FA2;
+  --erp-hover: #6A1B9A;
+  --erp-s: rgba(123, 31, 162, 0.08);
+  --erp-line: #CE93D8;
 
-  --bg: #F4F6FA;
+  /* MUI Surfaces & Backgrounds */
+  --bg: #F4F6F8;
   --panel: #FFFFFF;
-  --panel-2: #FAFBFD;
-  --line: #E3E8EF;
-  --line-2: #EEF2F6;
+  --panel-2: #FAFAFA;
+  --line: #E0E3E7;
+  --line-2: #ECEFF1;
 
-  --tx: #0F172A;
-  --tx-2: #334155;
+  /* Material Text Hierarchy (High emphasis, medium emphasis, disabled/muted) */
+  --tx: #1E293B;
+  --tx-2: #475569;
   --mut: #64748B;
 
-  --ok: #16A34A;
-  --ok-s: #DCFCE7;
-  --ok-line: #BBF7D0;
-  --warn: #B45309;
-  --warn-s: #FEF3C7;
-  --warn-line: #FDE68A;
-  --err: #DC2626;
-  --err-s: #FEE2E2;
-  --err-line: #FECACA;
+  /* Material Semantic Colors */
+  --ok: #2E7D32;
+  --ok-s: #EDF7ED;
+  --ok-line: #A5D6A7;
+  --warn: #ED6C02;
+  --warn-s: #FFF4E5;
+  --warn-line: #FFCC80;
+  --err: #D32F2F;
+  --err-s: #FDEDED;
+  --err-line: #EF9A9A;
 
-  --r-sm: 7px;
-  --r-md: 10px;
+  /* Material Radius Tokens: 8px (sm/inputs), 12px (md/cards), 16px (lg/dialogs), 9999px (pill) */
+  --r-sm: 8px;
+  --r-md: 12px;
   --r-lg: 16px;
+  --r-full: 9999px;
 
-  --sh-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
-  --sh-md: 0 4px 12px rgba(15, 23, 42, 0.08);
-  --sh-pop: 0 12px 32px rgba(15, 23, 42, 0.12);
-  --sh-paper: 0 6px 24px rgba(15, 23, 42, 0.13);
+  /* Official Material Design Elevation Shadows (Elevation 1, 2, 4, 8, 16) */
+  --sh-sm: 0px 2px 1px -1px rgba(0,0,0,0.06), 0px 1px 1px 0px rgba(0,0,0,0.08), 0px 1px 3px 0px rgba(0,0,0,0.06);
+  --sh-md: 0px 3px 3px -2px rgba(0,0,0,0.08), 0px 3px 4px 0px rgba(0,0,0,0.06), 0px 1px 8px 0px rgba(0,0,0,0.05);
+  --sh-pop: 0px 8px 10px -5px rgba(0,0,0,0.1), 0px 16px 24px 2px rgba(0,0,0,0.08), 0px 6px 30px 5px rgba(0,0,0,0.06);
+  --sh-paper: 0px 4px 6px -2px rgba(0,0,0,0.07), 0px 10px 15px -3px rgba(0,0,0,0.1);
 
-  --font: 'Inter Variable', Inter, 'Segoe UI', system-ui, sans-serif;
-  --mono: 'JetBrains Mono Variable', ui-monospace, 'Consolas', monospace;
+  --font: 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Roboto', 'Segoe UI', sans-serif;
+  --mono: 'JetBrains Mono Variable', 'Roboto Mono', ui-monospace, 'Consolas', monospace;
 
   /* Legacy aliases kept so existing classNames resolve to the flat system. */
   --lc-bg: var(--bg);
@@ -68,8 +77,8 @@
   --lc-text: var(--tx);
   --lc-text-secondary: var(--tx-2);
   --lc-text-muted: var(--mut);
-  --lc-canvas-bg: #F4F6FA;
-  --lc-canvas-dot: #D5DEE9;
+  --lc-canvas-bg: #F4F6F8;
+  --lc-canvas-dot: #CBD5E1;
   --lc-input-bg: var(--panel);
   --lc-input-border: var(--line);
   --lc-shadow-sm: var(--sh-sm);
@@ -82,44 +91,51 @@
   --lc-badge-offcut: var(--warn);
   --lc-success: var(--ok);
   --lc-danger: var(--err);
-  --lc-danger-hover: #B91C1C;
+  --lc-danger-hover: #C62828;
   --lc-toolbar-bg: var(--panel);
   --input-bg: var(--panel);
 }
 
 [data-theme='dark'] {
-  --bg: #0B1220;
-  --panel: #111A2C;
-  --panel-2: #0F1727;
-  --line: #243049;
-  --line-2: #1C2739;
+  --bg: #0A1929;
+  --panel: #101F33;
+  --panel-2: #0D1B2D;
+  --line: #1E3A5F;
+  --line-2: #162B47;
 
-  --pri-s: rgba(37, 99, 235, 0.16);
-  --pri-line: rgba(96, 165, 250, 0.4);
-  --erp-s: rgba(124, 58, 237, 0.18);
-  --erp-line: rgba(167, 139, 250, 0.4);
+  --pri: #90CAF9;
+  --pri-hover: #42A5F5;
+  --pri-s: rgba(144, 202, 249, 0.14);
+  --pri-line: #64B5F6;
 
-  --tx: #E6EDF7;
+  --erp: #CE93D8;
+  --erp-hover: #BA68C8;
+  --erp-s: rgba(206, 147, 216, 0.16);
+  --erp-line: #AB47BC;
+
+  --tx: #F1F5F9;
   --tx-2: #CBD5E1;
-  --mut: #93A3BB;
+  --mut: #94A3B8;
 
-  --ok-s: rgba(22, 163, 74, 0.16);
-  --ok-line: rgba(74, 222, 128, 0.34);
-  --warn: #F59E0B;
-  --warn-s: rgba(245, 158, 11, 0.14);
-  --warn-line: rgba(251, 191, 36, 0.34);
-  --err-s: rgba(220, 38, 38, 0.16);
-  --err-line: rgba(248, 113, 113, 0.34);
+  --ok: #66BB6A;
+  --ok-s: rgba(102, 187, 106, 0.16);
+  --ok-line: #81C784;
+  --warn: #FFA726;
+  --warn-s: rgba(255, 167, 38, 0.16);
+  --warn-line: #FFB74D;
+  --err: #EF5350;
+  --err-s: rgba(239, 83, 80, 0.16);
+  --err-line: #E57373;
 
-  --nav-soft: #16233A;
-  --nav-ink: #8FA3BF;
-  --lc-canvas-bg: #0E1728;
-  --lc-canvas-dot: #253449;
+  --nav-soft: #132F4C;
+  --nav-ink: #90CAF9;
+  --lc-canvas-bg: #071321;
+  --lc-canvas-dot: #1E3A5F;
 
-  --sh-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --sh-md: 0 4px 12px rgba(0, 0, 0, 0.45);
-  --sh-pop: 0 12px 32px rgba(0, 0, 0, 0.55);
-  --sh-paper: 0 6px 24px rgba(0, 0, 0, 0.5);
+  --sh-sm: 0px 2px 1px -1px rgba(0,0,0,0.3), 0px 1px 1px 0px rgba(0,0,0,0.4), 0px 1px 3px 0px rgba(0,0,0,0.3);
+  --sh-md: 0px 3px 5px -1px rgba(0,0,0,0.4), 0px 5px 8px 0px rgba(0,0,0,0.3), 0px 1px 14px 0px rgba(0,0,0,0.25);
+  --sh-pop: 0px 8px 10px -5px rgba(0,0,0,0.5), 0px 16px 24px 2px rgba(0,0,0,0.4), 0px 6px 30px 5px rgba(0,0,0,0.35);
+  --sh-paper: 0px 5px 15px rgba(0,0,0,0.4);
 }
 
 * { box-sizing: border-box; }
@@ -240,13 +256,15 @@ body,
   white-space: nowrap;
 }
 
-/* ─── Surfaces ──────────────────────────────────────────────── */
+/* ─── Surfaces (MUI Paper Spec) ─────────────────────────────── */
 .lc-card {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--r-md);
+  box-shadow: var(--sh-sm);
+  transition: box-shadow 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.lc-card-pad { padding: 12px; }
+.lc-card-pad { padding: 14px; }
 .lc-panel-header {
   display: flex;
   align-items: center;
@@ -271,12 +289,12 @@ body,
   color: var(--mut);
 }
 
-/* ─── Inputs ────────────────────────────────────────────────── */
+/* ─── Inputs (MUI Outlined Input Pattern) ──────────────────── */
 .lc-input,
 .lc-select {
   width: 100%;
-  height: 34px;
-  padding: 0 10px;
+  height: 36px;
+  padding: 0 12px;
   font-family: inherit;
   font-size: 13px;
   font-weight: 400;
@@ -285,38 +303,44 @@ body,
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
   outline: none;
-  transition: border-color 0.12s, box-shadow 0.12s;
+  transition: border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.lc-input::placeholder { color: var(--mut); }
+.lc-input::placeholder { color: var(--mut); opacity: 0.85; }
+.lc-input:hover:not(:disabled),
+.lc-select:hover:not(:disabled) {
+  border-color: var(--tx-2);
+}
 .lc-input:focus,
 .lc-select:focus {
   border-color: var(--pri);
-  box-shadow: 0 0 0 3px var(--pri-s);
+  box-shadow: 0 0 0 2px var(--pri-s);
 }
 .lc-input:disabled,
 .lc-select:disabled {
   background: var(--bg);
   color: var(--mut);
+  opacity: 0.65;
   cursor: not-allowed;
 }
-textarea.lc-input { height: auto; padding: 8px 10px; line-height: 1.5; }
+textarea.lc-input { height: auto; padding: 10px 12px; line-height: 1.5; }
 .lc-select {
   appearance: none;
-  padding-right: 28px;
+  padding-right: 30px;
   background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 9px center;
+  background-position: right 10px center;
   cursor: pointer;
 }
 .lc-input-unit { position: relative; min-width: 0; }
-.lc-input-unit > .lc-input { padding-right: 10px; }
-.lc-input-unit.has-unit > .lc-input { padding-right: 40px; }
+.lc-input-unit > .lc-input { padding-right: 12px; }
+.lc-input-unit.has-unit > .lc-input { padding-right: 42px; }
 .lc-input-unit > span {
   position: absolute;
-  right: 10px;
+  right: 12px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 12px;
+  font-size: 11.5px;
+  font-weight: 500;
   color: var(--mut);
   pointer-events: none;
 }
@@ -336,57 +360,88 @@ input[type='radio'] { accent-color: var(--pri); }
   margin: 0;
 }
 
-/* ─── Buttons ───────────────────────────────────────────────── */
+/* ─── Buttons (MUI Contained, Outlined, Text & Icon Buttons) ── */
 .lc-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  height: 34px;
-  padding: 0 12px;
+  gap: 7px;
+  height: 36px;
+  padding: 0 14px;
   font-family: inherit;
   font-size: 13px;
   font-weight: 600;
-  letter-spacing: -0.005em;
+  letter-spacing: 0.015em;
   white-space: nowrap;
   border-radius: var(--r-sm);
   border: 1px solid transparent;
   cursor: pointer;
-  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  user-select: none;
+  transition: background 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+              color 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.08s ease;
 }
-.lc-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.lc-btn:active:not(:disabled) {
+  transform: scale(0.985);
+}
+.lc-btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none !important; }
+
+/* MUI Contained Button */
 .lc-btn-primary {
   background: var(--pri);
   border-color: var(--pri);
   color: #fff;
+  box-shadow: 0 1px 3px rgba(25, 118, 210, 0.3), 0 1px 2px rgba(0, 0, 0, 0.1);
 }
-.lc-btn-primary:hover:not(:disabled) { background: var(--pri-hover); border-color: var(--pri-hover); }
+.lc-btn-primary:hover:not(:disabled) {
+  background: var(--pri-hover);
+  border-color: var(--pri-hover);
+  box-shadow: 0 2px 6px rgba(25, 118, 210, 0.4), 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+/* MUI Outlined / Surface Button */
 .lc-btn-secondary {
   background: var(--panel);
   border-color: var(--line);
   color: var(--tx);
   box-shadow: var(--sh-sm);
 }
-.lc-btn-secondary:hover:not(:disabled) { border-color: var(--pri); color: var(--pri); }
+.lc-btn-secondary:hover:not(:disabled) {
+  background: var(--bg);
+  border-color: var(--pri-line);
+  color: var(--pri);
+}
+
+/* MUI Text Button */
 .lc-btn-ghost {
   background: transparent;
   border-color: transparent;
   color: var(--tx-2);
 }
-.lc-btn-ghost:hover:not(:disabled) { background: var(--bg); color: var(--tx); }
+.lc-btn-ghost:hover:not(:disabled) {
+  background: var(--pri-s);
+  color: var(--pri);
+}
+
 .lc-btn-success {
   background: var(--ok);
   border-color: var(--ok);
   color: #fff;
+  box-shadow: 0 1px 3px rgba(46, 125, 50, 0.3);
 }
-.lc-btn-success:hover:not(:disabled) { background: #15803D; border-color: #15803D; }
+.lc-btn-success:hover:not(:disabled) { background: #256628; border-color: #256628; }
+
 .lc-btn-danger {
   background: var(--err);
   border-color: var(--err);
   color: #fff;
+  box-shadow: 0 1px 3px rgba(211, 47, 47, 0.3);
 }
-.lc-btn-danger:hover:not(:disabled) { background: #B91C1C; border-color: #B91C1C; }
-.lc-btn-sm { height: 28px; padding: 0 9px; font-size: 12px; }
+.lc-btn-danger:hover:not(:disabled) { background: #C62828; border-color: #C62828; }
+
+.lc-btn-sm { height: 30px; padding: 0 10px; font-size: 12px; }
 .lc-btn-danger-soft {
   background: var(--panel);
   border-color: var(--err-line);
@@ -394,20 +449,26 @@ input[type='radio'] { accent-color: var(--pri); }
 }
 .lc-btn-danger-soft:hover:not(:disabled) { background: var(--err-s); }
 
+/* MUI Icon Button */
 .lc-icon-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   flex: none;
   border-radius: var(--r-sm);
   border: 1px solid transparent;
   color: var(--mut);
   background: transparent;
   cursor: pointer;
-  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  user-select: none;
+  transition: background 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+              color 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.08s ease;
 }
+.lc-icon-btn:active:not(:disabled) { transform: scale(0.96); }
 .lc-icon-btn:hover:not(:disabled) {
   background: var(--bg);
   color: var(--tx);
@@ -426,37 +487,44 @@ input[type='radio'] { accent-color: var(--pri); }
 }
 
 /* Toolbar chip with a text label (spec §1.4 "Words, not mystery icons") */
+/* Toolbar chip with a text label (MUI Outlined Chip with Click Ripple) */
 .lc-chip-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 34px;
-  padding: 0 10px;
-  font-size: 13px;
+  height: 32px;
+  padding: 0 12px;
+  font-size: 12.5px;
   font-weight: 600;
   color: var(--tx-2);
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-full);
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  user-select: none;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.lc-chip-btn:hover:not(:disabled) { border-color: var(--pri); color: var(--pri); }
-.lc-chip-btn.is-on {
-  background: var(--pri-s);
-  border-color: var(--pri-line);
+.lc-chip-btn:hover:not(:disabled) {
+  border-color: var(--pri);
   color: var(--pri);
+  background: var(--pri-s);
+}
+.lc-chip-btn.is-on {
+  background: var(--pri);
+  border-color: var(--pri);
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(25, 118, 210, 0.35);
 }
 .lc-chip-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
-/* ─── Segmented control ─────────────────────────────────────── */
+/* ─── Segmented control (MUI ToggleButtonGroup Pattern) ────── */
 .lc-segment {
   display: inline-flex;
   align-items: stretch;
   width: 100%;
   padding: 3px;
-  gap: 2px;
+  gap: 3px;
   background: var(--bg);
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
@@ -467,47 +535,51 @@ input[type='radio'] { accent-color: var(--pri); }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
-  padding: 6px 4px;
+  padding: 7px 6px;
   border: none;
   background: transparent;
-  border-radius: 5px;
+  border-radius: 6px;
   color: var(--mut);
   font-family: inherit;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.12s, color 0.12s;
+  user-select: none;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.lc-segment button:hover:not(.is-on) { color: var(--tx); }
+.lc-segment button:hover:not(.is-on) {
+  color: var(--tx);
+  background: rgba(0, 0, 0, 0.03);
+}
 .lc-segment button.is-on {
   background: var(--panel);
   color: var(--pri);
-  box-shadow: var(--sh-sm);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 .lc-segment-row { flex-direction: row; }
-.lc-segment-row button { flex: 1; flex-direction: row; gap: 6px; padding: 7px 10px; }
+.lc-segment-row button { flex: 1; flex-direction: row; gap: 6px; padding: 7px 12px; }
 
-/* ─── Badges & chips ────────────────────────────────────────── */
+/* ─── Badges & chips (MUI Chip Spec) ────────────────────────── */
 .lc-badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  height: 20px;
-  padding: 0 8px;
-  border-radius: 9999px;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: var(--r-full);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.02em;
   white-space: nowrap;
 }
-.lc-badge-opti { background: var(--pri-s); color: var(--pri); }
-.lc-badge-erp { background: var(--erp-s); color: var(--erp); }
-.lc-badge-ok { background: var(--ok-s); color: var(--ok); }
-.lc-badge-warn { background: var(--warn-s); color: var(--warn); }
-.lc-badge-err { background: var(--err-s); color: var(--err); }
-.lc-badge-neutral { background: var(--bg); color: var(--mut); }
+.lc-badge-opti { background: var(--pri-s); color: var(--pri); border: 1px solid var(--pri-line); }
+.lc-badge-erp { background: var(--erp-s); color: var(--erp); border: 1px solid var(--erp-line); }
+.lc-badge-ok { background: var(--ok-s); color: var(--ok); border: 1px solid var(--ok-line); }
+.lc-badge-warn { background: var(--warn-s); color: var(--warn); border: 1px solid var(--warn-line); }
+.lc-badge-err { background: var(--err-s); color: var(--err); border: 1px solid var(--err-line); }
+.lc-badge-neutral { background: var(--bg); color: var(--mut); border: 1px solid var(--line); }
 .lc-badge-prod { background: var(--pri); color: #fff; }
 .lc-badge-offcut { background: var(--warn); color: #fff; }
 
@@ -515,8 +587,8 @@ input[type='radio'] { accent-color: var(--pri); }
 .lc-key-chip {
   display: inline-flex;
   align-items: center;
-  height: 18px;
-  padding: 0 6px;
+  height: 20px;
+  padding: 0 7px;
   font-family: var(--mono);
   font-size: 11px;
   font-weight: 500;
@@ -529,20 +601,20 @@ input[type='radio'] { accent-color: var(--pri); }
 }
 .lc-key-chip.is-note { color: var(--warn); background: var(--warn-s); border-color: var(--warn-line); }
 
-/* ─── Status messages (system.png) ───────────────────────────── */
+/* ─── Status messages (MUI Alert Spec) ───────────────────────── */
 .lc-msg {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: 10px;
+  padding: 10px 14px;
   font-size: 13px;
-  font-weight: 600;
-  border-radius: var(--r-md);
+  font-weight: 500;
+  border-radius: var(--r-sm);
   border: 1px solid transparent;
 }
-.lc-msg-info { color: var(--pri); background: var(--pri-s); border-color: var(--pri-line); }
+.lc-msg-info { color: #0288D1; background: #E1F5FE; border-color: #B3E5FC; }
 .lc-msg-ok { color: var(--ok); background: var(--ok-s); border-color: var(--ok-line); }
-.lc-msg-warn { color: var(--warn); background: var(--warn-s); border-color: var(--warn-line); }
+.lc-msg-warn { color: #ED6C02; background: #FFF4E5; border-color: #FFE0B2; }
 .lc-msg-err { color: var(--err); background: var(--err-s); border-color: var(--err-line); }
 
 /* Full-bleed strip used for canvas banners (errors.png / offline.png) */
@@ -558,7 +630,7 @@ input[type='radio'] { accent-color: var(--pri); }
 .lc-strip-warn { background: var(--warn-s); color: var(--warn); border-bottom-color: var(--warn-line); }
 .lc-strip-err { background: var(--err-s); color: var(--err); border-bottom-color: var(--err-line); }
 
-/* ─── Modal ─────────────────────────────────────────────────── */
+/* ─── Modal (MUI Dialog & Backdrop Spec) ─────────────────────── */
 .lc-modal-overlay {
   position: fixed;
   inset: 0;
@@ -567,8 +639,16 @@ input[type='radio'] { accent-color: var(--pri); }
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: rgba(15, 23, 42, 0.42);
+  background: rgba(15, 23, 42, 0.48);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: muiFadeIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
+@keyframes muiFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .lc-modal {
   display: flex;
   flex-direction: column;
@@ -579,7 +659,13 @@ input[type='radio'] { accent-color: var(--pri); }
   border-radius: var(--r-lg);
   box-shadow: var(--sh-pop);
   overflow: hidden;
+  animation: muiScaleUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
+@keyframes muiScaleUp {
+  from { opacity: 0; transform: scale(0.96) translateY(4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
 .lc-modal-head {
   display: flex;
   align-items: flex-start;
@@ -609,7 +695,7 @@ input[type='radio'] { accent-color: var(--pri); }
   background: var(--panel-2);
 }
 
-/* ─── Tool grid ─────────────────────────────────────────────── */
+/* ─── Tool grid (MUI Action Card Spec) ─────────────────────── */
 .lc-tool-btn {
   display: flex;
   flex-direction: column;
@@ -623,9 +709,16 @@ input[type='radio'] { accent-color: var(--pri); }
   border-radius: var(--r-md);
   color: var(--tx-2);
   cursor: pointer;
-  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  user-select: none;
+  transition: all 0.16s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.lc-tool-btn svg { color: var(--pri); }
+.lc-tool-btn:active {
+  transform: scale(0.95);
+}
+.lc-tool-btn svg {
+  color: var(--pri);
+  transition: transform 0.16s cubic-bezier(0.4, 0, 0.2, 1);
+}
 .lc-tool-btn span {
   font-size: 11px;
   font-weight: 600;
@@ -633,11 +726,20 @@ input[type='radio'] { accent-color: var(--pri); }
   line-height: 1.15;
 }
 .lc-tool-btn:hover {
+  border-color: var(--pri-line);
+  background: var(--pri-s);
+  color: var(--pri);
+  box-shadow: 0 2px 6px rgba(25, 118, 210, 0.12);
+}
+.lc-tool-btn:hover svg {
+  transform: translateY(-1px);
+}
+.lc-tool-btn.is-on {
   border-color: var(--pri);
   background: var(--pri-s);
   color: var(--pri);
+  box-shadow: 0 1px 3px rgba(25, 118, 210, 0.2);
 }
-.lc-tool-btn.is-on { border-color: var(--pri); background: var(--pri-s); color: var(--pri); }
 
 /* ─── Layer rows ────────────────────────────────────────────── */
 .lc-layer-row {

@@ -22,23 +22,33 @@ export default function AlignmentToolbar() {
   if (selectedKeys.length < 1) return null
 
   return (
-    <div className="pointer-events-auto absolute left-1/2 top-3 z-20 flex -translate-x-1/2 items-center gap-0.5 rounded-lg border border-[var(--lc-panel-border)] bg-[var(--lc-panel)]/95 px-1.5 py-1 shadow-lg backdrop-blur-sm">
+    <div className="pointer-events-auto absolute left-1/2 top-3 z-20 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-[var(--line)] bg-[var(--panel)]/95 px-2 py-1.5 shadow-[var(--sh-md)] backdrop-blur-md">
       {BTNS.map(({ mode, icon: Icon, title }) => (
         <button
           key={mode}
           type="button"
           title={title}
           onClick={() => alignSelected(mode)}
-          className="lc-icon-btn !h-7 !w-7"
+          className="lc-icon-btn !h-7 !w-7 hover:!bg-[var(--pri-s)] hover:!text-[var(--pri)]"
         >
           <Icon size={14} />
         </button>
       ))}
-      <div className="mx-1 h-5 w-px bg-[var(--lc-panel-border)]" />
-      <button type="button" title="Distribute horizontally" onClick={() => distributeSelected('h')} className="lc-icon-btn !h-7 !w-7">
+      <div className="mx-1 h-4 w-px bg-[var(--line)]" />
+      <button
+        type="button"
+        title="Distribute horizontally"
+        onClick={() => distributeSelected('h')}
+        className="lc-icon-btn !h-7 !w-7 hover:!bg-[var(--pri-s)] hover:!text-[var(--pri)]"
+      >
         <ArrowLeftRight size={14} />
       </button>
-      <button type="button" title="Distribute vertically" onClick={() => distributeSelected('v')} className="lc-icon-btn !h-7 !w-7">
+      <button
+        type="button"
+        title="Distribute vertically"
+        onClick={() => distributeSelected('v')}
+        className="lc-icon-btn !h-7 !w-7 hover:!bg-[var(--pri-s)] hover:!text-[var(--pri)]"
+      >
         <ArrowUpDown size={14} />
       </button>
     </div>
