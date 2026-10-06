@@ -12,6 +12,8 @@ import {
   Redo2,
 } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
+import { PRINTER_BRANDS, brandLanguage } from '../services/printService'
+import { LANGUAGE_LABELS } from '../services/printService'
 
 export default function CanvasSubBar() {
   const width = useLabelStore((s) => s.width)
@@ -89,15 +91,18 @@ export default function CanvasSubBar() {
         <label className="relative hidden sm:flex flex-none items-center">
           <Printer size={14} className="pointer-events-none absolute left-2 text-[var(--mut)]" />
           <select
-            aria-label="Printer language"
+            aria-label="Printer"
             value={printerBrand || 'zebra'}
             onChange={(e) => setPrintConfig({ printerBrand: e.target.value })}
-            className="lc-select !h-[32px] !w-[115px] lg:!w-[145px] !pl-7 !pr-6 !text-[12px] sm:!text-[12.5px] !font-semibold"
+            className="lc-select !h-[32px] !w-[150px] lg:!w-[200px] !pl-7 !pr-6 !text-[12px] sm:!text-[12.5px] !font-semibold"
+            title={`Printer code language: ${(LANGUAGE_LABELS[brandLanguage(printerBrand)] || 'ZPL').toUpperCase()}`}
           >
-            <option value="zebra">Zebra (ZPL)</option>
-            <option value="tsc">TSC (TSPL)</option>
-            <option value="epl">Zebra (EPL)</option>
-            <option value="datamax">Datamax</option>
+            {/* Every brand the Print Service supports — see PRINTER_BRANDS. */}
+            {PRINTER_BRANDS.map((p) => (
+              <option key={p.brand} value={p.brand} title={p.hint}>
+                {p.name}
+              </option>
+            ))}
           </select>
         </label>
 

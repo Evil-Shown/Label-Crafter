@@ -171,7 +171,8 @@ export function resolveFieldDisplayText(field, data = {}, { showLiveTokens = tru
       const mapped = resolveMappedPreview(field, data)
       if (mapped != null && String(mapped).trim() !== '') return String(mapped)
     }
-    return text
+    if (field?.fallbackValue) return String(field.fallbackValue)
+    return raw
   }
 
   const bound = Number(field?.noteField) > 0 || (Array.isArray(field?.source) && field.source.length > 0)
@@ -190,6 +191,7 @@ export function resolveFieldDisplayText(field, data = {}, { showLiveTokens = tru
   const sf = Number(field?.subField) || 0
   if (nf > 0) return `N${nf}F${sf || 1}`
   if (field?.fallbackValue) return String(field.fallbackValue)
+  if (field?.label) return String(field.label)
   return ''
 }
 

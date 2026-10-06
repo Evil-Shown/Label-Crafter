@@ -35,7 +35,7 @@ import {
   sanitizeFileName,
 } from '../utils/templateStorage'
 import { catalogForClient } from '../data/fieldCatalog'
-import { SEED_TEMPLATES } from '../data/seedTemplates'
+import { SEED_TEMPLATES, MSG } from '../data/seedTemplates'
 import { checkServiceHealth } from '../services/printService'
 import {
   fetchDesignSession,
@@ -53,34 +53,9 @@ const DB_BACKOFF = [5, 10, 30]
 migrateLegacyLibrary()
 
 const defaultTemplate = () => ({
-  id: 'LBL_NEW',
-  name: 'New Label',
-  width: 100,
-  height: 60,
-  unit: 'mm',
-  labelType: 'production',
-  printerDpi: 300,
-  margins: { left: 3.0, right: 1.0, top: 1.0, bottom: 1.0 },
-  globalStyles: {
-    fontFamily: 'Arial, sans-serif',
-    defaultFontSize: 9,
-    backgroundColor: '#ffffff',
-    defaultColor: '#000000',
-  },
-  fields: [
-    createHeaderField({
-      fieldKey: 'title',
-      label: 'Header Text',
-      x: 18, y: 12, width: 240, height: 28,
-      value: 'Order: {{orderNumber}}',
-      fontSize: 14,
-    }),
-    createBarcodeField({
-      fieldKey: 'mainBarcode',
-      label: 'Main Barcode',
-      x: 18, y: 45, width: 200, height: 52,
-    }),
-  ],
+  ...MSG(),
+  id: 'LBL_001',
+  name: 'MSG — Premium Shower',
 })
 
 /** Strip Immer proxies and non-serializable values before history/export clones. */
@@ -273,7 +248,7 @@ export const useLabelStore = create(
       { id: '2', time: 'Today 11:02', client: 'opti', text: 'Default set to MSG (from Opti)' },
       { id: '3', time: 'Yesterday', client: 'erp', text: 'Glass Order Label created' },
     ],
-    showKeysOnCanvas: true,
+    showKeysOnCanvas: false,
     lastSavedAt: null,
     showGrid: true,
     showEdges: true,
