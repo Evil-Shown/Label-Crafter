@@ -57,9 +57,9 @@ export default function ComponentsSidebar() {
     { label: 'QR', Icon: QrCode, onClick: addQrField },
     { label: 'Checkbox', Icon: SquareCheck, onClick: addCheckboxField },
     { label: 'Line', Icon: Minus, onClick: addLineField },
-    { label: 'Shape', Icon: Shapes, onClick: addRoundedRectField },
-    { label: 'Image', Icon: ImageIcon, onClick: addImageField },
-    { label: 'DXF', Icon: Frame, onClick: addDxfField },
+    { label: 'Shape', Icon: Shapes, onClick: () => addRoundedRectField() },
+    { label: 'Image', Icon: ImageIcon, onClick: () => addImageField() },
+    { label: 'DXF', Icon: Frame, onClick: () => addDxfField() },
   ]
 
   const baseCatalog = catalogForClient(client)
