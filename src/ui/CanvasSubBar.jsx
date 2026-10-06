@@ -61,7 +61,7 @@ export default function CanvasSubBar() {
 
   return (
     <Paper
-      elevation={1}
+      elevation={0}
       square
       sx={{
         display: 'flex',
@@ -73,8 +73,10 @@ export default function CanvasSubBar() {
         overflowX: 'auto',
         px: 2,
         py: 0.5,
+        borderRadius: 0,
         userSelect: 'none',
         whiteSpace: 'nowrap',
+        borderTop: 0,
         borderBottom: '1px solid',
         borderColor: 'divider',
         bgcolor: 'background.paper',
