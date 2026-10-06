@@ -34,6 +34,7 @@ import {
   sanitizeFileName,
 } from '../utils/templateStorage'
 import { catalogForClient } from '../data/fieldCatalog'
+import { checkServiceHealth } from '../services/printService'
 import {
   fetchDesignSession,
   fetchFieldCatalog,
@@ -43,6 +44,9 @@ import {
 } from '../services/designApi'
 
 const MAX_HISTORY = 80
+
+/** Spec §8.2: database retry back-off in seconds. */
+const DB_BACKOFF = [5, 10, 30]
 
 migrateLegacyLibrary()
 
@@ -225,6 +229,36 @@ export const useLabelStore = create(
     showNewModal: false,
     showAddShapeModal: false,
     confirmDialog: null,
+    activeTab: 'design', // 'design' | 'templates' | 'settings' | 'opti'
+    showSplashScreen: true,
+    firstTimeSetupOpen: false,
+    dbStatus: 'connected', // 'connected' | 'offline'
+    dbLatencyMs: 18,
+    dbLastOkAt: Date.now(),
+    dbRetryIn: 0,
+    dbRetryStep: 0,
+    dbServer: 'SPIL-SQL01',
+    dbDatabase: 'SpilProduction',
+    dbPort: 1433,
+    dbAuthType: 'windows', // 'windows' | 'sql'
+    printServiceStatus: 'connected', // 'connected' | 'unreachable'
+    printServiceLastOkAt: Date.now(),
+    showConnectionPopover: false,
+    showLoadDataModal: false,
+    showExportDialog: false,
+    showFieldPicker: false,
+    fieldPickerAnchor: null,
+    fieldPickerCallback: null,
+    realDataInfo: null, // { source: 'Project 1265.oif', pieceIndex: 7, totalPieces: 42 }
+    recentActivity: [
+      { id: '1', time: 'Today 15:31', client: 'opti', text: 'MSG saved · revision 14' },
+      { id: '2', time: 'Today 11:02', client: 'opti', text: 'Default set to MSG (from Opti)' },
+      { id: '3', time: 'Yesterday', client: 'erp', text: 'Glass Order Label created' },
+    ],
+    showKeysOnCanvas: true,
+    lastSavedAt: null,
+    showGrid: true,
+    showEdges: true,
     _history: [],
     _future: [],
     _savedSnapshot: snapshotKey(initialTemplate),
@@ -634,6 +668,7 @@ export const useLabelStore = create(
         st.selectedKeys = []
         st.updatedAt = new Date().toISOString()
         if (markSaved) st._savedSnapshot = snapshotKey(st)
+        st.lastSavedAt = Date.now()
       })
       if (!skipHistory) get().addToast({ message: 'Template loaded', type: 'success' })
     },
@@ -711,6 +746,7 @@ export const useLabelStore = create(
       set((st) => {
         st.id = saved.id
         st._savedSnapshot = snapshotKey(st)
+st.lastSavedAt = Date.now()
       })
       get().addToast({ message: `Saved ${saved.id} on the label service`, type: 'success' })
       if (window.parent && window.parent !== window) {
@@ -808,6 +844,7 @@ export const useLabelStore = create(
         st.id = id
         st.hostedInApp = true
         st._savedSnapshot = snapshotKey(st)
+st.lastSavedAt = Date.now()
       })
       if (window.parent && window.parent !== window) {
         window.parent.postMessage({ type: 'spil-label-template-saved', record }, '*')
@@ -825,6 +862,7 @@ export const useLabelStore = create(
       set((st) => {
         st.id = saved.id
         st._savedSnapshot = snapshotKey(st)
+st.lastSavedAt = Date.now()
       })
       get().refreshTemplateLibrary()
       get().addToast({ message: 'Saved to template library', type: 'success' })
@@ -980,6 +1018,130 @@ export const useLabelStore = create(
 
     dismissConfirmation() {
       set((st) => { st.confirmDialog = null })
+    },
+
+    setActiveTab(tab) {
+      set({ activeTab: tab })
+    },
+
+    setClient(client) {
+      if (get().designSession) return
+      set((st) => {
+        st.client = client
+        st.fieldCatalog = catalogForClient(client)
+        // Rule: switching clears loaded data and reloads fields
+        st.labelData = {}
+        st.hasHostPreviewData = false
+        st.realDataInfo = null
+      })
+      get().addToast({
+        message: `Switched to ${client === 'erp' ? 'ERP' : 'Opti'} mode`,
+        type: 'info',
+      })
+    },
+
+    loadRealData({ source, pieceIndex, totalPieces, data }) {
+      set((st) => {
+        st.labelData = { ...data }
+        st.hasHostPreviewData = true
+        st.realDataInfo = {
+          source,
+          pieceIndex: pieceIndex ?? 1,
+          totalPieces: totalPieces ?? 1,
+        }
+      })
+      get().addToast({
+        message: `Loaded real piece data: ${source}`,
+        type: 'success',
+      })
+    },
+
+    clearRealData() {
+      set((st) => {
+        st.labelData = {}
+        st.hasHostPreviewData = false
+        st.realDataInfo = null
+      })
+    },
+
+    stepPiece(delta) {
+      const info = get().realDataInfo
+      if (!info || !info.totalPieces) return
+      let next = info.pieceIndex + delta
+      if (next < 1) next = info.totalPieces
+      if (next > info.totalPieces) next = 1
+      set((st) => {
+        st.realDataInfo.pieceIndex = next
+      })
+    },
+
+    toggleDbOffline() {
+      set((st) => {
+        st.dbStatus = st.dbStatus === 'connected' ? 'offline' : 'connected'
+      })
+    },
+
+    togglePrintServiceStatus() {
+      set((st) => {
+        st.printServiceStatus = st.printServiceStatus === 'connected' ? 'unreachable' : 'connected'
+      })
+    },
+
+    /**
+     * Spec §8.1 / §8.2: poll the Print Service and the template database,
+     * auto-retry with back-off (5, 10, 30 s) and clear the banner on recovery.
+     */
+    async checkServiceHealth() {
+      const st = get()
+      const started = Date.now()
+      try {
+        await checkServiceHealth(st.printServiceUrl)
+        set((s) => {
+          s.printServiceStatus = 'connected'
+          s.printServiceLastOkAt = Date.now()
+        })
+      } catch {
+        set((s) => {
+          s.printServiceStatus = 'unreachable'
+          if (!s.printServiceLastOkAt) s.printServiceLastOkAt = null
+        })
+      }
+
+      // The database is reached through the same design service endpoint.
+      try {
+        await listServerTemplates(st.printServiceUrl, st.client)
+        set((s) => {
+          s.dbStatus = 'connected'
+          s.dbLastOkAt = Date.now()
+          s.dbLatencyMs = Date.now() - started
+          s.dbRetryIn = 0
+          s.dbRetryStep = 0
+        })
+      } catch {
+        set((s) => {
+          s.dbStatus = 'offline'
+          s.dbRetryStep = Math.min(s.dbRetryStep + 1, DB_BACKOFF.length - 1)
+          s.dbRetryIn = DB_BACKOFF[s.dbRetryStep]
+        })
+      }
+    },
+
+    /** Manual "Retry now" from the offline banner. */
+    async retryDatabase() {
+      set((s) => {
+        s.dbRetryIn = 0
+      })
+      await get().checkServiceHealth()
+    },
+
+    tickRetryCountdown() {
+      const st = get()
+      if (st.dbStatus === 'connected' || st.dbRetryIn <= 0) return
+      const next = st.dbRetryIn - 1
+      set((s) => {
+        s.dbRetryIn = next
+      })
+      if (next <= 0) get().checkServiceHealth()
     },
 
     discardUnsavedChanges() {

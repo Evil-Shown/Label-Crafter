@@ -1,7 +1,57 @@
 import * as THREE from 'three'
 import JsBarcode from 'jsbarcode'
 import QRCode from 'qrcode'
-import { isTextLikeType, resolveFieldDisplayText, resolveMappedPreview } from '../utils/template'
+import {
+  isTextLikeType,
+  mappingLabel,
+  resolveFieldDisplayText,
+  resolveMappedPreview,
+} from '../utils/template'
+
+/** Keys shown inside the grey dashed chip when a bound field has no real data. */
+const CHIP_FONT = '600 11px "JetBrains Mono", ui-monospace, monospace'
+
+function chipKeyLabel(field) {
+  return mappingLabel(field) || field?.source?.[0] || field?.value || field?.label || 'key'
+}
+
+/** True when the field is bound to data that is not present in the loaded bag. */
+function isUnboundPlaceholder(field, text, data) {
+  const bound = Number(field.noteField) > 0 || (Array.isArray(field.source) && field.source.length > 0)
+  const hasTokens = typeof field.value === 'string' && field.value.includes('{{')
+  if (!bound && !hasTokens) return false
+  if (!data || Object.keys(data).length === 0) return true
+  const value = String(text ?? '').trim()
+  if (value === '') return true
+  if (/^N\d+F\d+$/i.test(value)) return true
+  if (hasTokens && /\{\{/.test(value)) return true
+  return false
+}
+
+/** Draw the grey dashed key chip used wherever a bound field has no real data. */
+function drawKeyChip(ctx, w, h, keyLabel, opts = {}) {
+  ctx.save()
+  ctx.font = CHIP_FONT
+  const metrics = ctx.measureText(keyLabel)
+  const chipH = opts.compact ? 14 : 18
+  const chipW = Math.min(w, Math.max(30, metrics.width + 12))
+  const chipX = opts.align === 'right' ? w - chipW - 2 : 2
+  const chipY = Math.max(1, (h - chipH) / 2)
+
+  ctx.fillStyle = opts.fill || '#F1F5F9'
+  ctx.fillRect(chipX, chipY, chipW, chipH)
+  ctx.strokeStyle = opts.stroke || '#94A3B8'
+  ctx.lineWidth = 1
+  ctx.setLineDash([3, 2])
+  ctx.strokeRect(chipX + 0.5, chipY + 0.5, chipW - 1, chipH - 1)
+  ctx.setLineDash([])
+
+  ctx.fillStyle = opts.color || '#475569'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(keyLabel, chipX + chipW / 2, chipY + chipH / 2 + 0.5)
+  ctx.restore()
+}
 
 /** Pixel ratio for offscreen field canvases — matches screen zoom so textures stay sharp. */
 export function getTexturePixelRatio(zoom = 1) {
@@ -152,6 +202,21 @@ export async function buildFieldCanvas(
     const fw = isBoldWeight(field.fontWeight) ? 'bold' : 'normal'
     const inverted = !!(field.blackBox || field.isBlackBox)
 
+    const isBound = Number(field.noteField) > 0 || (Array.isArray(field.source) && field.source.length > 0)
+    const hasRealValue = text && !text.startsWith('{{') && !/^N\d+F\d+$/i.test(text)
+    const isChipPlaceholder = isUnboundPlaceholder(field, text, data)
+
+    if (isChipPlaceholder && !inverted) {
+      const align = String(field.textAlign || 'left').toLowerCase()
+      drawKeyChip(ctx, w, h, chipKeyLabel(field), {
+        align: align === 'right' || align === 'end' ? 'right' : align === 'center' || align === 'middle' ? 'center' : 'left',
+      })
+      return canvasTexture(canvas, { crisp: false })
+    }
+
+    void isBound
+    void hasRealValue
+
     if (inverted) {
       ctx.fillStyle = '#000000'
       ctx.fillRect(0, 0, w, h)
@@ -264,7 +329,11 @@ export async function buildFieldCanvas(
         if (data[s]) { val = String(data[s]); break }
       }
     }
-    if (!val) val = field.fallbackValue || '000000000'
+    // R10: never print a made-up number. Empty barcode shows its key instead.
+    if (!String(val).trim()) {
+      drawKeyChip(ctx, w, h, chipKeyLabel(field), { compact: true, fill: '#F8FAFC' })
+      return canvasTexture(canvas, { crisp: false })
+    }
     try {
       const bc = document.createElement('canvas')
       JsBarcode(bc, val, {
@@ -294,7 +363,10 @@ export async function buildFieldCanvas(
         if (data[s]) { val = String(data[s]); break }
       }
     }
-    if (!val) val = field.fallbackValue || 'sample'
+    if (!String(val).trim()) {
+      drawKeyChip(ctx, w, h, chipKeyLabel(field), { compact: true, fill: '#F8FAFC' })
+      return canvasTexture(canvas, { crisp: false })
+    }
     try {
       const qrCanvas = document.createElement('canvas')
       await QRCode.toCanvas(qrCanvas, val, {

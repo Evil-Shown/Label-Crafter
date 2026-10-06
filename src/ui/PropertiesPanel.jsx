@@ -1,33 +1,70 @@
-import { useEffect, useState } from 'react'
-import { Trash2, MousePointer2, AlignLeft, Barcode, Shapes, Image, Table, Settings2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import {
+  Trash2,
+  Copy,
+  Lock,
+  Unlock,
+  Eye,
+  EyeOff,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignStartVertical,
+  AlignCenterVertical,
+  AlignEndVertical,
+  Link2,
+  FileText,
+  Database,
+  TypeIcon,
+  Ruler,
+  Printer,
+  Tag,
+  MousePointerClick,
+  ChevronDown,
+} from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
-import { PanelHeader, EmptyState, PropGroup, SectionLabel } from './primitives'
-import TokenInput from './TokenInput'
 import MappingDialog from './MappingDialog'
-import { catalogForClient } from '../data/fieldCatalog'
-import { isMappableType, isTextLikeType, mappingLabel } from '../utils/template'
+import { mmToPx, pxToMm } from '../utils/units'
+import { elementDisplayName, elementIcon } from '../elements/typeMeta'
 
-const FONT_OPTIONS = ['Inter, sans-serif', 'Arial, sans-serif', 'Helvetica, sans-serif', 'Times New Roman, serif', 'Courier New, monospace', 'Verdana, sans-serif']
 const BARCODE_FORMATS = ['CODE128', 'CODE39', 'EAN13', 'ITF14', 'UPC']
-const QR_ECC = ['L', 'M', 'Q', 'H']
+const ROTATIONS = [0, 90, 180, 270]
 
-const TYPE_META = {
-  text: { icon: AlignLeft, label: 'Text Field' },
-  header: { icon: AlignLeft, label: 'Header' },
-  barcode: { icon: Barcode, label: 'Barcode' },
-  checkbox: { icon: Settings2, label: 'Checkbox' },
-  qrcode: { icon: Barcode, label: 'QR Code' },
-  line: { icon: Shapes, label: 'Line' },
-  shape: { icon: Shapes, label: 'Shape' },
-  image: { icon: Image, label: 'Image' },
-  table: { icon: Table, label: 'Table' },
+function Group({ n, title, children }) {
+  return (
+    <section className="lc-card lc-card-pad mb-4">
+      <div className="lc-prop-head">
+        <span className="lc-prop-num">{n}</span>
+        <h3 className="lc-section-title">{title}</h3>
+      </div>
+      {children}
+    </section>
+  )
 }
 
-function FieldLabel({ children }) {
+function Field({ label, children, hint }) {
   return (
-    <label className="mb-1 block text-[11px] font-semibold text-[var(--lc-text-muted)]">
+    <div>
+      <label className="lc-label-plain mb-1 block">{label}</label>
       {children}
-    </label>
+      {hint && <p className="mt-1 text-[11px] text-[var(--mut)]">{hint}</p>}
+    </div>
+  )
+}
+
+/** All geometry is stored in design pixels; the UI always speaks mm (spec §1.6). */
+function MmInput({ value, onCommit, unit, step = 0.1, className = '' }) {
+  const mm = pxToMm(value)
+  return (
+    <div className={`lc-input-unit ${className}`}>
+      <input
+        type="number"
+        step={step}
+        value={Number.isFinite(mm) ? Number(mm.toFixed(2)) : 0}
+        onChange={(e) => onCommit(mmToPx(Number(e.target.value)))}
+      />
+      {unit && <span>{unit}</span>}
+    </div>
   )
 }
 
@@ -36,429 +73,584 @@ export default function PropertiesPanel() {
   const fields = useLabelStore((s) => s.fields)
   const updateField = useLabelStore((s) => s.updateField)
   const deleteField = useLabelStore((s) => s.deleteField)
+  const duplicateField = useLabelStore((s) => s.duplicateField)
   const toggleFieldLock = useLabelStore((s) => s.toggleFieldLock)
   const toggleFieldVisible = useLabelStore((s) => s.toggleFieldVisible)
 
-  const fieldCatalog = useLabelStore((s) => s.fieldCatalog)
+  const width = useLabelStore((s) => s.width)
+  const height = useLabelStore((s) => s.height)
+  const setLabelSize = useLabelStore((s) => s.setLabelSize)
+  const margins = useLabelStore((s) => s.margins)
+  const setMargins = useLabelStore((s) => s.setMargins)
+  const printerBrand = useLabelStore((s) => s.printerBrand)
+  const printerDpi = useLabelStore((s) => s.printerDpi)
+  const setPrintConfig = useLabelStore((s) => s.setPrintConfig)
+  const templateName = useLabelStore((s) => s.name)
+  const labelType = useLabelStore((s) => s.labelType)
   const client = useLabelStore((s) => s.client)
-  const catalog = fieldCatalog?.length ? fieldCatalog : catalogForClient(client)
-
-  const field = selectedKeys.length === 1
-    ? fields.find((f) => f.fieldKey === selectedKeys[0])
-    : null
 
   const [mappingOpen, setMappingOpen] = useState(false)
+  const [alignOpen, setAlignOpen] = useState(false)
+  const alignRef = useRef(null)
 
   useEffect(() => {
-    setMappingOpen(false)
-  }, [field?.fieldKey])
+    if (!alignOpen) return undefined
+    const onDown = (e) => {
+      if (alignRef.current && !alignRef.current.contains(e.target)) setAlignOpen(false)
+    }
+    window.addEventListener('pointerdown', onDown)
+    return () => window.removeEventListener('pointerdown', onDown)
+  }, [alignOpen])
 
+  const field = selectedKeys.length === 1 ? fields.find((f) => f.fieldKey === selectedKeys[0]) : null
+
+  const panelClass =
+    'lc-sidebar-right flex h-full w-[300px] shrink-0 flex-col overflow-y-auto border-l border-[var(--line)] text-[var(--tx)] select-none'
+
+  /* ── Nothing selected → Label settings (spec §4.3 / main_erp.png) ── */
   if (!field) {
     return (
-      <aside className="lc-sidebar lc-sidebar-right flex h-full min-h-0 w-[280px] shrink-0 flex-col overflow-y-auto border-l border-[var(--lc-panel-border)] bg-[var(--lc-panel)]">
-        <PanelHeader title="Properties" />
-        <EmptyState
-          icon={MousePointer2}
-          title="Nothing selected"
-          subtitle="Click any element on the canvas to edit its position, size, and style."
-        />
+      <aside className={panelClass}>
+        <header className="flex items-center gap-2.5 border-b border-[var(--line)] px-4 py-3">
+          <span className="lc-type-tile">
+            <Tag size={16} />
+          </span>
+          <div className="min-w-0">
+            <h2 className="lc-dialog-title truncate">Label</h2>
+            <p className="truncate text-[12.5px] text-[var(--mut)]">Nothing selected · page settings</p>
+          </div>
+        </header>
+
+        <div className="flex-1 px-4 py-4">
+          <section className="lc-card lc-card-pad mb-4">
+            <div className="mb-3 flex items-center gap-2">
+              <Ruler size={15} className="text-[var(--mut)]" />
+              <h3 className="lc-section-title">Size</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Width">
+                <MmInput value={mmToPx(width)} onCommit={(px) => setLabelSize(pxToMm(px), height)} unit="mm" />
+              </Field>
+              <Field label="Height">
+                <MmInput value={mmToPx(height)} onCommit={(px) => setLabelSize(width, pxToMm(px))} unit="mm" />
+              </Field>
+            </div>
+            <div className="mt-3">
+              <label className="lc-label-plain mb-1 block">Margins (L · R · T · B)</label>
+              <div className="grid grid-cols-4 gap-2">
+                {['left', 'right', 'top', 'bottom'].map((side) => (
+                  <input
+                    key={side}
+                    type="number"
+                    step={0.5}
+                    aria-label={`${side} margin`}
+                    value={margins?.[side] ?? 0}
+                    onChange={(e) => setMargins({ [side]: Number(e.target.value) })}
+                    className="lc-input !h-[32px] !px-2 text-center"
+                  />
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section className="lc-card lc-card-pad mb-4">
+            <div className="mb-3 flex items-center gap-2">
+              <Printer size={15} className="text-[var(--mut)]" />
+              <h3 className="lc-section-title">Printer</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Brand">
+                <select
+                  value={printerBrand}
+                  onChange={(e) => setPrintConfig({ printerBrand: e.target.value })}
+                  className="lc-select"
+                >
+                  <option value="zebra">Zebra</option>
+                  <option value="tsc">TSC</option>
+                  <option value="epl">Zebra · EPL</option>
+                  <option value="datamax">Datamax</option>
+                </select>
+              </Field>
+              <Field label="Resolution">
+                <select
+                  value={printerDpi}
+                  onChange={(e) => setPrintConfig({ printerDpi: Number(e.target.value) })}
+                  className="lc-select"
+                >
+                  <option value={203}>203 DPI</option>
+                  <option value={300}>300 DPI</option>
+                  <option value={600}>600 DPI</option>
+                </select>
+              </Field>
+            </div>
+          </section>
+
+          <section className="lc-card lc-card-pad">
+            <div className="mb-3 flex items-center gap-2">
+              <FileText size={15} className="text-[var(--mut)]" />
+              <h3 className="lc-section-title">Template</h3>
+            </div>
+            <Field label="Name">
+              <input type="text" readOnly value={templateName} className="lc-input !bg-[var(--bg)]" />
+            </Field>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <Field label="Type">
+                <select
+                  value={labelType}
+                  onChange={(e) => useLabelStore.getState().setTemplateMeta({ labelType: e.target.value })}
+                  className="lc-select capitalize"
+                >
+                  <option value="production">Production</option>
+                  <option value="offcut">Offcut</option>
+                </select>
+              </Field>
+              <Field label="Saved for">
+                <div className="lc-input flex items-center !bg-[var(--bg)]">
+                  <span className={`lc-badge ${client === 'erp' ? 'lc-badge-erp' : 'lc-badge-opti'}`}>
+                    {client === 'erp' ? 'ERP' : 'OPTI'}
+                  </span>
+                </div>
+              </Field>
+            </div>
+          </section>
+        </div>
+
+        <p className="flex items-center justify-center gap-1.5 px-4 pb-4 pt-2 text-center text-[12.5px] text-[var(--mut)]">
+          <MousePointerClick size={14} />
+          Click an element to edit it
+        </p>
       </aside>
     )
   }
 
-  const meta = TYPE_META[field.type] || TYPE_META.text
-  const MetaIcon = meta.icon
-  const isShape = field.type === 'shape'
-  const isDxf = field.shapeType === 'dxf'
-  const isText = isTextLikeType(field.type)
-  const isTable = field.type === 'table'
-  const isMappable = isMappableType(field.type)
-  const mapHint = mappingLabel(field)
+  /* ── Element selected → three numbered questions (spec §4.1) ── */
+  const isBarcode = field.type === 'barcode'
+  const isQr = field.type === 'qrcode'
+  const isText = field.type === 'text' || field.type === 'header'
+  const isShapeLike = field.type === 'shape' || field.type === 'dxf' || field.type === 'line'
+  const TypeIconEl = elementIcon(field)
+  const noteField = Number(field.noteField) || 0
+  const subField = Number(field.subField) || 0
+  const boundField = field.source?.[0] || ''
+  const activeSource = noteField > 0 ? 'slot' : boundField ? 'field' : 'fixed'
+  const labelW = mmToPx(width)
+  const labelH = mmToPx(height)
+
+  const align = (mode) => {
+    const map = {
+      left: { x: 0 },
+      center: { x: (labelW - field.width) / 2 },
+      right: { x: labelW - field.width },
+      top: { y: 0 },
+      middle: { y: (labelH - field.height) / 2 },
+      bottom: { y: labelH - field.height },
+    }
+    updateField(field.fieldKey, map[mode])
+    setAlignOpen(false)
+  }
+
+  const ALIGN_ITEMS = [
+    { id: 'left', label: 'Left edge', Icon: AlignLeft },
+    { id: 'center', label: 'Centre', Icon: AlignCenter },
+    { id: 'right', label: 'Right edge', Icon: AlignRight },
+    { id: 'top', label: 'Top edge', Icon: AlignStartVertical },
+    { id: 'middle', label: 'Middle', Icon: AlignCenterVertical },
+    { id: 'bottom', label: 'Bottom edge', Icon: AlignEndVertical },
+  ]
 
   return (
-    <aside className="lc-sidebar lc-sidebar-right flex h-full min-h-0 w-[280px] shrink-0 flex-col overflow-y-auto border-l border-[var(--lc-panel-border)] bg-[var(--lc-panel)]">
-      {mappingOpen ? (
+    <aside className={panelClass}>
+      <header className="flex items-center justify-between gap-2 border-b border-[var(--line)] px-4 py-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="lc-type-tile">
+            <TypeIconEl size={16} />
+          </span>
+          <div className="min-w-0">
+            <h2 className="lc-dialog-title truncate">{elementDisplayName(field)}</h2>
+            <p className="truncate text-[12.5px] text-[var(--mut)]">
+              Layer {(field.zIndex ?? 0) + 1} of {fields.length}
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-none items-center gap-1">
+          <button
+            type="button"
+            onClick={() => duplicateField(field.fieldKey)}
+            className="lc-icon-btn"
+            title="Duplicate this element"
+          >
+            <Copy size={15} />
+          </button>
+          <button
+            type="button"
+            onClick={() => deleteField(field.fieldKey)}
+            className="lc-icon-btn is-danger"
+            title="Delete this element"
+          >
+            <Trash2 size={15} />
+          </button>
+        </div>
+      </header>
+
+      <div className="flex-1 px-4 py-4">
+        {/* 1. What does it show? */}
+        <Group n={1} title="What does it show?">
+          <div className="lc-segment">
+            <button
+              type="button"
+              className={activeSource === 'slot' ? 'is-on' : ''}
+              onClick={() => setMappingOpen(true)}
+            >
+              <FileText size={14} />
+              Note slot
+            </button>
+            <button
+              type="button"
+              className={activeSource === 'field' ? 'is-on' : ''}
+              onClick={() =>
+                useLabelStore.setState({
+                  showFieldPicker: true,
+                  fieldPickerCallback: (k) =>
+                    updateField(field.fieldKey, { source: [k], value: `{{${k}}}` }),
+                })
+              }
+            >
+              <Database size={14} />
+              Field
+            </button>
+            <button
+              type="button"
+              className={activeSource === 'fixed' ? 'is-on' : ''}
+              onClick={() =>
+                updateField(field.fieldKey, { noteField: 0, subField: 0, source: [], ifEmpty: 'blank' })
+              }
+            >
+              <TypeIcon size={14} />
+              Fixed
+            </button>
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <Field label="Note">
+              <select
+                value={noteField || 1}
+                onChange={(e) => updateField(field.fieldKey, { noteField: Number(e.target.value) })}
+                className="lc-select"
+              >
+                {[1, 2, 3].map((n) => (
+                  <option key={n} value={n}>
+                    Note {n}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Field">
+              <select
+                value={subField || 1}
+                onChange={(e) => updateField(field.fieldKey, { subField: Number(e.target.value) })}
+                className="lc-select"
+              >
+                {Array.from({ length: 20 }, (_, i) => (
+                  <option key={i + 1} value={i + 1}>
+                    Field {i + 1}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+
+          <div className="mt-3">
+            <Field label="If empty">
+              <select
+                value={field.ifEmpty || 'blank'}
+                onChange={(e) => updateField(field.fieldKey, { ifEmpty: e.target.value })}
+                className="lc-select"
+              >
+                <option value="blank">Print nothing</option>
+                <option value="hide">Hide element</option>
+              </select>
+            </Field>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setMappingOpen(true)}
+            className="lc-msg lc-msg-info mt-3 w-full !justify-start !py-2 text-left"
+            title="Open the full mapping dialog"
+          >
+            <Link2 size={14} className="flex-none" />
+            <span className="truncate text-[12.5px] font-semibold">
+              Reads <span className="lc-mono">note{noteField || 1}.field{subField || 1}</span>
+              <span className="mx-1 text-[var(--mut)]">·</span>
+              shows <span className="lc-mono font-bold">N{noteField || 1}F{subField || 1}</span>
+            </span>
+          </button>
+        </Group>
+
+        {/* 2. How does it look? */}
+        <Group n={2} title="How does it look?">
+          {isBarcode && (
+            <>
+              <Field label="Symbology">
+                <select
+                  value={field.barcodeFormat || 'CODE128'}
+                  onChange={(e) => updateField(field.fieldKey, { barcodeFormat: e.target.value })}
+                  className="lc-select"
+                >
+                  {BARCODE_FORMATS.map((f) => (
+                    <option key={f} value={f}>
+                      {f}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <Field label="Bar width">
+                  <MmInput
+                    value={field.barWidth || 2}
+                    onCommit={(v) => updateField(field.fieldKey, { barWidth: v })}
+                    unit="dots"
+                    step={1}
+                  />
+                </Field>
+                <Field label="Rotation">
+                  <select
+                    value={field.rotation || 0}
+                    onChange={(e) => updateField(field.fieldKey, { rotation: Number(e.target.value) })}
+                    className="lc-select"
+                  >
+                    {ROTATIONS.map((r) => (
+                      <option key={r} value={r}>
+                        {r}°
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+              <label className="mt-3 flex cursor-pointer items-center gap-2 text-[13px] font-medium text-[var(--tx)]">
+                <input
+                  type="checkbox"
+                  checked={field.displayValue !== false}
+                  onChange={(e) => updateField(field.fieldKey, { displayValue: e.target.checked })}
+                />
+                <span>Show text under bars</span>
+              </label>
+            </>
+          )}
+
+          {isQr && (
+            <>
+              <Field label="Error correction">
+                <select
+                  value={field.qrEcc || 'M'}
+                  onChange={(e) => updateField(field.fieldKey, { qrEcc: e.target.value })}
+                  className="lc-select"
+                >
+                  {['L', 'M', 'Q', 'H'].map((l) => (
+                    <option key={l} value={l}>
+                      {l}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <Field label="Rotation">
+                  <select
+                    value={field.rotation || 0}
+                    onChange={(e) => updateField(field.fieldKey, { rotation: Number(e.target.value) })}
+                    className="lc-select"
+                  >
+                    {ROTATIONS.map((r) => (
+                      <option key={r} value={r}>
+                        {r}°
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+            </>
+          )}
+
+          {isText && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Font size">
+                  <MmInput
+                    value={field.fontSize || 12}
+                    onCommit={(v) => updateField(field.fieldKey, { fontSize: v })}
+                    unit="mm"
+                  />
+                </Field>
+                <Field label="Alignment">
+                  <div className="lc-segment lc-segment-row">
+                    {[
+                      { id: 'left', Icon: AlignLeft },
+                      { id: 'center', Icon: AlignCenter },
+                      { id: 'right', Icon: AlignRight },
+                    ].map(({ id, Icon }) => (
+                      <button
+                        key={id}
+                        type="button"
+                        title={`Align ${id}`}
+                        className={(field.textAlign || 'left') === id ? 'is-on' : ''}
+                        onClick={() => updateField(field.fieldKey, { textAlign: id })}
+                      >
+                        <Icon size={14} />
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+              </div>
+              <div className="mt-3">
+                <Field label="Rotation">
+                  <select
+                    value={field.rotation || 0}
+                    onChange={(e) => updateField(field.fieldKey, { rotation: Number(e.target.value) })}
+                    className="lc-select"
+                  >
+                    {ROTATIONS.map((r) => (
+                      <option key={r} value={r}>
+                        {r}°
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+            </>
+          )}
+
+          {isShapeLike && (
+            <>
+              {field.type !== 'line' && (
+                <Field label="Shape">
+                  <select
+                    value={field.shapeType || 'rect'}
+                    onChange={(e) => updateField(field.fieldKey, { shapeType: e.target.value })}
+                    className="lc-select"
+                  >
+                    <option value="rect">Rectangle</option>
+                    <option value="roundrect">Rounded rectangle</option>
+                    <option value="ellipse">Ellipse</option>
+                    <option value="dxf">DXF outline</option>
+                  </select>
+                </Field>
+              )}
+              <label className="mt-3 flex cursor-pointer items-center gap-2 text-[13px] font-medium text-[var(--tx)]">
+                <input
+                  type="checkbox"
+                  checked={!!field.fillEnabled}
+                  onChange={(e) => updateField(field.fieldKey, { fillEnabled: e.target.checked })}
+                />
+                <span>Fill shape</span>
+              </label>
+              {field.type === 'line' && (
+                <div className="mt-3">
+                  <Field label="Line style">
+                    <select
+                      value={field.dashStyle || 'solid'}
+                      onChange={(e) => updateField(field.fieldKey, { dashStyle: e.target.value })}
+                      className="lc-select"
+                    >
+                      <option value="solid">Solid</option>
+                      <option value="dashed">Dashed</option>
+                      <option value="dotted">Dotted</option>
+                    </select>
+                  </Field>
+                </div>
+              )}
+            </>
+          )}
+        </Group>
+
+        {/* 3. Position & size — millimetres everywhere */}
+        <Group n={3} title="Position & size">
+          <div className="grid grid-cols-4 gap-2">
+            <Field label="X">
+              <MmInput
+                value={field.x}
+                onCommit={(v) => updateField(field.fieldKey, { x: v })}
+                className="[&_input]:text-center"
+              />
+            </Field>
+            <Field label="Y">
+              <MmInput
+                value={field.y}
+                onCommit={(v) => updateField(field.fieldKey, { y: v })}
+                className="[&_input]:text-center"
+              />
+            </Field>
+            <Field label="W">
+              <MmInput
+                value={field.width}
+                onCommit={(v) => updateField(field.fieldKey, { width: v })}
+                className="[&_input]:text-center"
+              />
+            </Field>
+            <Field label="H">
+              <MmInput
+                value={field.height}
+                onCommit={(v) => updateField(field.fieldKey, { height: v })}
+                className="[&_input]:text-center"
+              />
+            </Field>
+          </div>
+          <p className="mt-2 text-[11px] text-[var(--mut)]">All values in mm</p>
+
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => toggleFieldVisible(field.fieldKey)}
+              className="lc-btn lc-btn-secondary flex-1 !px-2"
+            >
+              {field.hidden ? <EyeOff size={14} /> : <Eye size={14} />}
+              <span>{field.hidden ? 'Show' : 'Hide'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => toggleFieldLock(field.fieldKey)}
+              className="lc-btn lc-btn-secondary flex-1 !px-2"
+            >
+              {field.locked ? <Lock size={14} /> : <Unlock size={14} />}
+              <span>{field.locked ? 'Unlock' : 'Lock'}</span>
+            </button>
+            <div className="relative flex-1" ref={alignRef}>
+              <button
+                type="button"
+                onClick={() => setAlignOpen((v) => !v)}
+                aria-expanded={alignOpen}
+                className="lc-btn lc-btn-secondary w-full !px-2"
+              >
+                <AlignCenter size={14} />
+                <span>Align</span>
+                <ChevronDown size={13} className="ml-auto" />
+              </button>
+              {alignOpen && (
+                <div className="lc-pop left-0 top-11 w-[176px] p-1">
+                  {ALIGN_ITEMS.map(({ id, label, Icon }) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => align(id)}
+                      className="flex w-full items-center gap-2 rounded-[7px] px-2 py-1.5 text-left text-[13px] font-medium text-[var(--tx-2)] hover:bg-[var(--bg)] hover:text-[var(--pri)]"
+                    >
+                      <Icon size={14} />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </Group>
+      </div>
+
+      {mappingOpen && (
         <MappingDialog
           field={field}
           onClose={() => setMappingOpen(false)}
           onSave={(patch) => updateField(field.fieldKey, patch)}
         />
-      ) : null}
-      <PanelHeader
-        title="Properties"
-        badge={
-          <span className="flex items-center gap-1 rounded-md bg-[var(--lc-accent-soft)] px-2 py-0.5 text-[10px] font-bold text-[var(--lc-accent)]">
-            <MetaIcon size={10} />
-            {isDxf ? 'DXF' : meta.label}
-          </span>
-        }
-      />
-
-      <div className="flex-1 space-y-3 overflow-y-auto p-3">
-        {isMappable && (
-          <PropGroup title="Data mapping">
-            <p className="mb-2 text-[10px] leading-snug text-[var(--lc-text-muted)]">
-              Same as Opti: map a note + subfield, or bind a piece token. Tokens print first; notes fill when heading text is empty.
-            </p>
-            <button
-              type="button"
-              onClick={() => setMappingOpen(true)}
-              className="lc-btn lc-btn-primary w-full !justify-center !text-xs"
-            >
-              <Settings2 size={13} />
-              Configure Data Mapping
-            </button>
-            {mapHint ? (
-              <p className="mt-2 rounded-md bg-[var(--lc-accent-soft)] px-2 py-1.5 font-mono text-[11px] font-semibold text-[var(--lc-accent)]">
-                {Number(field.noteField) > 0
-                  ? `note${field.noteField}.field${field.subField || 1} · ${mapHint}`
-                  : mapHint}
-              </p>
-            ) : (
-              <p className="mt-2 text-[10px] text-[var(--lc-text-muted)]">No note mapping yet.</p>
-            )}
-            <div className="pt-1">
-              <FieldLabel>Bind to piece field</FieldLabel>
-              <select
-                value=""
-                onChange={(e) => {
-                  const key = e.target.value
-                  if (!key) return
-                  const item = catalog.find((c) => c.key === key)
-                  const noteMatch = String(key).match(/^note(\d+)\.field(\d+)$/i)
-                  if (noteMatch) {
-                    updateField(field.fieldKey, {
-                      noteField: Number(noteMatch[1]),
-                      subField: Number(noteMatch[2]),
-                      label: item?.label || field.label,
-                      value: '',
-                    })
-                    return
-                  }
-                  if (item?.type === 'barcode' || field.type === 'barcode' || field.type === 'qrcode') {
-                    updateField(field.fieldKey, { source: [key], label: item?.label || field.label })
-                  } else {
-                    updateField(field.fieldKey, { value: `{{${key}}}`, label: item?.label || field.label })
-                  }
-                }}
-                className="lc-input w-full"
-              >
-                <option value="">Choose a field…</option>
-                {catalog.map((c) => (
-                  <option key={c.key} value={c.key}>{c.label} ({c.key})</option>
-                ))}
-              </select>
-            </div>
-          </PropGroup>
-        )}
-        {/* Element name */}
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-bold text-[var(--lc-text)]">{field.label || field.fieldKey}</p>
-            <p className="text-[10px] text-[var(--lc-text-muted)]">
-              {field.type}{field.shapeType ? ` · ${field.shapeType}` : ''}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => deleteField(field.fieldKey)}
-            className="lc-icon-btn hover:!bg-red-50 hover:!text-red-500 dark:hover:!bg-red-950/30"
-            title="Delete element"
-          >
-            <Trash2 size={14} />
-          </button>
-        </div>
-
-        {/* Text */}
-        {isText && (
-          <PropGroup title="Content">
-            <div>
-              <FieldLabel>{field.type === 'header' ? 'Heading text' : 'Text / token'}</FieldLabel>
-              <TokenInput
-                value={field.value || ''}
-                onChange={(v) => updateField(field.fieldKey, { value: v })}
-                multiline
-                placeholder={Number(field.noteField) > 0 ? 'Leave empty to use note mapping' : '{{orderNumber}}'}
-                tokens={catalog.map((c) => c.key)}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <FieldLabel>Font size</FieldLabel>
-                <input type="number" value={field.fontSize ?? 12} onChange={(e) => updateField(field.fieldKey, { fontSize: Number(e.target.value) })} className="lc-input w-full" />
-              </div>
-              <div>
-                <FieldLabel>Weight</FieldLabel>
-                <select value={field.fontWeight || 'normal'} onChange={(e) => updateField(field.fieldKey, { fontWeight: e.target.value })} className="lc-input w-full">
-                  <option value="normal">Normal</option>
-                  <option value="bold">Bold</option>
-                </select>
-              </div>
-            </div>
-            <div>
-              <FieldLabel>Font family</FieldLabel>
-              <select value={field.fontFamily || 'Arial, sans-serif'} onChange={(e) => updateField(field.fieldKey, { fontFamily: e.target.value })} className="lc-input w-full">
-                {FONT_OPTIONS.map((f) => <option key={f} value={f}>{f.split(',')[0]}</option>)}
-              </select>
-            </div>
-            <div>
-              <FieldLabel>Text color</FieldLabel>
-              <div className="flex items-center gap-2">
-                <input type="color" value={field.color || '#000000'} onChange={(e) => updateField(field.fieldKey, { color: e.target.value })} className="h-8 w-10 rounded border border-[var(--lc-panel-border)]" />
-                <input type="text" value={field.color || '#000000'} onChange={(e) => updateField(field.fieldKey, { color: e.target.value })} className="lc-input flex-1 font-mono text-xs" />
-              </div>
-            </div>
-            <div>
-              <FieldLabel>Align</FieldLabel>
-              <select value={field.textAlign || 'left'} onChange={(e) => updateField(field.fieldKey, { textAlign: e.target.value })} className="lc-input w-full">
-                <option value="left">Left</option>
-                <option value="center">Center</option>
-                <option value="right">Right</option>
-              </select>
-            </div>
-            <label className="flex items-center gap-2 text-xs font-medium">
-              <input type="checkbox" checked={!!(field.blackBox || field.isBlackBox)} onChange={(e) => updateField(field.fieldKey, { blackBox: e.target.checked, isBlackBox: e.target.checked, color: e.target.checked ? '#ffffff' : (field.color || '#000') })} className="rounded" />
-              Black box (inverted text)
-            </label>
-          </PropGroup>
-        )}
-
-        {/* Barcode */}
-        {field.type === 'barcode' && (
-          <PropGroup title="Barcode">
-            <div>
-              <FieldLabel>Symbology</FieldLabel>
-              <select value={field.barcodeFormat || 'CODE128'} onChange={(e) => updateField(field.fieldKey, { barcodeFormat: e.target.value })} className="lc-input w-full">
-                {BARCODE_FORMATS.map((f) => <option key={f} value={f}>{f}</option>)}
-              </select>
-            </div>
-            <div>
-              <FieldLabel>Fallback value</FieldLabel>
-              <input type="text" value={field.fallbackValue || ''} onChange={(e) => updateField(field.fieldKey, { fallbackValue: e.target.value })} className="lc-input w-full font-mono text-xs" />
-            </div>
-            <label className="flex items-center gap-2 text-xs font-medium">
-              <input type="checkbox" checked={field.displayValue !== false} onChange={(e) => updateField(field.fieldKey, { displayValue: e.target.checked })} className="rounded" />
-              Show human-readable text
-            </label>
-          </PropGroup>
-        )}
-
-        {field.type === 'qrcode' && (
-          <PropGroup title="QR Code">
-            <div>
-              <FieldLabel>Error correction</FieldLabel>
-              <select value={field.qrEcc || 'M'} onChange={(e) => updateField(field.fieldKey, { qrEcc: e.target.value })} className="lc-input w-full">
-                {QR_ECC.map((e) => <option key={e} value={e}>{e}</option>)}
-              </select>
-            </div>
-            <div>
-              <FieldLabel>Fallback value</FieldLabel>
-              <input type="text" value={field.fallbackValue || ''} onChange={(e) => updateField(field.fieldKey, { fallbackValue: e.target.value })} className="lc-input w-full font-mono text-xs" />
-            </div>
-          </PropGroup>
-        )}
-
-        {field.type === 'line' && (
-          <PropGroup title="Line style">
-            <div>
-              <FieldLabel>Dash style</FieldLabel>
-              <select value={field.dashStyle || 'solid'} onChange={(e) => updateField(field.fieldKey, { dashStyle: e.target.value })} className="lc-input w-full">
-                <option value="solid">Solid</option>
-                <option value="dashed">Dashed</option>
-                <option value="dotted">Dotted</option>
-              </select>
-            </div>
-            <label className="flex items-center gap-2 text-xs font-medium">
-              <input type="checkbox" checked={field.arrowEnd ?? false} onChange={(e) => updateField(field.fieldKey, { arrowEnd: e.target.checked })} className="rounded" />
-              Arrow end
-            </label>
-          </PropGroup>
-        )}
-
-        {/* Shape / line */}
-        {(isShape || field.type === 'line') && (
-          <PropGroup title="Appearance">
-            <div>
-              <FieldLabel>Border color</FieldLabel>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={field.strokeColor || '#000000'}
-                  onChange={(e) => updateField(field.fieldKey, { strokeColor: e.target.value })}
-                  className="h-8 w-10 cursor-pointer rounded-md border border-[var(--lc-panel-border)]"
-                />
-                <input
-                  type="text"
-                  value={field.strokeColor || '#000000'}
-                  onChange={(e) => updateField(field.fieldKey, { strokeColor: e.target.value })}
-                  className="lc-input flex-1 font-mono text-xs uppercase"
-                />
-              </div>
-            </div>
-            <div>
-              <FieldLabel>Thickness (px)</FieldLabel>
-              <input
-                type="number"
-                value={field.strokeWidth ?? 2}
-                onChange={(e) => updateField(field.fieldKey, { strokeWidth: Number(e.target.value) })}
-                className="lc-input w-full"
-              />
-            </div>
-            {isShape && (
-              <>
-                <label className="flex items-center gap-2 text-xs font-medium">
-                  <input
-                    type="checkbox"
-                    checked={field.fillEnabled ?? false}
-                    onChange={(e) => updateField(field.fieldKey, { fillEnabled: e.target.checked })}
-                    className="rounded"
-                  />
-                  Fill shape
-                </label>
-                {isDxf && (
-                  <label className="flex items-center gap-2 text-xs font-medium">
-                    <input
-                      type="checkbox"
-                      checked={field.hideEdgeLabels ?? false}
-                      onChange={(e) => updateField(field.fieldKey, { hideEdgeLabels: e.target.checked })}
-                      className="rounded"
-                    />
-                    Hide edge labels
-                  </label>
-                )}
-              </>
-            )}
-          </PropGroup>
-        )}
-
-        {/* Image */}
-        {field.type === 'image' && (
-          <PropGroup title="Image">
-            <div>
-              <FieldLabel>Source URL / path</FieldLabel>
-              <input
-                type="text"
-                value={field.src || ''}
-                onChange={(e) => updateField(field.fieldKey, { src: e.target.value })}
-                className="lc-input w-full text-xs"
-                placeholder="https://…"
-              />
-            </div>
-          </PropGroup>
-        )}
-
-        {isTable && (
-          <PropGroup title="Table">
-            <div>
-              <FieldLabel>Columns (comma-separated)</FieldLabel>
-              <input
-                type="text"
-                value={(field.columns || []).join(', ')}
-                onChange={(e) => updateField(field.fieldKey, { columns: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
-                className="lc-input w-full text-xs"
-              />
-            </div>
-            <div>
-              <FieldLabel>Rows (one per line, cells comma-separated)</FieldLabel>
-              <textarea
-                value={(field.rows || []).map((r) => r.join(', ')).join('\n')}
-                onChange={(e) => updateField(field.fieldKey, {
-                  rows: e.target.value.split('\n').filter(Boolean).map((line) => line.split(',').map((s) => s.trim())),
-                })}
-                className="lc-input min-h-[72px] w-full resize-y text-xs"
-              />
-            </div>
-          </PropGroup>
-        )}
-
-        {isDxf && (
-          <PropGroup title="DXF viewport">
-            <label className="flex items-center gap-2 text-xs font-medium">
-              <input type="checkbox" checked={field.showOrientation ?? true} onChange={(e) => updateField(field.fieldKey, { showOrientation: e.target.checked })} className="rounded" />
-              Show orientation mark
-            </label>
-            <label className="flex items-center gap-2 text-xs font-medium">
-              <input type="checkbox" checked={field.showBevel ?? false} onChange={(e) => updateField(field.fieldKey, { showBevel: e.target.checked })} className="rounded" />
-              Show bevel/polish indicator
-            </label>
-          </PropGroup>
-        )}
-
-        {field.shapeType === 'roundRect' && (
-          <PropGroup title="Shape">
-            <div>
-              <FieldLabel>Corner radius (px)</FieldLabel>
-              <input type="number" value={field.cornerRadius ?? 8} onChange={(e) => updateField(field.fieldKey, { cornerRadius: Number(e.target.value) })} className="lc-input w-full" />
-            </div>
-          </PropGroup>
-        )}
-
-        <PropGroup title="Element">
-          <div className="flex gap-2">
-            <button type="button" onClick={() => toggleFieldVisible(field.fieldKey)} className="lc-btn lc-btn-outline flex-1 !text-xs">
-              {field.hidden ? 'Show' : 'Hide'}
-            </button>
-            <button type="button" onClick={() => toggleFieldLock(field.fieldKey)} className="lc-btn lc-btn-outline flex-1 !text-xs">
-              {field.locked ? 'Unlock' : 'Lock'}
-            </button>
-          </div>
-        </PropGroup>
-
-        {/* Layout — always shown */}
-        <PropGroup title="Layout">
-          <SectionLabel>Position (px)</SectionLabel>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <FieldLabel>X</FieldLabel>
-              <input
-                type="number"
-                value={Math.round(field.x ?? 0)}
-                onChange={(e) => updateField(field.fieldKey, { x: Number(e.target.value) })}
-                className="lc-input w-full"
-              />
-            </div>
-            <div>
-              <FieldLabel>Y</FieldLabel>
-              <input
-                type="number"
-                value={Math.round(field.y ?? 0)}
-                onChange={(e) => updateField(field.fieldKey, { y: Number(e.target.value) })}
-                className="lc-input w-full"
-              />
-            </div>
-          </div>
-          <SectionLabel>Size (px)</SectionLabel>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <FieldLabel>Width</FieldLabel>
-              <input
-                type="number"
-                value={Math.round(field.width ?? 0)}
-                onChange={(e) => updateField(field.fieldKey, { width: Number(e.target.value) })}
-                className="lc-input w-full"
-              />
-            </div>
-            <div>
-              <FieldLabel>Height</FieldLabel>
-              <input
-                type="number"
-                value={Math.round(field.height ?? 0)}
-                onChange={(e) => updateField(field.fieldKey, { height: Number(e.target.value) })}
-                className="lc-input w-full"
-              />
-            </div>
-          </div>
-          <div>
-            <FieldLabel>Rotation (°)</FieldLabel>
-            <input
-              type="number"
-              value={field.rotation ?? 0}
-              onChange={(e) => updateField(field.fieldKey, { rotation: Number(e.target.value) })}
-              className="lc-input w-full"
-            />
-          </div>
-        </PropGroup>
-      </div>
+      )}
     </aside>
   )
 }
