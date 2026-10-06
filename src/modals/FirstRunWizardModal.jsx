@@ -11,6 +11,7 @@ import {
   Printer,
   Database,
   Tag,
+  X,
 } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
 import { useEscape } from '../hooks/useEscape'
@@ -141,29 +142,41 @@ export default function FirstRunWizardModal() {
 
         {/* Steps */}
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="flex items-center gap-6 border-b border-[var(--line)] px-8 py-4">
-            {STEPS.map((s) => (
-              <div key={s.n} className="flex items-center gap-2">
-                <span
-                  className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold ${
-                    step > s.n
-                      ? 'bg-[var(--ok)] text-white'
-                      : step === s.n
-                        ? 'bg-[var(--pri)] text-white'
-                        : 'border border-[var(--line)] bg-[var(--panel)] text-[var(--mut)]'
-                  }`}
-                >
-                  {step > s.n ? <Check size={13} /> : s.n}
-                </span>
-                <span
-                  className={`text-[13px] ${
-                    step === s.n ? 'font-bold text-[var(--tx)]' : 'text-[var(--mut)]'
-                  }`}
-                >
-                  {s.label}
-                </span>
-              </div>
-            ))}
+          <div className="flex items-center justify-between border-b border-[var(--line)] px-8 py-4">
+            <div className="flex items-center gap-6">
+              {STEPS.map((s) => (
+                <div key={s.n} className="flex items-center gap-2">
+                  <span
+                    className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold ${
+                      step > s.n
+                        ? 'bg-[var(--ok)] text-white'
+                        : step === s.n
+                          ? 'bg-[var(--pri)] text-white'
+                          : 'border border-[var(--line)] bg-[var(--panel)] text-[var(--mut)]'
+                    }`}
+                  >
+                    {step > s.n ? <Check size={13} /> : s.n}
+                  </span>
+                  <span
+                    className={`text-[13px] ${
+                      step === s.n ? 'font-bold text-[var(--tx)]' : 'text-[var(--mut)]'
+                    }`}
+                  >
+                    {s.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={close}
+              className="flex h-8 w-8 items-center justify-center rounded-md text-[var(--mut)] transition-colors hover:bg-[var(--bg)] hover:text-[var(--tx)]"
+              title="Close setup wizard"
+              aria-label="Close"
+            >
+              <X size={18} />
+            </button>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-8 py-6">
