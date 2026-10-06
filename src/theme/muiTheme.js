@@ -7,15 +7,15 @@ export function getMuiTheme(mode = 'light') {
     palette: {
       mode: isDark ? 'dark' : 'light',
       primary: {
-        main: isDark ? '#818CF8' : '#4F46E5',
-        light: isDark ? 'rgba(129, 140, 248, 0.2)' : 'rgba(79, 70, 229, 0.12)',
-        dark: isDark ? '#4F46E5' : '#3730A3',
+        main: isDark ? '#60A5FA' : '#2563EB',
+        light: isDark ? 'rgba(37, 99, 235, 0.22)' : 'rgba(37, 99, 235, 0.12)',
+        dark: isDark ? '#2563EB' : '#1D4ED8',
         contrastText: '#FFFFFF',
       },
       secondary: {
-        main: isDark ? '#C084FC' : '#9333EA',
-        light: isDark ? 'rgba(192, 132, 252, 0.2)' : 'rgba(147, 51, 234, 0.12)',
-        dark: '#6B21A8',
+        main: isDark ? '#A78BFA' : '#7C3AED',
+        light: isDark ? 'rgba(124, 58, 237, 0.2)' : 'rgba(124, 58, 237, 0.12)',
+        dark: '#5B21B6',
         contrastText: '#FFFFFF',
       },
       background: {
