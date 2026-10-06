@@ -184,26 +184,26 @@ export default function FirstRunWizardModal() {
               <div>
                 <h2 className="lc-dialog-title">Where are your templates stored?</h2>
                 <p className="mt-1 text-[13px] text-[var(--mut)]">
-                  Ask IT for the server name if you do not know it.
+                  Connect to your SQL Server to load shared Opti/ERP templates, or skip to design offline.
                 </p>
 
                 <div className="mt-6 grid grid-cols-3 gap-4">
                   <div>
                     <label className="lc-label mb-1.5 block" htmlFor="fw-server">
-                      Server
+                      Server <span className="text-[11px] font-normal text-[var(--mut)]">(IP or hostname)</span>
                     </label>
                     <input
                       id="fw-server"
                       type="text"
                       value={server}
                       onChange={(e) => setServer(e.target.value)}
-                      placeholder="e.g. localhost or SQL-SERVER"
+                      placeholder="e.g. localhost or 192.168.1.10"
                       className="lc-input !h-10"
                     />
                   </div>
                   <div>
                     <label className="lc-label mb-1.5 block" htmlFor="fw-port">
-                      Port
+                      Port <span className="text-[11px] font-normal text-[var(--mut)]">(default 1433)</span>
                     </label>
                     <input
                       id="fw-port"
@@ -216,7 +216,7 @@ export default function FirstRunWizardModal() {
                   </div>
                   <div>
                     <label className="lc-label mb-1.5 block" htmlFor="fw-db">
-                      Database
+                      Database name
                     </label>
                     <input
                       id="fw-db"
@@ -250,7 +250,7 @@ export default function FirstRunWizardModal() {
                     </button>
                   </div>
                   <p className="mt-2 text-[12px] text-[var(--mut)]">
-                    The password is stored in Windows Credential Manager, never in a plain text file.
+                    Credentials are saved securely in Windows Credential Manager. You can modify these anytime in Settings.
                   </p>
                 </div>
 
@@ -258,15 +258,15 @@ export default function FirstRunWizardModal() {
                   <div className="lc-msg lc-msg-ok mt-5">
                     <CircleCheck size={15} className="flex-none" />
                     <span className="text-[13px] font-medium">
-                      Connected. Found {counts.opti} Opti and {counts.erp} ERP templates.
+                      Connected successfully. Found {counts.opti} Opti and {counts.erp} ERP templates.
                     </span>
                   </div>
                 )}
                 {dbOk === false && (
-                  <div className="lc-msg lc-msg-err mt-5">
+                  <div className="lc-msg lc-msg-warn mt-5">
                     <Database size={15} className="flex-none" />
                     <span className="text-[13px] font-medium">
-                      Could not connect. Check the server name, then test again.
+                      Could not connect to database. You can re-check server details or skip and continue offline.
                     </span>
                   </div>
                 )}
@@ -397,15 +397,26 @@ export default function FirstRunWizardModal() {
           </div>
 
           <div className="flex items-center justify-between gap-3 border-t border-[var(--line)] bg-[var(--panel-2)] px-8 py-4">
-            <button
-              type="button"
-              onClick={() => setStep((s) => Math.max(1, s - 1))}
-              disabled={step === 1}
-              className="lc-btn lc-btn-secondary !h-10"
-            >
-              <ArrowLeft size={15} />
-              <span>Back</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setStep((s) => Math.max(1, s - 1))}
+                disabled={step === 1}
+                className="lc-btn lc-btn-secondary !h-10"
+              >
+                <ArrowLeft size={15} />
+                <span>Back</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={close}
+                className="lc-btn lc-btn-ghost !h-10 text-[var(--mut)] hover:text-[var(--tx)]"
+                title="Skip setup and start designing offline"
+              >
+                <span>Skip for now</span>
+              </button>
+            </div>
 
             <div className="flex items-center gap-2">
               {(step === 1 || step === 2) && (
@@ -418,10 +429,13 @@ export default function FirstRunWizardModal() {
               {step === 1 && (
                 <button
                   type="button"
-                  onClick={() => setStep(2)}
-                  disabled={!canContinue1}
+                  onClick={() => {
+                    if (server.trim() || dbName.trim()) {
+                      setDbConfig({ dbServer: server, dbPort: port, dbDatabase: dbName, dbAuthType: authType })
+                    }
+                    setStep(2)
+                  }}
                   className="lc-btn lc-btn-primary !h-10"
-                  title={canContinue1 ? undefined : 'Test the connection first'}
                 >
                   <span>Continue</span>
                   <ArrowRight size={15} />
