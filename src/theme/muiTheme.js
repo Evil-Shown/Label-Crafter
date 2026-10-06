@@ -85,3 +85,4 @@ export function getMuiTheme(mode = 'light') {
     },
   })
 }
+
