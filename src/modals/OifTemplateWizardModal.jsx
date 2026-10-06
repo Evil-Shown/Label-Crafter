@@ -18,10 +18,23 @@ import {
   QrCode,
   Eye,
   Info,
+  Palette,
+  Layout,
+  Grid,
+  Columns,
+  Minus,
 } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
 import { parseOifText, extractOifDataFields, pieceSummary } from '../utils/oifParser'
-import { createTextField, createHeaderField, createBarcodeField, createQrField } from '../elements/factories'
+import {
+  createTextField,
+  createHeaderField,
+  createBarcodeField,
+  createQrField,
+  createLineField,
+  createRectField,
+  createBlackBoxTextField,
+} from '../elements/factories'
 import { toMm } from '../utils/units'
 
 const SIZES = [
@@ -31,6 +44,49 @@ const SIZES = [
   { id: '100x50', w: 100, h: 50, label: '100 × 50 mm' },
   { id: '90x43', w: 90, h: 43, label: '90 × 43 mm · Opti' },
   { id: '4x6in', w: 102, h: 152, label: '4 × 6 in' },
+]
+
+export const DESIGN_STYLES = [
+  {
+    id: 'industrial_pro',
+    name: 'Industrial Executive',
+    subtitle: 'High contrast headers, dark black-box badge, barcode & dividers',
+    tag: 'Recommended',
+    accent: '#0f172a',
+    desc: 'Top route & order header, sleek black highlight box for urgent rack sequences, prominent central barcode, and neat 2-column piece specifications.',
+  },
+  {
+    id: 'modern_card',
+    name: 'Modern Framed',
+    subtitle: 'Clean outer border, structured sections, dual barcodes & QR',
+    tag: 'Clean & Crisp',
+    accent: '#2563eb',
+    desc: 'Encased in a clean rounded border frame with segmented note sections, dedicated order badges, and scan-ready barcode + QR code.',
+  },
+  {
+    id: 'compact_dense',
+    name: 'Production Dense',
+    subtitle: 'Optimized 2-column layout for small labels & maximum data',
+    tag: 'Space Saver',
+    accent: '#059669',
+    desc: 'Tight vertical rhythm, compact typography, horizontal dividers, ideal for 100×60mm and smaller labels with many note fields.',
+  },
+  {
+    id: 'minimal_clean',
+    name: 'Minimal Stack',
+    subtitle: 'Single column sequential layout with generous whitespace',
+    tag: 'Simple',
+    accent: '#64748b',
+    desc: 'Simple vertical flow without heavy decorative borders, easy to read for packaging, dispatch, and quality control.',
+  },
+  {
+    id: 'blank',
+    name: 'Blank Canvas',
+    subtitle: 'Empty template with extracted OIF fields in sidebar',
+    tag: 'Manual',
+    accent: '#94a3b8',
+    desc: 'Starts completely blank with your chosen dimensions, loading all OIF piece and note properties directly into your left components panel.',
+  },
 ]
 
 export default function OifTemplateWizardModal() {
@@ -53,7 +109,7 @@ export default function OifTemplateWizardModal() {
   const [height, setHeight] = useState(150)
   const [selectedSizeId, setSelectedSizeId] = useState('100x150')
   const [labelType, setLabelType] = useState('production')
-  const [layoutStyle, setLayoutStyle] = useState('grid') // 'grid' | 'column' | 'blank'
+  const [layoutStyle, setLayoutStyle] = useState('industrial_pro') // 'industrial_pro' | 'modern_card' | 'compact_dense' | 'minimal_clean' | 'blank'
 
   // Field extraction & selection
   const [extractedData, setExtractedData] = useState({ pieceFields: [], noteFields: [] })
@@ -211,7 +267,8 @@ export default function OifTemplateWizardModal() {
     const chosenList = allAvailableFields.filter((f) => selectedFieldKeys.has(f.key))
 
     if (layoutStyle !== 'blank' && chosenList.length > 0) {
-      if (layoutStyle === 'column') {
+      if (layoutStyle === 'minimal_clean') {
+        // Minimal Sequential 1-Column Stack
         let curY = marginY
         const colWidth = Math.max(120, pw - marginX * 2)
 
@@ -226,14 +283,11 @@ export default function OifTemplateWizardModal() {
           if (type === 'header') {
             elementHeight = 26
             fontSize = 14
-          } else if (type === 'barcode') {
-            elementHeight = 44
-          } else if (type === 'qrcode') {
-            elementHeight = 44
+          } else if (type === 'barcode' || type === 'qrcode') {
+            elementHeight = 46
           }
 
           if (curY + elementHeight > ph - marginY) {
-            // wrap or stop if overflowing
             curY = marginY
           }
 
@@ -242,7 +296,7 @@ export default function OifTemplateWizardModal() {
               createBarcodeField({
                 x: marginX,
                 y: curY,
-                width: Math.min(180, colWidth),
+                width: Math.min(220, colWidth),
                 height: elementHeight,
                 label: f.label,
                 source: isNote ? [] : [f.key],
@@ -298,36 +352,181 @@ export default function OifTemplateWizardModal() {
           }
           curY += elementHeight + 6
         })
-      } else {
-        // Grid (2-column layout)
-        const gap = 10
-        const colW = (pw - marginX * 2 - gap) / 2
+      } else if (layoutStyle === 'modern_card') {
+        // Modern Framed style: Outer border + section headers + divider lines
+        const contentW = pw - marginX * 2
+        // Outer decorative boundary
+        generatedFields.push(
+          createRectField({
+            x: marginX / 2,
+            y: marginY / 2,
+            width: pw - marginX,
+            height: ph - marginY,
+            strokeWidth: 2,
+            strokeColor: '#0f172a',
+            cornerRadius: 4,
+            fillEnabled: false,
+            label: 'Frame',
+            zIndex: 0,
+          }),
+        )
+
+        let curY = marginY + 4
+        // Separate primary header/order fields from detail fields
+        const headerFields = chosenList.filter(
+          (f) =>
+            fieldTypes[f.key] === 'header' ||
+            ['ordernumber', 'customername'].includes(f.key.toLowerCase()),
+        )
+        const barcodeFields = chosenList.filter((f) => fieldTypes[f.key] === 'barcode')
+        const detailFields = chosenList.filter(
+          (f) => !headerFields.includes(f) && !barcodeFields.includes(f),
+        )
+
+        // 1. Header block
+        if (headerFields.length > 0) {
+          headerFields.forEach((f, idx) => {
+            const isNote = f.category === 'note'
+            const noteMatch = isNote ? f.key.match(/^note(\d+)\.field(\d+)$/i) : null
+            generatedFields.push(
+              createHeaderField({
+                x: marginX + 4,
+                y: curY,
+                width: contentW - 8,
+                height: 24,
+                fontSize: 14,
+                fontWeight: 'bold',
+                label: f.label,
+                value: isNote ? undefined : `{{${f.key}}}`,
+                source: isNote ? [] : [f.key],
+                noteField: noteMatch ? Number(noteMatch[1]) : 0,
+                subField: noteMatch ? Number(noteMatch[2]) : 0,
+                zIndex: idx + 1,
+              }),
+            )
+            curY += 26
+          })
+          // Divider
+          generatedFields.push(
+            createLineField({
+              x: marginX + 2,
+              y: curY,
+              width: contentW - 4,
+              height: 2,
+              strokeWidth: 1.5,
+              strokeColor: '#0f172a',
+              zIndex: 10,
+            }),
+          )
+          curY += 6
+        }
+
+        // 2. Barcode section
+        if (barcodeFields.length > 0) {
+          barcodeFields.forEach((f, idx) => {
+            const isNote = f.category === 'note'
+            const noteMatch = isNote ? f.key.match(/^note(\d+)\.field(\d+)$/i) : null
+            generatedFields.push(
+              createBarcodeField({
+                x: marginX + 4,
+                y: curY,
+                width: Math.min(220, contentW - 8),
+                height: 48,
+                label: f.label,
+                source: isNote ? [] : [f.key],
+                noteField: noteMatch ? Number(noteMatch[1]) : 0,
+                subField: noteMatch ? Number(noteMatch[2]) : 0,
+                zIndex: 20 + idx,
+              }),
+            )
+            curY += 54
+          })
+          generatedFields.push(
+            createLineField({
+              x: marginX + 2,
+              y: curY,
+              width: contentW - 4,
+              height: 1,
+              strokeWidth: 1,
+              strokeColor: '#cbd5e1',
+              zIndex: 30,
+            }),
+          )
+          curY += 6
+        }
+
+        // 3. Grid for detail / note fields
+        const gap = 8
+        const colW = (contentW - 8 - gap) / 2
+        let col = 0
+        detailFields.forEach((f, idx) => {
+          const type = fieldTypes[f.key] || 'text'
+          const isNote = f.category === 'note'
+          const noteMatch = isNote ? f.key.match(/^note(\d+)\.field(\d+)$/i) : null
+          const elemX = marginX + 4 + col * (colW + gap)
+
+          if (type === 'qrcode') {
+            generatedFields.push(
+              createQrField({
+                x: elemX,
+                y: curY,
+                width: 44,
+                height: 44,
+                label: f.label,
+                source: isNote ? [] : [f.key],
+                zIndex: 40 + idx,
+              }),
+            )
+            col = (col + 1) % 2
+            if (col === 0) curY += 48
+          } else {
+            generatedFields.push(
+              createTextField({
+                x: elemX,
+                y: curY,
+                width: colW,
+                height: 20,
+                fontSize: 10.5,
+                label: f.label,
+                value: isNote ? undefined : `{{${f.key}}}`,
+                source: isNote ? [] : [f.key],
+                noteField: noteMatch ? Number(noteMatch[1]) : 0,
+                subField: noteMatch ? Number(noteMatch[2]) : 0,
+                zIndex: 40 + idx,
+              }),
+            )
+            col = (col + 1) % 2
+            if (col === 0) curY += 24
+          }
+        })
+      } else if (layoutStyle === 'compact_dense') {
+        // Production Dense: small line heights, high efficiency 2-col packing
         let curY = marginY
+        const gap = 6
+        const colW = (pw - marginX * 2 - gap) / 2
         let col = 0
 
         chosenList.forEach((f, idx) => {
           const type = fieldTypes[f.key] || 'text'
           const isNote = f.category === 'note'
           const noteMatch = isNote ? f.key.match(/^note(\d+)\.field(\d+)$/i) : null
-
-          // Barcodes span full width
           const isFull = type === 'barcode' || type === 'header'
 
           if (isFull && col !== 0) {
-            curY += 30
+            curY += 22
             col = 0
           }
 
           const elemX = isFull ? marginX : marginX + col * (colW + gap)
           const elemW = isFull ? pw - marginX * 2 : colW
-          const elemH = type === 'barcode' ? 46 : type === 'qrcode' ? 44 : type === 'header' ? 26 : 22
+          const elemH = type === 'barcode' ? 42 : type === 'qrcode' ? 38 : type === 'header' ? 22 : 18
 
           if (type === 'barcode') {
             generatedFields.push(
               createBarcodeField({
                 x: elemX,
                 y: curY,
-                width: Math.min(180, elemW),
+                width: Math.min(190, elemW),
                 height: elemH,
                 label: f.label,
                 source: isNote ? [] : [f.key],
@@ -336,7 +535,7 @@ export default function OifTemplateWizardModal() {
                 zIndex: idx,
               }),
             )
-            curY += elemH + 8
+            curY += elemH + 4
             col = 0
           } else if (type === 'qrcode') {
             generatedFields.push(
@@ -351,7 +550,7 @@ export default function OifTemplateWizardModal() {
               }),
             )
             col = (col + 1) % 2
-            if (col === 0) curY += elemH + 6
+            if (col === 0) curY += elemH + 4
           } else if (type === 'header') {
             generatedFields.push(
               createHeaderField({
@@ -359,7 +558,7 @@ export default function OifTemplateWizardModal() {
                 y: curY,
                 width: elemW,
                 height: elemH,
-                fontSize: 14,
+                fontSize: 12.5,
                 label: f.label,
                 value: isNote ? undefined : `{{${f.key}}}`,
                 source: isNote ? [] : [f.key],
@@ -368,7 +567,7 @@ export default function OifTemplateWizardModal() {
                 zIndex: idx,
               }),
             )
-            curY += elemH + 6
+            curY += elemH + 4
             col = 0
           } else {
             generatedFields.push(
@@ -377,7 +576,7 @@ export default function OifTemplateWizardModal() {
                 y: curY,
                 width: elemW,
                 height: elemH,
-                fontSize: 11,
+                fontSize: 10,
                 label: f.label,
                 value: isNote ? undefined : `{{${f.key}}}`,
                 source: isNote ? [] : [f.key],
@@ -387,7 +586,184 @@ export default function OifTemplateWizardModal() {
               }),
             )
             col = (col + 1) % 2
-            if (col === 0) curY += elemH + 6
+            if (col === 0) curY += elemH + 4
+          }
+        })
+      } else {
+        // Default: Industrial Executive (high contrast, black-box badge, barcode, and balanced split)
+        const contentW = pw - marginX * 2
+        let curY = marginY
+
+        // 1. Top Order / Route Header
+        const orderField = chosenList.find(
+          (f) => f.key.toLowerCase().includes('order') || f.key.toLowerCase().includes('id'),
+        )
+        const customerField = chosenList.find((f) => f.key.toLowerCase().includes('customer'))
+
+        if (orderField || customerField) {
+          if (orderField) {
+            const isNote = orderField.category === 'note'
+            const noteMatch = isNote ? orderField.key.match(/^note(\d+)\.field(\d+)$/i) : null
+            generatedFields.push(
+              createHeaderField({
+                x: marginX,
+                y: curY,
+                width: Math.floor(contentW * 0.55),
+                height: 28,
+                fontSize: 16,
+                fontWeight: 'bold',
+                label: orderField.label,
+                value: isNote ? undefined : `{{${orderField.key}}}`,
+                source: isNote ? [] : [orderField.key],
+                noteField: noteMatch ? Number(noteMatch[1]) : 0,
+                subField: noteMatch ? Number(noteMatch[2]) : 0,
+                zIndex: 1,
+              }),
+            )
+          }
+          if (customerField) {
+            const isNote = customerField.category === 'note'
+            const noteMatch = isNote ? customerField.key.match(/^note(\d+)\.field(\d+)$/i) : null
+            generatedFields.push(
+              createHeaderField({
+                x: marginX + Math.floor(contentW * 0.55) + 6,
+                y: curY,
+                width: Math.floor(contentW * 0.45) - 6,
+                height: 28,
+                fontSize: 13,
+                fontWeight: 'bold',
+                textAlign: 'right',
+                label: customerField.label,
+                value: isNote ? undefined : `{{${customerField.key}}}`,
+                source: isNote ? [] : [customerField.key],
+                noteField: noteMatch ? Number(noteMatch[1]) : 0,
+                subField: noteMatch ? Number(noteMatch[2]) : 0,
+                zIndex: 2,
+              }),
+            )
+          }
+          curY += 32
+        }
+
+        // 2. High-impact Black Box Badge (e.g. rack sequence or note2.field10)
+        const badgeCandidate = chosenList.find(
+          (f) =>
+            f.key.toLowerCase().includes('rack') ||
+            f.key.toLowerCase().includes('sequence') ||
+            (f.category === 'note' && f.subField === 10),
+        )
+        if (badgeCandidate) {
+          const isNote = badgeCandidate.category === 'note'
+          const noteMatch = isNote ? badgeCandidate.key.match(/^note(\d+)\.field(\d+)$/i) : null
+          generatedFields.push(
+            createBlackBoxTextField({
+              x: marginX,
+              y: curY,
+              width: contentW,
+              height: 24,
+              fontSize: 12,
+              fontWeight: 'bold',
+              textAlign: 'center',
+              label: badgeCandidate.label,
+              value: isNote ? undefined : `{{${badgeCandidate.key}}}`,
+              fallbackValue: badgeCandidate.sample || 'PRODUCTION',
+              source: isNote ? [] : [badgeCandidate.key],
+              noteField: noteMatch ? Number(noteMatch[1]) : 0,
+              subField: noteMatch ? Number(noteMatch[2]) : 0,
+              zIndex: 3,
+            }),
+          )
+          curY += 30
+        }
+
+        // 3. Central Barcode
+        const barcodeField =
+          chosenList.find((f) => fieldTypes[f.key] === 'barcode') ||
+          chosenList.find((f) => f.key.toLowerCase().includes('barcode') || f.key === 'id')
+
+        if (barcodeField) {
+          const isNote = barcodeField.category === 'note'
+          const noteMatch = isNote ? barcodeField.key.match(/^note(\d+)\.field(\d+)$/i) : null
+          generatedFields.push(
+            createBarcodeField({
+              x: marginX,
+              y: curY,
+              width: Math.min(240, contentW),
+              height: 48,
+              label: barcodeField.label,
+              source: isNote ? [] : [barcodeField.key],
+              noteField: noteMatch ? Number(noteMatch[1]) : 0,
+              subField: noteMatch ? Number(noteMatch[2]) : 0,
+              zIndex: 4,
+            }),
+          )
+          curY += 54
+        }
+
+        // 4. Horizontal crisp divider line
+        generatedFields.push(
+          createLineField({
+            x: marginX,
+            y: curY,
+            width: contentW,
+            height: 2,
+            strokeWidth: 2,
+            strokeColor: '#000000',
+            zIndex: 5,
+          }),
+        )
+        curY += 8
+
+        // 5. Remaining specification fields in balanced 2-column layout
+        const placedKeys = new Set(
+          [orderField?.key, customerField?.key, badgeCandidate?.key, barcodeField?.key].filter(
+            Boolean,
+          ),
+        )
+        const remaining = chosenList.filter((f) => !placedKeys.has(f.key))
+        const gap = 10
+        const colW = (contentW - gap) / 2
+        let col = 0
+
+        remaining.forEach((f, idx) => {
+          const type = fieldTypes[f.key] || 'text'
+          const isNote = f.category === 'note'
+          const noteMatch = isNote ? f.key.match(/^note(\d+)\.field(\d+)$/i) : null
+          const elemX = marginX + col * (colW + gap)
+
+          if (type === 'qrcode') {
+            generatedFields.push(
+              createQrField({
+                x: elemX,
+                y: curY,
+                width: 44,
+                height: 44,
+                label: f.label,
+                source: isNote ? [] : [f.key],
+                zIndex: 10 + idx,
+              }),
+            )
+            col = (col + 1) % 2
+            if (col === 0) curY += 48
+          } else {
+            generatedFields.push(
+              createTextField({
+                x: elemX,
+                y: curY,
+                width: colW,
+                height: 20,
+                fontSize: 10.5,
+                fontWeight: f.label.toLowerCase().includes('size') || f.label.toLowerCase().includes('dim') ? 'bold' : 'normal',
+                label: f.label,
+                value: isNote ? undefined : `{{${f.key}}}`,
+                source: isNote ? [] : [f.key],
+                noteField: noteMatch ? Number(noteMatch[1]) : 0,
+                subField: noteMatch ? Number(noteMatch[2]) : 0,
+                zIndex: 10 + idx,
+              }),
+            )
+            col = (col + 1) % 2
+            if (col === 0) curY += 24
           }
         })
       }
@@ -560,7 +936,7 @@ export default function OifTemplateWizardModal() {
                 </div>
               )}
 
-              {/* 2. Template Info & Size */}
+              {/* 2. Template Info */}
               <div>
                 <label className="lc-label mb-1.5 block" htmlFor="oif-tpl-name">
                   2. Template Name
@@ -575,9 +951,80 @@ export default function OifTemplateWizardModal() {
                 />
               </div>
 
-              {/* Size preset selection */}
+              {/* 3. Professional Design Styles & Structure Drafts */}
               <div>
-                <label className="lc-label mb-2 block">3. Label Size & Type</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="lc-label !mb-0 flex items-center gap-1.5">
+                    <Palette size={14} className="text-[var(--pri)]" />
+                    <span>3. Choose Design Style & Layout Structure</span>
+                  </label>
+                  <span className="text-[11.5px] text-[var(--mut)]">Select draft template style</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                  {DESIGN_STYLES.map((ds) => {
+                    const isSelected = layoutStyle === ds.id
+                    return (
+                      <div
+                        key={ds.id}
+                        onClick={() => setLayoutStyle(ds.id)}
+                        className={`group cursor-pointer rounded-[10px] border p-3 transition-all relative flex flex-col justify-between ${
+                          isSelected
+                            ? 'border-[var(--pri)] bg-[var(--pri-s)]/60 shadow-sm ring-1 ring-[var(--pri)]'
+                            : 'border-[var(--line)] bg-[var(--panel)] hover:border-[var(--pri)]/60 hover:bg-[var(--bg)]'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between gap-1.5 pb-1">
+                            <span className="text-[12.5px] font-bold text-[var(--tx)] flex items-center gap-1.5">
+                              <span
+                                className="h-2 w-2 rounded-full flex-none"
+                                style={{ backgroundColor: ds.accent }}
+                              />
+                              {ds.name}
+                            </span>
+                            <span
+                              className={`lc-badge !h-4 !px-1.5 !text-[9.5px] font-bold ${
+                                isSelected ? 'lc-badge-opti !bg-[var(--pri)] !text-white' : 'lc-badge-erp'
+                              }`}
+                            >
+                              {ds.tag}
+                            </span>
+                          </div>
+                          <p className="text-[11px] font-semibold text-[var(--tx-2)] leading-tight mb-1">
+                            {ds.subtitle}
+                          </p>
+                          <p className="text-[10.5px] text-[var(--mut)] leading-snug line-clamp-2">
+                            {ds.desc}
+                          </p>
+                        </div>
+
+                        <div className="mt-2.5 pt-2 border-t border-[var(--line)] flex items-center justify-between text-[11px]">
+                          <span className="text-[var(--mut)]">
+                            {ds.id === 'blank'
+                              ? 'Empty canvas'
+                              : ds.id === 'minimal_clean'
+                              ? '1-Column Flow'
+                              : 'Dividers + Badges'}
+                          </span>
+                          <span
+                            className={`font-semibold flex items-center gap-1 ${
+                              isSelected ? 'text-[var(--pri)]' : 'text-[var(--mut)] group-hover:text-[var(--tx)]'
+                            }`}
+                          >
+                            {isSelected && <Check size={12} />}
+                            {isSelected ? 'Selected' : 'Use style'}
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* 4. Label Size & Type */}
+              <div>
+                <label className="lc-label mb-2 block">4. Label Size & Type</label>
                 <div className="grid grid-cols-6 gap-2 mb-3">
                   {SIZES.map((s) => (
                     <button
@@ -647,36 +1094,26 @@ export default function OifTemplateWizardModal() {
               {/* Step 2: Mapping configuration */}
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-[10px] border border-[var(--line)] bg-[var(--panel-2)] p-3">
                 <div className="flex items-center gap-2">
-                  <Settings2 size={16} className="text-[var(--pri)]" />
-                  <span className="text-[13px] font-bold text-[var(--tx)]">Layout Arrangement</span>
+                  <Palette size={16} className="text-[var(--pri)]" />
+                  <span className="text-[13px] font-bold text-[var(--tx)]">Selected Style:</span>
+                  <span className="text-[12.5px] font-semibold text-[var(--pri)]">
+                    {DESIGN_STYLES.find((d) => d.id === layoutStyle)?.name || 'Custom'}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[12px] text-[var(--mut)]">Auto-arrange:</span>
-                  <div className="lc-segment !w-[220px] !h-8">
-                    <button
-                      type="button"
-                      className={layoutStyle === 'grid' ? 'is-on' : ''}
-                      onClick={() => setLayoutStyle('grid')}
-                      title="2-Column balanced grid"
-                    >
-                      2-Col Grid
-                    </button>
-                    <button
-                      type="button"
-                      className={layoutStyle === 'column' ? 'is-on' : ''}
-                      onClick={() => setLayoutStyle('column')}
-                      title="Single vertical stack"
-                    >
-                      Single Col
-                    </button>
-                    <button
-                      type="button"
-                      className={layoutStyle === 'blank' ? 'is-on' : ''}
-                      onClick={() => setLayoutStyle('blank')}
-                      title="Create blank canvas with fields in sidebar"
-                    >
-                      Blank
-                    </button>
+                  <span className="text-[12px] text-[var(--mut)]">Switch layout:</span>
+                  <div className="lc-segment !h-8">
+                    {DESIGN_STYLES.map((d) => (
+                      <button
+                        key={d.id}
+                        type="button"
+                        className={layoutStyle === d.id ? 'is-on' : ''}
+                        onClick={() => setLayoutStyle(d.id)}
+                        title={d.subtitle}
+                      >
+                        {d.name.split(' ')[0]}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
