@@ -7,6 +7,7 @@ import {
   FilePlus2,
   Copy,
   Upload,
+  FileCode,
   TriangleAlert,
 } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
@@ -24,6 +25,7 @@ const STARTS = [
   { id: 'blank', label: 'Blank', Icon: FilePlus2 },
   { id: 'copy', label: 'Copy of current', Icon: Copy },
   { id: 'json', label: 'Import JSON', Icon: Upload },
+  { id: 'oif', label: 'Import OIF', Icon: FileCode },
 ]
 
 /** Size cards keep their true proportions so the shape is obvious (spec §7.1). */
@@ -105,6 +107,12 @@ export default function NewTemplateModal() {
     if (startFrom === 'json') {
       setModal('showNewModal', false)
       pickAndImportJsonFile()
+      return
+    }
+
+    if (startFrom === 'oif') {
+      setModal('showNewModal', false)
+      setModal('showOifImportModal', true)
       return
     }
 
@@ -269,8 +277,14 @@ export default function NewTemplateModal() {
             Cancel
           </button>
           <button type="button" onClick={handleCreate} className="lc-btn lc-btn-primary !h-10">
-            {startFrom === 'json' ? <Upload size={15} /> : <Plus size={15} />}
-            <span>{startFrom === 'json' ? 'Choose a JSON file' : 'Create template'}</span>
+            {startFrom === 'json' ? <Upload size={15} /> : startFrom === 'oif' ? <FileCode size={15} /> : <Plus size={15} />}
+            <span>
+              {startFrom === 'json'
+                ? 'Choose a JSON file'
+                : startFrom === 'oif'
+                  ? 'Import OIF & map fields'
+                  : 'Create template'}
+            </span>
           </button>
         </div>
       </div>
