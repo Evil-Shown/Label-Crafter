@@ -218,7 +218,6 @@ export const useLabelStore = create(
     snapToElements: true,
     snapToEdges: true,
     gridMm: 1,
-    showGrid: false,
     showMargins: true,
     showRulers: true,
     thermalPreview: false,
