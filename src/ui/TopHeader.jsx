@@ -330,26 +330,25 @@ export default function TopHeader() {
           </Button>
         </Box>
 
-        {/* 2. Material Tabs */}
+        {/* 2. Material You Expressive Pill Navigation */}
         <Box
           sx={{
             display: 'flex',
             alignItems: 'center',
-            bgcolor: 'rgba(0, 0, 0, 0.25)',
+            bgcolor: 'rgba(0, 0, 0, 0.28)',
             p: 0.5,
-            borderRadius: 2,
-            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: 9999,
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)',
           }}
         >
           <Tabs
             value={tabs.findIndex((t) => t.id === activeTab)}
             onChange={(_, idx) => setActiveTab(tabs[idx].id)}
             sx={{
-              minHeight: 32,
+              minHeight: 34,
               '& .MuiTabs-indicator': {
-                backgroundColor: '#90CAF9',
-                height: 3,
-                borderRadius: '3px 3px 0 0',
+                display: 'none',
               },
             }}
           >
@@ -360,23 +359,24 @@ export default function TopHeader() {
                 iconPosition="start"
                 label={<span className="hidden sm:inline">{label}</span>}
                 sx={{
-                  minHeight: 32,
-                  minWidth: { xs: 40, sm: 84 },
+                  minHeight: 34,
+                  minWidth: { xs: 40, sm: 90 },
                   py: 0.5,
-                  px: 1.5,
-                  fontSize: '0.8rem',
-                  fontWeight: 600,
+                  px: 1.8,
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
                   color: 'var(--nav-ink)',
                   textTransform: 'none',
-                  borderRadius: 1.5,
-                  transition: 'all 0.15s ease',
+                  borderRadius: 9999,
+                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                   '&.Mui-selected': {
                     color: '#FFFFFF',
-                    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
                   },
                   '&:hover': {
                     color: '#FFFFFF',
-                    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.08)',
                   },
                 }}
               />
@@ -397,11 +397,12 @@ export default function TopHeader() {
           sx={{
             display: 'flex',
             alignItems: 'center',
-            bgcolor: 'rgba(0, 0, 0, 0.25)',
+            bgcolor: 'rgba(0, 0, 0, 0.28)',
             p: 0.4,
-            borderRadius: 2,
-            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: 9999,
+            border: '1px solid rgba(255, 255, 255, 0.12)',
             flexShrink: 0,
+            boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)',
           }}
         >
           {['opti', 'erp'].map((c) => {
@@ -412,15 +413,15 @@ export default function TopHeader() {
                 size="small"
                 onClick={() => setClient(c)}
                 sx={{
-                  minWidth: 46,
-                  py: 0.3,
-                  px: 1.2,
-                  fontSize: '0.78rem',
-                  fontWeight: 700,
-                  borderRadius: 1.5,
+                  minWidth: 50,
+                  py: 0.4,
+                  px: 1.5,
+                  fontSize: '0.8rem',
+                  fontWeight: 800,
+                  borderRadius: 9999,
                   color: on ? '#FFFFFF' : 'var(--nav-ink)',
                   bgcolor: on ? (c === 'opti' ? 'var(--pri)' : 'var(--erp)') : 'transparent',
-                  boxShadow: on ? '0 1px 4px rgba(0,0,0,0.3)' : 'none',
+                  boxShadow: on ? '0 2px 6px rgba(0,0,0,0.3)' : 'none',
                   '&:hover': {
                     bgcolor: on ? (c === 'opti' ? 'var(--pri-hover)' : 'var(--erp-hover)') : 'rgba(255, 255, 255, 0.08)',
                     color: '#FFFFFF',
