@@ -60,6 +60,7 @@ function MmInput({ value, onCommit, unit, step = 0.1, className = '' }) {
       <input
         type="number"
         step={step}
+        className="lc-input"
         value={Number.isFinite(mm) ? Number(mm.toFixed(2)) : 0}
         onChange={(e) => onCommit(mmToPx(Number(e.target.value)))}
       />
@@ -75,6 +76,7 @@ function RawInput({ value, onCommit, unit, step = 1 }) {
       <input
         type="number"
         step={step}
+        className="lc-input"
         value={value ?? 0}
         onChange={(e) => onCommit(Number(e.target.value))}
       />
@@ -394,7 +396,7 @@ export default function PropertiesPanel() {
             title="Open the full mapping dialog"
           >
             <Link2 size={14} className="flex-none" />
-            <span className="truncate text-[12.5px] font-semibold">
+            <span className="text-[12.5px] font-semibold">
               Reads <span className="lc-mono">note{noteField || 1}.field{subField || 1}</span>
               <span className="mx-1 text-[var(--mut)]">·</span>
               shows <span className="lc-mono font-bold">N{noteField || 1}F{subField || 1}</span>
@@ -421,11 +423,11 @@ export default function PropertiesPanel() {
               </Field>
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <Field label="Bar width">
-                  <MmInput
+                  {/* Bar width is a printer dot count, not a millimetre value. */}
+                  <RawInput
                     value={field.barWidth || 2}
                     onCommit={(v) => updateField(field.fieldKey, { barWidth: v })}
                     unit="dots"
-                    step={1}
                   />
                 </Field>
                 <Field label="Rotation">
@@ -584,28 +586,28 @@ export default function PropertiesPanel() {
               <MmInput
                 value={field.x}
                 onCommit={(v) => updateField(field.fieldKey, { x: v })}
-                className="[&_input]:text-center"
+                className="[&>input]:!px-1.5 [&>input]:text-center"
               />
             </Field>
             <Field label="Y">
               <MmInput
                 value={field.y}
                 onCommit={(v) => updateField(field.fieldKey, { y: v })}
-                className="[&_input]:text-center"
+                className="[&>input]:!px-1.5 [&>input]:text-center"
               />
             </Field>
             <Field label="W">
               <MmInput
                 value={field.width}
                 onCommit={(v) => updateField(field.fieldKey, { width: v })}
-                className="[&_input]:text-center"
+                className="[&>input]:!px-1.5 [&>input]:text-center"
               />
             </Field>
             <Field label="H">
               <MmInput
                 value={field.height}
                 onCommit={(v) => updateField(field.fieldKey, { height: v })}
-                className="[&_input]:text-center"
+                className="[&>input]:!px-1.5 [&>input]:text-center"
               />
             </Field>
           </div>

@@ -1,12 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   RefreshCw,
-  ExternalLink,
   Tag,
   Scissors,
   Eye,
   Check,
-  CircleCheck,
   TriangleAlert,
   PenTool,
 } from 'lucide-react'

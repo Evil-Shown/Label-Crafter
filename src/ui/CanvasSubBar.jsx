@@ -13,21 +13,6 @@ import {
 } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
 
-function Toggle({ on, onClick, icon: Icon, children, title }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={title}
-      aria-pressed={on}
-      className={`lc-chip-btn ${on ? 'is-on' : ''}`}
-    >
-      <Icon size={15} />
-      <span>{children}</span>
-    </button>
-  )
-}
-
 export default function CanvasSubBar() {
   const width = useLabelStore((s) => s.width)
   const height = useLabelStore((s) => s.height)

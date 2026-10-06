@@ -117,7 +117,8 @@ export function createBarcodeField(overrides = {}) {
     type: 'barcode',
     label: 'Barcode',
     source: ['Barcode', 'barcode'],
-    fallbackValue: '123456789012',
+    // R10: with no real data a barcode must print nothing, never a sample number.
+    fallbackValue: '',
     x: 10,
     y: 10,
     width: 120,
@@ -150,7 +151,8 @@ export function createQrField(overrides = {}) {
     width: 150,
     height: 150,
     value: 'https://example.com',
-    fallbackValue: 'https://spil.labs',
+    // R10: same rule for QR codes.
+    fallbackValue: '',
     qrEcc: 'M',
     noteField: 0,
     subField: 0,

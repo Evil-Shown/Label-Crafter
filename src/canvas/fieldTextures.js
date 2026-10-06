@@ -246,7 +246,9 @@ export async function buildFieldCanvas(
   globalStyles,
   showLiveTokens = true,
   pixelRatio = 1,
+  options = {},
 ) {
+  const showKeys = options?.showKeysOnCanvas !== false
   const w = Math.max(8, Math.round(field.width || 10))
   const h = Math.max(8, Math.round(field.height || 10))
   const { canvas, ctx, pr } = createHiDpiContext(w, h, pixelRatio)
@@ -262,11 +264,9 @@ export async function buildFieldCanvas(
     const fw = isBoldWeight(field.fontWeight) ? 'bold' : 'normal'
     const inverted = !!(field.blackBox || field.isBlackBox)
 
-    const isBound = Number(field.noteField) > 0 || (Array.isArray(field.source) && field.source.length > 0)
-    const hasRealValue = text && !text.startsWith('{{') && !/^N\d+F\d+$/i.test(text)
     const isChipPlaceholder = isUnboundPlaceholder(field, text, data)
 
-    if (isChipPlaceholder && !inverted) {
+    if (isChipPlaceholder && !inverted && showKeys) {
       const align = String(field.textAlign || 'left').toLowerCase()
       drawKeyChip(ctx, w, h, chipKeyLabel(field), {
         align: align === 'right' || align === 'end' ? 'right' : align === 'center' || align === 'middle' ? 'center' : 'left',
@@ -397,12 +397,18 @@ export async function buildFieldCanvas(
         if (data[s]) { val = String(data[s]); break }
       }
     }
-    const isPlaceholder = !String(val).trim()
-    const barcodeVal = isPlaceholder ? (field.fallbackValue || '123456789012') : String(val)
+
+    // R10 / spec §5.2: a barcode with no real data must print nothing at all.
+    // No sample number, no bars — just the key, so nothing invented reaches
+    // the printer.
+    if (!String(val).trim()) {
+      drawKeyChip(ctx, w, h, chipKeyLabel(field), { compact: true, fill: '#F8FAFC' })
+      return canvasTexture(canvas, { crisp: false })
+    }
 
     try {
       const bc = document.createElement('canvas')
-      JsBarcode(bc, barcodeVal, {
+      JsBarcode(bc, String(val), {
         format: field.barcodeFormat || 'CODE128',
         displayValue: field.displayValue !== false,
         fontSize: Math.max(8, Math.min(14, h * 0.2)) * pr,
@@ -413,27 +419,6 @@ export async function buildFieldCanvas(
       ctx.imageSmoothingEnabled = false
       ctx.drawImage(bc, 0, 0, w, h)
       ctx.imageSmoothingEnabled = true
-
-      if (isPlaceholder) {
-        // Overlay a neat micro key-badge in top right so designer knows which key is mapped
-        const keyTag = chipKeyLabel(field)
-        if (keyTag && keyTag !== 'key') {
-          ctx.save()
-          ctx.font = '600 8.5px "JetBrains Mono", monospace'
-          const kw = ctx.measureText(keyTag).width + 6
-          ctx.fillStyle = 'rgba(241, 245, 249, 0.9)'
-          ctx.fillRect(w - kw - 2, 2, kw, 12)
-          ctx.strokeStyle = '#94a3b8'
-          ctx.lineWidth = 0.75
-          ctx.setLineDash([2, 1])
-          ctx.strokeRect(w - kw - 2, 2, kw, 12)
-          ctx.fillStyle = '#475569'
-          ctx.textAlign = 'center'
-          ctx.textBaseline = 'middle'
-          ctx.fillText(keyTag, w - kw / 2 - 2, 8)
-          ctx.restore()
-        }
-      }
     } catch {
       drawKeyChip(ctx, w, h, chipKeyLabel(field), { compact: true, fill: '#F8FAFC' })
     }
@@ -449,11 +434,16 @@ export async function buildFieldCanvas(
       }
     }
     const isPlaceholder = !String(val).trim()
-    const qrVal = isPlaceholder ? (field.fallbackValue || 'HTTPS://SPIL-LABS/LABEL/SAMPLE') : String(val)
+
+    // R10: a QR with no real data shows its key rather than encoding a sample.
+    if (isPlaceholder) {
+      drawKeyChip(ctx, w, h, chipKeyLabel(field), { compact: true, fill: '#F8FAFC' })
+      return canvasTexture(canvas, { crisp: false })
+    }
 
     try {
       const qrCanvas = document.createElement('canvas')
-      await QRCode.toCanvas(qrCanvas, qrVal, {
+      await QRCode.toCanvas(qrCanvas, String(val), {
         width: Math.round(Math.min(w, h) * pr),
         margin: 1,
         errorCorrectionLevel: field.qrEcc || 'M',
@@ -461,28 +451,6 @@ export async function buildFieldCanvas(
       ctx.imageSmoothingEnabled = false
       ctx.drawImage(qrCanvas, 0, 0, w, h)
       ctx.imageSmoothingEnabled = true
-
-      if (isPlaceholder) {
-        // Neat key tag badge along the bottom
-        const keyTag = chipKeyLabel(field)
-        if (keyTag && keyTag !== 'key') {
-          ctx.save()
-          ctx.font = '600 8.5px "JetBrains Mono", monospace'
-          const kw = Math.min(w - 4, ctx.measureText(keyTag).width + 6)
-          const kx = (w - kw) / 2
-          ctx.fillStyle = 'rgba(241, 245, 249, 0.92)'
-          ctx.fillRect(kx, h - 14, kw, 12)
-          ctx.strokeStyle = '#94a3b8'
-          ctx.lineWidth = 0.75
-          ctx.setLineDash([2, 1])
-          ctx.strokeRect(kx, h - 14, kw, 12)
-          ctx.fillStyle = '#334155'
-          ctx.textAlign = 'center'
-          ctx.textBaseline = 'middle'
-          ctx.fillText(keyTag, w / 2, h - 8)
-          ctx.restore()
-        }
-      }
     } catch {
       drawKeyChip(ctx, w, h, chipKeyLabel(field), { compact: true, fill: '#F8FAFC' })
     }
