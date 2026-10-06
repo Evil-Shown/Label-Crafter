@@ -213,7 +213,13 @@ export default function PropertiesPanel() {
               <h3 className="lc-section-title">Template</h3>
             </div>
             <Field label="Name">
-              <input type="text" readOnly value={templateName} className="lc-input !bg-[var(--bg)]" />
+              <input
+                type="text"
+                value={templateName}
+                onChange={(e) => useLabelStore.getState().setTemplateMeta({ name: e.target.value })}
+                placeholder="Template name"
+                className="lc-input"
+              />
             </Field>
             <div className="mt-3 grid grid-cols-2 gap-3">
               <Field label="Type">
@@ -227,11 +233,14 @@ export default function PropertiesPanel() {
                 </select>
               </Field>
               <Field label="Saved for">
-                <div className="lc-input flex items-center !bg-[var(--bg)]">
-                  <span className={`lc-badge ${client === 'erp' ? 'lc-badge-erp' : 'lc-badge-opti'}`}>
-                    {client === 'erp' ? 'ERP' : 'OPTI'}
-                  </span>
-                </div>
+                <select
+                  value={client}
+                  onChange={(e) => useLabelStore.getState().setClient(e.target.value)}
+                  className="lc-select font-bold"
+                >
+                  <option value="opti">OPTI</option>
+                  <option value="erp">ERP</option>
+                </select>
               </Field>
             </div>
           </section>
