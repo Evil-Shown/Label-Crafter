@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react'
 import {
   Box,
-  Paper,
   Typography,
   LinearProgress,
   Chip,
-  IconButton,
   Fade,
 } from '@mui/material'
 import {
@@ -22,11 +20,11 @@ import BrandMark from './BrandMark'
 
 /**
  * StartupSplashScreen
- * Re-imagined with Material Design 3 Expressive aesthetics:
- * - Refined layered surface with subtle glassmorphic backdrop
- * - Rounded pill badges and crisp typography hierarchy
- * - Modern smooth animated linear progress
- * - Native desktop feel with quick skip button and clear system status
+ * Fullscreen plain window experience:
+ * - No confining card box; sleek, unboxed, expansive desktop layout
+ * - Animated subtle glowing hexagon field and circuit particles in the background
+ * - Centered brand mark with breathing ambient illumination
+ * - Compact diagnostic pill bar and smooth linear progress
  */
 export default function StartupSplashScreen({ onComplete }) {
   const [stage, setStage] = useState(0) // 0: booting, 1: DB, 2: Print, 3: ready
@@ -80,27 +78,47 @@ export default function StartupSplashScreen({ onComplete }) {
           justifyContent: 'center',
           userSelect: 'none',
           cursor: 'pointer',
-          background: 'radial-gradient(ellipse 90% 80% at 50% 25%, #18223B 0%, #0D1424 55%, #070B14 100%)',
+          background: 'radial-gradient(ellipse 100% 90% at 50% 35%, #0F2240 0%, #0A172C 55%, #050B15 100%)',
+          overflow: 'hidden',
           p: 3,
         }}
       >
-        {/* Soft atmospheric ambient light rings */}
+        {/* Animated Moving Hexagon Grid Field */}
         <Box
           sx={{
             position: 'absolute',
-            top: '30%',
+            inset: -80,
+            opacity: 0.16,
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97' viewBox='0 0 56 97'%3E%3Cpath d='M28 66L0 50L0 17L28 1L56 17L56 50L28 66L28 97' fill='none' stroke='%2338BDF8' stroke-width='1.2' stroke-opacity='0.6'/%3E%3Cpath d='M28 0L28 33L0 49L0 82L28 98L56 82L56 49L28 33' fill='none' stroke='%232563EB' stroke-width='1.2' stroke-opacity='0.4'/%3E%3C/svg%3E")`,
+            backgroundSize: '56px 97px',
+            animation: 'hexPan 25s linear infinite',
+            pointerEvents: 'none',
+            maskImage: 'radial-gradient(ellipse 70% 60% at 50% 45%, black 20%, transparent 80%)',
+            WebkitMaskImage: 'radial-gradient(ellipse 70% 60% at 50% 45%, black 20%, transparent 80%)',
+            '@keyframes hexPan': {
+              '0%': { transform: 'translate(0, 0)' },
+              '100%': { transform: 'translate(56px, 97px)' },
+            },
+          }}
+        />
+
+        {/* Ambient center radial glow */}
+        <Box
+          sx={{
+            position: 'absolute',
+            top: '38%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
-            width: 540,
-            height: 380,
+            width: 580,
+            height: 440,
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(37, 99, 235, 0.25) 0%, rgba(59, 130, 246, 0.08) 50%, transparent 75%)',
-            filter: 'blur(70px)',
+            background: 'radial-gradient(circle, rgba(37, 99, 235, 0.28) 0%, rgba(14, 165, 233, 0.10) 45%, transparent 75%)',
+            filter: 'blur(75px)',
             pointerEvents: 'none',
           }}
         />
 
-        {/* Floating Close / Skip button in top right */}
+        {/* Floating Skip Chip */}
         <Box
           sx={{
             position: 'absolute',
@@ -119,84 +137,83 @@ export default function StartupSplashScreen({ onComplete }) {
             onDelete={handleSkip}
             deleteIcon={<X size={14} />}
             sx={{
-              bgcolor: 'rgba(255, 255, 255, 0.08)',
-              color: 'rgba(255, 255, 255, 0.7)',
+              bgcolor: 'rgba(255, 255, 255, 0.06)',
+              color: 'rgba(255, 255, 255, 0.75)',
               fontWeight: 600,
               fontSize: '0.75rem',
               backdropFilter: 'blur(10px)',
               border: '1px solid rgba(255, 255, 255, 0.12)',
               '&:hover': {
-                bgcolor: 'rgba(255, 255, 255, 0.16)',
+                bgcolor: 'rgba(255, 255, 255, 0.14)',
                 color: '#fff',
               },
             }}
           />
         </Box>
 
-        {/* Central Material You Elevated Card */}
-        <Paper
-          elevation={16}
+        {/* Main Content Area — No Wrapping Box Card */}
+        <Box
           sx={{
             position: 'relative',
             zIndex: 1,
             width: '100%',
-            maxWidth: 440,
-            p: 4.5,
-            borderRadius: 5,
-            textAlign: 'center',
-            bgcolor: 'rgba(19, 27, 46, 0.88)',
-            backdropFilter: 'blur(28px)',
-            border: '1px solid rgba(255, 255, 255, 0.12)',
-            boxShadow: '0 24px 64px -12px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.08)',
+            maxWidth: 480,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
+            textAlign: 'center',
           }}
         >
-          {/* Brand Mark Container */}
+          {/* Brand Mark with Glowing Aura */}
           <Box
             sx={{
-              width: 84,
-              height: 84,
-              borderRadius: 4.5,
+              width: 96,
+              height: 96,
+              borderRadius: '26px',
               bgcolor: '#FFFFFF',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 12px 30px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.4)',
-              mb: 3,
-              p: 2,
+              boxShadow: '0 16px 48px rgba(0, 0, 0, 0.45), 0 0 40px rgba(37, 99, 235, 0.35)',
+              mb: 3.5,
+              p: 2.2,
               position: 'relative',
+              transition: 'transform 0.3s ease',
+              '&:hover': {
+                transform: 'scale(1.03)',
+              },
             }}
           >
-            <BrandMark size={52} className="h-full w-full" />
+            <BrandMark size={58} className="h-full w-full" />
             <Box
               sx={{
                 position: 'absolute',
                 top: -6,
                 right: -6,
-                width: 22,
-                height: 22,
+                width: 24,
+                height: 24,
                 borderRadius: '50%',
                 bgcolor: '#2563EB',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 2px 8px rgba(37, 99, 235, 0.6)',
+                boxShadow: '0 2px 8px rgba(37, 99, 235, 0.8)',
               }}
             >
-              <Sparkles size={12} color="#FFFFFF" />
+              <Sparkles size={13} color="#FFFFFF" />
             </Box>
           </Box>
 
           {/* Typography */}
           <Typography
-            variant="h5"
+            variant="h4"
             sx={{
               fontWeight: 800,
-              letterSpacing: '-0.02em',
-              color: '#F8FAFC',
+              fontSize: '1.85rem',
+              letterSpacing: '-0.025em',
+              color: '#FFFFFF',
               mb: 0.5,
+              textShadow: '0 2px 10px rgba(0,0,0,0.5)',
             }}
           >
             SPIL Label Designer
@@ -205,28 +222,30 @@ export default function StartupSplashScreen({ onComplete }) {
           <Typography
             variant="caption"
             sx={{
-              color: '#94A3B8',
+              color: '#93A3BB',
               fontWeight: 600,
-              fontSize: '0.8rem',
-              letterSpacing: '0.01em',
-              mb: 3.5,
+              fontSize: '0.82rem',
+              letterSpacing: '0.02em',
+              mb: 4,
             }}
           >
             Standalone Windows Edition · Rust Tauri v2
           </Typography>
 
-          {/* Status Diagnostic Card */}
+          {/* Sleek Frameless Status Module */}
           <Box
             sx={{
               width: '100%',
-              borderRadius: 3.5,
-              bgcolor: 'rgba(11, 15, 25, 0.65)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              p: 2.2,
+              borderRadius: 4,
+              bgcolor: 'rgba(10, 20, 38, 0.55)',
+              backdropFilter: 'blur(16px)',
+              border: '1px solid rgba(255, 255, 255, 0.09)',
+              p: 2.5,
               mb: 3,
+              boxShadow: '0 12px 32px rgba(0, 0, 0, 0.35)',
               display: 'flex',
               flexDirection: 'column',
-              gap: 1.5,
+              gap: 1.75,
             }}
           >
             {/* Database status row */}
@@ -238,7 +257,7 @@ export default function StartupSplashScreen({ onComplete }) {
                     color: stage >= 1 ? (isDbConnected ? '#34D399' : '#FBBF24') : '#64748B',
                   }}
                 />
-                <Typography sx={{ fontSize: '0.8rem', fontWeight: 600, color: '#E2E8F0' }}>
+                <Typography sx={{ fontSize: '0.82rem', fontWeight: 600, color: '#E2E8F0' }}>
                   Shared Database (SQL)
                 </Typography>
               </Box>
@@ -255,7 +274,7 @@ export default function StartupSplashScreen({ onComplete }) {
                       fontWeight: 700,
                       bgcolor: 'rgba(16, 185, 129, 0.16)',
                       color: '#34D399',
-                      border: '1px solid rgba(16, 185, 129, 0.3)',
+                      border: '1px solid rgba(16, 185, 129, 0.35)',
                     }}
                   />
                 ) : (
@@ -269,7 +288,7 @@ export default function StartupSplashScreen({ onComplete }) {
                       fontWeight: 700,
                       bgcolor: 'rgba(245, 158, 11, 0.16)',
                       color: '#FBBF24',
-                      border: '1px solid rgba(245, 158, 11, 0.3)',
+                      border: '1px solid rgba(245, 158, 11, 0.35)',
                     }}
                   />
                 )
@@ -287,7 +306,7 @@ export default function StartupSplashScreen({ onComplete }) {
                     color: stage >= 2 ? (isPrintConnected ? '#34D399' : '#FBBF24') : '#64748B',
                   }}
                 />
-                <Typography sx={{ fontSize: '0.8rem', fontWeight: 600, color: '#E2E8F0' }}>
+                <Typography sx={{ fontSize: '0.82rem', fontWeight: 600, color: '#E2E8F0' }}>
                   SPIL Print Service
                 </Typography>
               </Box>
@@ -304,7 +323,7 @@ export default function StartupSplashScreen({ onComplete }) {
                       fontWeight: 700,
                       bgcolor: 'rgba(16, 185, 129, 0.16)',
                       color: '#34D399',
-                      border: '1px solid rgba(16, 185, 129, 0.3)',
+                      border: '1px solid rgba(16, 185, 129, 0.35)',
                     }}
                   />
                 ) : (
@@ -318,24 +337,24 @@ export default function StartupSplashScreen({ onComplete }) {
                       fontWeight: 700,
                       bgcolor: 'rgba(245, 158, 11, 0.16)',
                       color: '#FBBF24',
-                      border: '1px solid rgba(245, 158, 11, 0.3)',
+                      border: '1px solid rgba(245, 158, 11, 0.35)',
                     }}
                   />
                 )
               ) : stage >= 1 ? (
-                <Typography sx={{ fontSize: '0.72rem', color: '#818CF8' }}>Checking…</Typography>
+                <Typography sx={{ fontSize: '0.72rem', color: '#60A5FA' }}>Checking…</Typography>
               ) : (
                 <Typography sx={{ fontSize: '0.72rem', color: '#64748B' }}>Waiting</Typography>
               )}
             </Box>
 
             {/* Linear Progress Bar */}
-            <Box sx={{ mt: 1, width: '100%' }}>
+            <Box sx={{ mt: 0.5, width: '100%' }}>
               <LinearProgress
                 variant="determinate"
                 value={progressValue}
                 sx={{
-                  height: 6,
+                  height: 5,
                   borderRadius: 9999,
                   bgcolor: 'rgba(255, 255, 255, 0.08)',
                   '& .MuiLinearProgress-bar': {
@@ -354,17 +373,18 @@ export default function StartupSplashScreen({ onComplete }) {
               display: 'flex',
               alignItems: 'center',
               gap: 1,
-              color: '#94A3B8',
+              color: '#93A3BB',
               fontSize: '0.75rem',
               fontWeight: 500,
             }}
           >
-            <KeyRound size={14} style={{ color: '#818CF8' }} />
+            <KeyRound size={14} style={{ color: '#60A5FA' }} />
             <span>Windows Credential Manager · Click anywhere to skip</span>
           </Box>
-        </Paper>
+        </Box>
       </Box>
     </Fade>
   )
 }
+
 
