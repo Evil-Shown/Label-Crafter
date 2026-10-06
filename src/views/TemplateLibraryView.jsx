@@ -10,6 +10,7 @@ import {
   FileJson,
   Trash2,
   Star,
+  StarOff,
   Check,
   LayoutGrid,
   ArrowUpDown,
@@ -342,9 +343,14 @@ export default function TemplateLibraryView() {
                       <span>Open</span>
                     </button>
                     {isDefault ? (
-                      <button type="button" onClick={() => duplicate(tpl)} className="lc-btn lc-btn-secondary lc-btn-sm flex-1">
-                        <Copy size={13} />
-                        <span>Duplicate</span>
+                      <button
+                        type="button"
+                        onClick={() => setDefaultTemplate(tpl.id)}
+                        title="Remove default status (make normal template)"
+                        className="lc-btn lc-btn-secondary lc-btn-sm flex-1 !text-amber-600 dark:!text-amber-400"
+                      >
+                        <StarOff size={13} />
+                        <span>Unset default</span>
                       </button>
                     ) : (
                       <button
@@ -368,15 +374,27 @@ export default function TemplateLibraryView() {
                       </button>
                       {activeMenuId === tpl.id && (
                         <div className="lc-pop bottom-9 right-0 z-30 w-[200px] p-1">
-                          <MenuItem
-                            icon={Star}
-                            onClick={() => {
-                              setDefaultTemplate(tpl.id)
-                              setActiveMenuId(null)
-                            }}
-                          >
-                            Set as default
-                          </MenuItem>
+                          {isDefault ? (
+                            <MenuItem
+                              icon={StarOff}
+                              onClick={() => {
+                                setDefaultTemplate(tpl.id)
+                                setActiveMenuId(null)
+                              }}
+                            >
+                              Unset as default (Normal)
+                            </MenuItem>
+                          ) : (
+                            <MenuItem
+                              icon={Star}
+                              onClick={() => {
+                                setDefaultTemplate(tpl.id)
+                                setActiveMenuId(null)
+                              }}
+                            >
+                              Set as default
+                            </MenuItem>
+                          )}
                           <MenuItem
                             icon={Pencil}
                             onClick={() => {
