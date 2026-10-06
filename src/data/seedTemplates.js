@@ -71,16 +71,16 @@ const MSG = (over = {}) => ({
     createTextField({
       fieldKey: 'marks',
       label: 'Marks',
-      value: 'Marks:',
-      x: 12, y: 190, width: 130, height: 16,
-      fontSize: 11, fontWeight: 'bold',
+      value: 'Marks: {{marks}}',
+      x: 12, y: 190, width: 200, height: 16,
+      fontSize: 11, fontWeight: 'bold', source: ['marks'],
     }),
     createTextField({
       fieldKey: 'custPo',
       label: 'Cust PO',
-      value: 'Cust PO:',
-      x: 12, y: 212, width: 130, height: 16,
-      fontSize: 11, fontWeight: 'bold',
+      value: 'Cust PO: {{custPO}}',
+      x: 12, y: 212, width: 200, height: 16,
+      fontSize: 11, fontWeight: 'bold', source: ['custPO'],
     }),
     createTextField({
       fieldKey: 'finishedSize',

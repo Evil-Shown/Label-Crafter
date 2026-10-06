@@ -19,7 +19,6 @@ const LAST_FILE_KEY = 'lc-last-oif-name'
 
 export default function LoadRealDataModal() {
   const isOpen = useLabelStore((s) => s.showLoadDataModal)
-  const client = useLabelStore((s) => s.client)
   const printServiceUrl = useLabelStore((s) => s.printServiceUrl)
   const loadRealData = useLabelStore((s) => s.loadRealData)
   const addToast = useLabelStore((s) => s.addToast)

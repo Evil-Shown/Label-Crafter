@@ -3,6 +3,7 @@ import JsBarcode from 'jsbarcode'
 import QRCode from 'qrcode'
 import {
   isTextLikeType,
+  lookupPath,
   mappingLabel,
   resolveFieldDisplayText,
   resolveMappedPreview,
@@ -12,19 +13,43 @@ import {
 const CHIP_FONT = '600 11px "JetBrains Mono", ui-monospace, monospace'
 
 function chipKeyLabel(field) {
-  return mappingLabel(field) || field?.source?.[0] || field?.value || field?.label || 'key'
+  const note = mappingLabel(field)
+  if (note) return note
+  if (field?.label && !/^field_\d+$/i.test(field.label) && !/^[0-9a-f]{8}-/i.test(field.label)) {
+    return field.label
+  }
+  if (field?.source?.length) return field.source[0]
+  const token = String(field?.value || '').match(/\{\{([^}]+)\}\}/)
+  if (token) return token[1].trim()
+  if (field?.label) return field.label
+  if (field?.fieldKey) {
+    const k = String(field.fieldKey)
+    if (k.length > 14) return k.slice(0, 10) + '…'
+    return k
+  }
+  return 'key'
 }
 
 /** True when the field is bound to data that is not present in the loaded bag. */
 function isUnboundPlaceholder(field, text, data) {
   const bound = Number(field.noteField) > 0 || (Array.isArray(field.source) && field.source.length > 0)
-  const hasTokens = typeof field.value === 'string' && field.value.includes('{{')
-  if (!bound && !hasTokens) return false
+  const raw = typeof field.value === 'string' ? field.value : ''
+  const tokens = raw.match(/\{\{([^}]+)\}\}/g)
+  if (!bound && !tokens) return false
   if (!data || Object.keys(data).length === 0) return true
+
   const value = String(text ?? '').trim()
   if (value === '') return true
   if (/^N\d+F\d+$/i.test(value)) return true
-  if (hasTokens && /\{\{/.test(value)) return true
+
+  // Any token that resolved to nothing leaves the element with no real value.
+  if (tokens) {
+    for (const t of tokens) {
+      const key = t.replace(/[{}]/g, '').trim()
+      const resolved = lookupPath(data, key)
+      if (resolved == null || String(resolved).trim() === '') return true
+    }
+  }
   return false
 }
 
@@ -104,16 +129,51 @@ function isBoldWeight(weight) {
 }
 
 function drawEmptyDxf(ctx, w, h) {
-  ctx.setLineDash([6, 4])
-  ctx.strokeStyle = '#888'
+  // CAD-style glass piece placeholder contour with notch & corner marks
+  ctx.save()
+  const pad = 4
+  const pw = Math.max(10, w - pad * 2)
+  const ph = Math.max(10, h - pad * 2)
+  const x = pad
+  const y = pad
+
+  // Subtle glass fill
+  ctx.fillStyle = '#f8fafc'
+  ctx.fillRect(x, y, pw, ph)
+
+  // Outer border with subtle CAD blue/slate stroke
+  ctx.strokeStyle = '#64748b'
   ctx.lineWidth = 1.25
-  ctx.strokeRect(1, 1, w - 2, h - 2)
   ctx.setLineDash([])
-  ctx.fillStyle = '#888'
-  ctx.font = '11px Arial'
+  ctx.strokeRect(x + 0.5, y + 0.5, pw - 1, ph - 1)
+
+  // Subtle inner grid / CAD corner marks
+  const m = Math.min(8, pw * 0.2, ph * 0.2)
+  ctx.strokeStyle = '#94a3b8'
+  ctx.lineWidth = 1
+  // Top-left corner mark
+  ctx.beginPath()
+  ctx.moveTo(x + 2, y + m)
+  ctx.lineTo(x + m, y + m)
+  ctx.lineTo(x + m, y + 2)
+  // Bottom-right corner mark
+  ctx.moveTo(x + pw - 2, y + ph - m)
+  ctx.lineTo(x + pw - m, y + ph - m)
+  ctx.lineTo(x + pw - m, y + ph - 2)
+  ctx.stroke()
+
+  // Label badge in center
+  ctx.fillStyle = '#475569'
+  ctx.font = '600 10px "JetBrains Mono", ui-monospace, monospace'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.fillText('No Shape', w / 2, h / 2)
+  ctx.fillText('DXF SHAPE', w / 2, h / 2 - 5)
+
+  ctx.fillStyle = '#94a3b8'
+  ctx.font = '9px Arial, sans-serif'
+  ctx.fillText('Glass Contour', w / 2, h / 2 + 7)
+
+  ctx.restore()
 }
 
 function drawDxfPreview(ctx, w, h, labelData, field) {
@@ -236,13 +296,21 @@ export async function buildFieldCanvas(
     const lineH = fs * 1.2
     const totalH = Math.max(lineH, lines.length * lineH)
     let y = (h - totalH) / 2 + lineH / 2
+
+    // Clip text to bounding box with padding to prevent spilling over into other components
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(0, 0, w, h)
+    ctx.clip()
+
     for (const line of lines) {
       let x = pad
       if (ctx.textAlign === 'center') x = w / 2
       if (ctx.textAlign === 'right') x = w - pad
-      ctx.fillText(line, x, y)
+      ctx.fillText(line, x, y, Math.max(1, w - pad * 2))
       y += lineH
     }
+    ctx.restore()
     if (field.border) {
       ctx.strokeStyle = '#000'
       ctx.lineWidth = 1
@@ -329,14 +397,12 @@ export async function buildFieldCanvas(
         if (data[s]) { val = String(data[s]); break }
       }
     }
-    // R10: never print a made-up number. Empty barcode shows its key instead.
-    if (!String(val).trim()) {
-      drawKeyChip(ctx, w, h, chipKeyLabel(field), { compact: true, fill: '#F8FAFC' })
-      return canvasTexture(canvas, { crisp: false })
-    }
+    const isPlaceholder = !String(val).trim()
+    const barcodeVal = isPlaceholder ? (field.fallbackValue || '123456789012') : String(val)
+
     try {
       const bc = document.createElement('canvas')
-      JsBarcode(bc, val, {
+      JsBarcode(bc, barcodeVal, {
         format: field.barcodeFormat || 'CODE128',
         displayValue: field.displayValue !== false,
         fontSize: Math.max(8, Math.min(14, h * 0.2)) * pr,
@@ -347,10 +413,29 @@ export async function buildFieldCanvas(
       ctx.imageSmoothingEnabled = false
       ctx.drawImage(bc, 0, 0, w, h)
       ctx.imageSmoothingEnabled = true
+
+      if (isPlaceholder) {
+        // Overlay a neat micro key-badge in top right so designer knows which key is mapped
+        const keyTag = chipKeyLabel(field)
+        if (keyTag && keyTag !== 'key') {
+          ctx.save()
+          ctx.font = '600 8.5px "JetBrains Mono", monospace'
+          const kw = ctx.measureText(keyTag).width + 6
+          ctx.fillStyle = 'rgba(241, 245, 249, 0.9)'
+          ctx.fillRect(w - kw - 2, 2, kw, 12)
+          ctx.strokeStyle = '#94a3b8'
+          ctx.lineWidth = 0.75
+          ctx.setLineDash([2, 1])
+          ctx.strokeRect(w - kw - 2, 2, kw, 12)
+          ctx.fillStyle = '#475569'
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'middle'
+          ctx.fillText(keyTag, w - kw / 2 - 2, 8)
+          ctx.restore()
+        }
+      }
     } catch {
-      ctx.fillStyle = '#666'
-      ctx.font = '10px Arial'
-      ctx.fillText('Barcode', 4, 14)
+      drawKeyChip(ctx, w, h, chipKeyLabel(field), { compact: true, fill: '#F8FAFC' })
     }
     return canvasTexture(canvas, { crisp: true })
   }
@@ -363,13 +448,12 @@ export async function buildFieldCanvas(
         if (data[s]) { val = String(data[s]); break }
       }
     }
-    if (!String(val).trim()) {
-      drawKeyChip(ctx, w, h, chipKeyLabel(field), { compact: true, fill: '#F8FAFC' })
-      return canvasTexture(canvas, { crisp: false })
-    }
+    const isPlaceholder = !String(val).trim()
+    const qrVal = isPlaceholder ? (field.fallbackValue || 'HTTPS://SPIL-LABS/LABEL/SAMPLE') : String(val)
+
     try {
       const qrCanvas = document.createElement('canvas')
-      await QRCode.toCanvas(qrCanvas, val, {
+      await QRCode.toCanvas(qrCanvas, qrVal, {
         width: Math.round(Math.min(w, h) * pr),
         margin: 1,
         errorCorrectionLevel: field.qrEcc || 'M',
@@ -377,8 +461,30 @@ export async function buildFieldCanvas(
       ctx.imageSmoothingEnabled = false
       ctx.drawImage(qrCanvas, 0, 0, w, h)
       ctx.imageSmoothingEnabled = true
+
+      if (isPlaceholder) {
+        // Neat key tag badge along the bottom
+        const keyTag = chipKeyLabel(field)
+        if (keyTag && keyTag !== 'key') {
+          ctx.save()
+          ctx.font = '600 8.5px "JetBrains Mono", monospace'
+          const kw = Math.min(w - 4, ctx.measureText(keyTag).width + 6)
+          const kx = (w - kw) / 2
+          ctx.fillStyle = 'rgba(241, 245, 249, 0.92)'
+          ctx.fillRect(kx, h - 14, kw, 12)
+          ctx.strokeStyle = '#94a3b8'
+          ctx.lineWidth = 0.75
+          ctx.setLineDash([2, 1])
+          ctx.strokeRect(kx, h - 14, kw, 12)
+          ctx.fillStyle = '#334155'
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'middle'
+          ctx.fillText(keyTag, w / 2, h - 8)
+          ctx.restore()
+        }
+      }
     } catch {
-      ctx.strokeRect(1, 1, w - 2, h - 2)
+      drawKeyChip(ctx, w, h, chipKeyLabel(field), { compact: true, fill: '#F8FAFC' })
     }
     return canvasTexture(canvas)
   }

@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom'
 import {
   X,
   Plus,
-  Check,
   Sparkles,
   FilePlus2,
   Copy,
@@ -11,7 +10,6 @@ import {
   TriangleAlert,
 } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
-import { LABEL_SIZE_PRESETS } from '../data/templatePresets'
 
 const SIZES = [
   { id: '100x150', w: 100, h: 150, label: '100 × 150 mm' },

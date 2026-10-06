@@ -152,17 +152,39 @@ export function resolveMappedPreview(field, data = {}) {
   return undefined
 }
 
-/** Canvas text: match Opti editor (tokens/static value first, then note mapping, then N2F3). */
+/**
+ * Canvas text. Spec §5.2 resolution order:
+ * token → note mapping → field → project → config → blank.
+ * A bound field therefore wins over a leftover static value, which is why the
+ * template can carry "Marks:" as a caption and still print the real mark.
+ */
 export function resolveFieldDisplayText(field, data = {}, { showLiveTokens = true } = {}) {
   const raw = field?.value != null ? String(field.value) : ''
   const hasTokens = raw.includes('{{')
+
   if (hasTokens) {
-    return showLiveTokens ? interpolateTokens(raw, data) : raw
+    if (!showLiveTokens) return raw
+    const text = interpolateTokens(raw, data)
+    // Fall through when the tokens produced nothing at all.
+    if (text.trim() !== '') return text
+    if (Number(field?.noteField) > 0 || (Array.isArray(field?.source) && field.source.length)) {
+      const mapped = resolveMappedPreview(field, data)
+      if (mapped != null && String(mapped).trim() !== '') return String(mapped)
+    }
+    return text
   }
+
+  const bound = Number(field?.noteField) > 0 || (Array.isArray(field?.source) && field.source.length > 0)
+  if (bound && showLiveTokens) {
+    const mapped = resolveMappedPreview(field, data)
+    if (mapped != null && String(mapped).trim() !== '') return String(mapped)
+  }
+
   if (raw.trim() !== '') return raw
+
   if (showLiveTokens) {
     const mapped = resolveMappedPreview(field, data)
-    if (mapped != null && mapped !== '') return mapped
+    if (mapped != null && String(mapped).trim() !== '') return mapped
   }
   const nf = Number(field?.noteField) || 0
   const sf = Number(field?.subField) || 0
