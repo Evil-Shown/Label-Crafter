@@ -1005,6 +1005,15 @@ st.lastSavedAt = Date.now()
       set((st) => Object.assign(st, patch))
     },
 
+    /** R3: setup opens once on a new PC, then only when re-opened. */
+    setSetupDone(done = true) {
+      if (done) localStorage.setItem('lc-setup-done', '1')
+      else localStorage.removeItem('lc-setup-done')
+      set((st) => {
+        st.firstTimeSetupOpen = !done
+      })
+    },
+
     /** R5: database details can be changed later without reinstalling. */
     setDbConfig(patch) {
       if (patch.dbServer != null) localStorage.setItem('lc-db-server', patch.dbServer)

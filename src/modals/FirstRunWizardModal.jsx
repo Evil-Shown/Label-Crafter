@@ -13,8 +13,8 @@ import {
   Tag,
 } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
-import appIcon from '../assets/app_icon.png'
 import { useEscape } from '../hooks/useEscape'
+import BrandMark from '../ui/BrandMark'
 
 const STEPS = [
   { n: 1, label: 'Database' },
@@ -76,7 +76,10 @@ export default function FirstRunWizardModal() {
     setBusy(false)
   }, [isOpen, dbServer, dbPort, dbDatabase, dbAuthType, printServiceUrl, printerBrand, printerDpi])
 
-  const close = () => setSetupDone(true)
+  const close = () => {
+    if (typeof setSetupDone === 'function') setSetupDone(true)
+    else useLabelStore.setState({ firstTimeSetupOpen: false })
+  }
   useEscape(isOpen, close)
 
   if (!isOpen) return null
@@ -115,8 +118,8 @@ export default function FirstRunWizardModal() {
           className="hidden w-5/12 flex-col justify-center p-8 text-white md:flex"
           style={{ background: 'linear-gradient(160deg, var(--nav) 0%, var(--nav-end) 100%)' }}
         >
-          <div className="mb-6 h-16 w-16 overflow-hidden rounded-[10px] ring-1 ring-white/20">
-            <img src={appIcon} alt="Label Designer" className="h-full w-full scale-105 object-cover" />
+          <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-[10px] bg-white p-2 ring-1 ring-white/25">
+            <BrandMark size={44} className="h-full w-full" />
           </div>
           <h1 className="text-[30px] font-extrabold leading-tight tracking-tight text-white">
             Welcome to
