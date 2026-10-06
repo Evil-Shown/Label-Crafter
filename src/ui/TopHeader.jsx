@@ -208,14 +208,12 @@ export default function TopHeader() {
     <header className="lc-top-header flex h-14 shrink-0 items-center justify-between gap-2 overflow-visible px-3 sm:px-4 text-white select-none">
       {/* 1. App title + subtitle + new template */}
       <div className="flex flex-none items-center gap-2.5">
-        <button
-          type="button"
-          onClick={() => useLabelStore.setState({ showSplashScreen: true })}
-          title="Click to replay startup opening splash screen"
-          className="flex h-8 w-8 sm:h-9 sm:w-9 flex-none items-center justify-center rounded-[10px] bg-white p-[3px] ring-1 ring-white/25 transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+        <div
+          className="flex h-8 w-8 sm:h-9 sm:w-9 flex-none items-center justify-center rounded-[10px] bg-white p-[3px] ring-1 ring-white/25 select-none"
+          title="SPIL Label Designer"
         >
           <BrandMark size={26} className="h-full w-full" />
-        </button>
+        </div>
         <div className="min-w-0">
           <span className="block text-[14px] sm:text-[15px] font-bold leading-tight text-white tracking-tight">
             Label Designer
