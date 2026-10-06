@@ -68,10 +68,24 @@ export function getMuiTheme(mode = 'light') {
           },
         },
       },
+      MuiAppBar: {
+        defaultProps: {
+          square: true,
+          elevation: 0,
+        },
+        styleOverrides: {
+          root: {
+            borderRadius: 0,
+          },
+        },
+      },
       MuiPaper: {
         styleOverrides: {
           root: {
             backgroundImage: 'none',
+            borderRadius: 18,
+          },
+          rounded: {
             borderRadius: 18,
           },
         },
