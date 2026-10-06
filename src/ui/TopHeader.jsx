@@ -26,9 +26,10 @@ import { useLabelStore, getTemplateFingerprint } from '../store/labelStore'
 import { formatSize } from '../utils/units'
 import BrandMark from './BrandMark'
 
-function StatusPill({ label, ok, onClick, title }) {
+function StatusPill({ label, ok, onClick, title, btnRef }) {
   return (
     <button
+      ref={btnRef}
       type="button"
       onClick={onClick}
       title={title}
@@ -69,20 +70,22 @@ export default function TopHeader() {
   const printServiceLastOkAt = useLabelStore((s) => s.printServiceLastOkAt)
   const checkServiceHealth = useLabelStore((s) => s.checkServiceHealth)
 
-  const [showStatusPopover, setShowStatusPopover] = useState(false)
+  const [popoverType, setPopoverType] = useState(null) // null | 'db' | 'print'
   const [popoverStyle, setPopoverStyle] = useState({ top: -9999, left: -9999 })
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const statusRef = useRef(null)
+  const dbBtnRef = useRef(null)
+  const printBtnRef = useRef(null)
   const popoverRef = useRef(null)
 
-  // The header is a horizontal scroll container, so the popover is portalled to
-  // <body> and positioned in viewport coordinates to stay fully visible.
+  // Position popover under whichever button was clicked
   useLayoutEffect(() => {
-    if (!showStatusPopover || !statusRef.current) return undefined
+    if (!popoverType) return undefined
+    const trigger = popoverType === 'db' ? dbBtnRef.current : printBtnRef.current
+    if (!trigger) return undefined
     const place = () => {
-      const r = statusRef.current?.getBoundingClientRect()
+      const r = trigger.getBoundingClientRect()
       if (!r) return
-      const width = 408
+      const width = 360
       const gap = 8
       const left = Math.max(8, Math.min(r.right - width, window.innerWidth - width - 8))
       setPopoverStyle({ top: r.bottom + gap, left })
@@ -94,21 +97,22 @@ export default function TopHeader() {
       window.removeEventListener('resize', place)
       window.removeEventListener('scroll', place, true)
     }
-  }, [showStatusPopover])
+  }, [popoverType])
 
   const hasUnsavedChanges = useLabelStore((s) => getTemplateFingerprint(s) !== s._savedSnapshot)
   const isDbOffline = dbStatus !== 'connected'
 
   useEffect(() => {
-    if (!showStatusPopover) return undefined
+    if (!popoverType) return undefined
     const onDown = (e) => {
-      // The popover lives in a portal, so both nodes must be checked.
-      if (statusRef.current?.contains(e.target)) return
+      // The popover lives in a portal, so trigger nodes must be checked.
+      if (dbBtnRef.current?.contains(e.target)) return
+      if (printBtnRef.current?.contains(e.target)) return
       if (popoverRef.current?.contains(e.target)) return
-      setShowStatusPopover(false)
+      setPopoverType(null)
     }
     const onKey = (e) => {
-      if (e.key === 'Escape') setShowStatusPopover(false)
+      if (e.key === 'Escape') setPopoverType(null)
     }
     window.addEventListener('pointerdown', onDown)
     window.addEventListener('keydown', onKey)
@@ -116,7 +120,7 @@ export default function TopHeader() {
       window.removeEventListener('pointerdown', onDown)
       window.removeEventListener('keydown', onKey)
     }
-  }, [showStatusPopover])
+  }, [popoverType])
 
   const sinceLabel = (ts) => {
     if (!ts) return 'not checked yet'
@@ -283,112 +287,166 @@ export default function TopHeader() {
           })}
         </div>
 
-        {/* 4. Status dots with details popover */}
-        <div className="relative flex flex-none" ref={statusRef}>
-          <div className="flex items-center gap-1.5">
-            <StatusPill
-              label="Database"
-              ok={!isDbOffline}
-              onClick={() => setShowStatusPopover((v) => !v)}
-              title="Database connection details"
-            />
-            <StatusPill
-              label="Print service"
-              ok={printServiceStatus === 'connected'}
-              onClick={() => setShowStatusPopover((v) => !v)}
-              title="Print service connection details"
-            />
-          </div>
+        {/* 4. Status dots with dedicated details dropdown */}
+        <div className="relative flex flex-none items-center gap-1.5">
+          <StatusPill
+            btnRef={dbBtnRef}
+            label="Database"
+            ok={!isDbOffline}
+            onClick={() => setPopoverType((curr) => (curr === 'db' ? null : 'db'))}
+            title="Database connection details"
+          />
+          <StatusPill
+            btnRef={printBtnRef}
+            label="Print service"
+            ok={printServiceStatus === 'connected'}
+            onClick={() => setPopoverType((curr) => (curr === 'print' ? null : 'print'))}
+            title="Print service connection details"
+          />
 
           {/* Rendered in a portal: the header is a scroll container, so an
               absolutely-positioned popover would be clipped by it. */}
-          {showStatusPopover &&
+          {popoverType &&
             createPortal(
               <div
                 ref={popoverRef}
-                className="lc-pop fixed z-[70] w-[408px] p-3"
+                className="lc-pop fixed z-[70] w-[360px] p-3.5 shadow-2xl"
                 style={popoverStyle}
               >
-              <div className="flex items-center justify-between pb-2">
-                <span className="lc-dialog-title !text-[13px]">Connection status</span>
-                <button
-                  type="button"
-                  className="lc-icon-btn !h-6 !w-6"
-                  onClick={() => setShowStatusPopover(false)}
-                  title="Close"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-
-              <div className="mt-1 flex items-start justify-between gap-3 py-2">
-                <div className="flex min-w-0 items-start gap-2">
-                  <Database size={15} className="mt-0.5 flex-none text-[var(--mut)]" />
-                  <div className="min-w-0">
-                    <div className="text-[13px] font-bold text-[var(--tx)]">Database</div>
-                    <div className="lc-mono truncate text-[11.5px] text-[var(--mut)]">
-                      {dbServer ? `${dbServer}${dbDatabase ? ` · ${dbDatabase}` : ''}` : 'Not configured'}
+                {popoverType === 'db' ? (
+                  <>
+                    <div className="flex items-center justify-between pb-2">
+                      <div className="flex items-center gap-2">
+                        <Database size={15} className="text-[var(--mut)]" />
+                        <span className="lc-dialog-title !text-[13px]">Database connection</span>
+                      </div>
+                      <button
+                        type="button"
+                        className="lc-icon-btn !h-6 !w-6"
+                        onClick={() => setPopoverType(null)}
+                        title="Close"
+                      >
+                        <X size={14} />
+                      </button>
                     </div>
-                    {dbServer ? (
-                      <div className="text-[11.5px] text-[var(--mut)]">Last OK {sinceLabel(dbLastOkAt)}</div>
-                    ) : (
+
+                    <div className="mt-1 flex items-start justify-between gap-3 py-2.5">
+                      <div className="min-w-0">
+                        <div className="lc-mono text-[12.5px] font-semibold text-[var(--tx)]">
+                          {dbServer ? `${dbServer}${dbDatabase ? ` · ${dbDatabase}` : ''}` : 'Not configured'}
+                        </div>
+                        {dbServer ? (
+                          <div className="mt-0.5 text-[11.5px] text-[var(--mut)]">
+                            Last checked: {sinceLabel(dbLastOkAt)}
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPopoverType(null)
+                              setActiveTab('settings')
+                            }}
+                            className="mt-1 inline-block text-[11.5px] font-medium text-[var(--brand)] hover:underline"
+                          >
+                            Configure in Settings →
+                          </button>
+                        )}
+                      </div>
+                      <span className={`lc-connection-status ${!dbServer ? 'is-offline' : isDbOffline ? 'is-offline' : 'is-online'}`}>
+                        {!dbServer ? 'Unconfigured' : isDbOffline ? 'Offline' : 'Connected'}
+                      </span>
+                    </div>
+
+                    <div className="lc-divider my-2" />
+
+                    <div className="flex items-center justify-between gap-2 pt-1">
                       <button
                         type="button"
                         onClick={() => {
-                          setShowStatusPopover(false)
+                          setPopoverType(null)
                           setActiveTab('settings')
                         }}
-                        className="text-[11.5px] font-medium text-[var(--brand)] hover:underline"
+                        className="text-[11.5px] font-medium text-[var(--mut)] hover:text-[var(--tx)]"
                       >
-                        Configure in Settings →
+                        Open settings
                       </button>
-                    )}
-                  </div>
-                </div>
-                <span className={`lc-connection-status ${!dbServer ? 'is-offline' : isDbOffline ? 'is-offline' : 'is-online'}`}>
-                  {!dbServer ? 'Unconfigured' : isDbOffline ? 'Offline' : 'Connected'}
-                </span>
-              </div>
-
-              <div className="lc-divider" />
-
-              <div className="flex items-start justify-between gap-3 py-2">
-                <div className="flex min-w-0 items-start gap-2">
-                  <Printer size={15} className="mt-0.5 flex-none text-[var(--mut)]" />
-                  <div className="min-w-0">
-                    <div className="text-[13px] font-bold text-[var(--tx)]">Print service</div>
-                    <div className="lc-mono truncate text-[11.5px] text-[var(--mut)]">{serviceHost}</div>
-                    <div className="text-[11.5px] text-[var(--mut)]">
-                      Last OK {printServiceStatus === 'connected' ? 'just now' : sinceLabel(printServiceLastOkAt)}
+                      <button
+                        type="button"
+                        className="lc-btn lc-btn-secondary lc-btn-sm flex-none"
+                        onClick={() => {
+                          checkServiceHealth?.()
+                          addToast({ message: 'Testing database connection…', type: 'info' })
+                        }}
+                      >
+                        Test / Retry
+                      </button>
                     </div>
-                  </div>
-                </div>
-                <span
-                  className={`lc-connection-status ${
-                    printServiceStatus === 'connected' ? 'is-online' : 'is-offline'
-                  }`}
-                >
-                  {printServiceStatus === 'connected' ? 'Connected' : 'Unreachable'}
-                </span>
-              </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between pb-2">
+                      <div className="flex items-center gap-2">
+                        <Printer size={15} className="text-[var(--mut)]" />
+                        <span className="lc-dialog-title !text-[13px]">Print service connection</span>
+                      </div>
+                      <button
+                        type="button"
+                        className="lc-icon-btn !h-6 !w-6"
+                        onClick={() => setPopoverType(null)}
+                        title="Close"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
 
-              <div className="lc-divider" />
+                    <div className="mt-1 flex items-start justify-between gap-3 py-2.5">
+                      <div className="min-w-0">
+                        <div className="lc-mono text-[12.5px] font-semibold text-[var(--tx)]">
+                          {serviceHost}
+                        </div>
+                        <div className="mt-0.5 text-[11.5px] text-[var(--mut)]">
+                          Last checked: {printServiceStatus === 'connected' ? 'just now' : sinceLabel(printServiceLastOkAt)}
+                        </div>
+                      </div>
+                      <span
+                        className={`lc-connection-status ${
+                          printServiceStatus === 'connected' ? 'is-online' : 'is-offline'
+                        }`}
+                      >
+                        {printServiceStatus === 'connected' ? 'Connected' : 'Unreachable'}
+                      </span>
+                    </div>
 
-              <div className="flex items-center justify-between gap-2 pt-2">
-                <p className="text-[11.5px] leading-snug text-[var(--mut)]">
-                  Check that the service “SPIL Label Print” is running on this PC.
-                </p>
-                <button
-                  type="button"
-                  className="lc-btn lc-btn-secondary lc-btn-sm flex-none"
-                  onClick={() => {
-                    checkServiceHealth?.()
-                    addToast({ message: 'Checking connections…', type: 'info' })
-                  }}
-                >
-                  Retry
-                </button>
-              </div>
+                    <p className="mt-1 text-[11.5px] leading-snug text-[var(--mut)]">
+                      Check that the service “SPIL Label Print” is running on this PC.
+                    </p>
+
+                    <div className="lc-divider my-2" />
+
+                    <div className="flex items-center justify-between gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPopoverType(null)
+                          setActiveTab('settings')
+                        }}
+                        className="text-[11.5px] font-medium text-[var(--mut)] hover:text-[var(--tx)]"
+                      >
+                        Configure service
+                      </button>
+                      <button
+                        type="button"
+                        className="lc-btn lc-btn-secondary lc-btn-sm flex-none"
+                        onClick={() => {
+                          checkServiceHealth?.()
+                          addToast({ message: 'Checking print service…', type: 'info' })
+                        }}
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>,
               document.body,
             )}
