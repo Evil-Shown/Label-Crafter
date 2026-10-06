@@ -64,16 +64,9 @@ export const MSG = (over = {}) => ({
     }),
     createImageField({
       fieldKey: 'logo',
-      label: 'MS GLASS',
-      x: 12, y: 76, width: 140, height: 32,
-    }),
-    createRectField({
-      fieldKey: 'accentBar',
-      label: 'Accent Bar',
-      x: 12, y: 114, width: 140, height: 24,
-      fillEnabled: true,
-      fillColor: '#000000',
-      strokeWidth: 0,
+      label: 'Logo',
+      source: ['logo', 'companyLogo', 'image'],
+      x: 12, y: 76, width: 140, height: 48,
     }),
     createBarcodeField({
       fieldKey: 'barcode',
