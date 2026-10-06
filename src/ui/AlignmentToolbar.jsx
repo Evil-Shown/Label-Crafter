@@ -3,6 +3,7 @@ import {
   AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   ArrowLeftRight, ArrowUpDown,
 } from 'lucide-react'
+import { Paper, IconButton, Divider, Tooltip } from '@mui/material'
 import { useLabelStore } from '../store/labelStore'
 
 const BTNS = [
@@ -22,35 +23,87 @@ export default function AlignmentToolbar() {
   if (selectedKeys.length < 1) return null
 
   return (
-    <div className="pointer-events-auto absolute left-1/2 top-3 z-20 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-[var(--line)] bg-[var(--panel)]/95 px-2 py-1.5 shadow-[var(--sh-md)] backdrop-blur-md">
+    <Paper
+      elevation={4}
+      sx={{
+        pointerEvents: 'auto',
+        position: 'absolute',
+        left: '50%',
+        top: 12,
+        zIndex: 20,
+        transform: 'translateX(-50%)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 0.5,
+        borderRadius: 3,
+        p: 0.5,
+        border: '1px solid',
+        borderColor: 'divider',
+        bgcolor: 'background.paper',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+        backdropFilter: 'blur(8px)',
+      }}
+    >
       {BTNS.map(({ mode, icon: Icon, title }) => (
-        <button
-          key={mode}
-          type="button"
-          title={title}
-          onClick={() => alignSelected(mode)}
-          className="lc-icon-btn !h-7 !w-7 hover:!bg-[var(--pri-s)] hover:!text-[var(--pri)]"
-        >
-          <Icon size={14} />
-        </button>
+        <Tooltip key={mode} title={title} arrow>
+          <IconButton
+            size="small"
+            onClick={() => alignSelected(mode)}
+            sx={{
+              width: 30,
+              height: 30,
+              borderRadius: 2,
+              color: 'text.secondary',
+              '&:hover': {
+                color: 'primary.main',
+                bgcolor: 'primary.light',
+              },
+            }}
+          >
+            <Icon size={15} />
+          </IconButton>
+        </Tooltip>
       ))}
-      <div className="mx-1 h-4 w-px bg-[var(--line)]" />
-      <button
-        type="button"
-        title="Distribute horizontally"
-        onClick={() => distributeSelected('h')}
-        className="lc-icon-btn !h-7 !w-7 hover:!bg-[var(--pri-s)] hover:!text-[var(--pri)]"
-      >
-        <ArrowLeftRight size={14} />
-      </button>
-      <button
-        type="button"
-        title="Distribute vertically"
-        onClick={() => distributeSelected('v')}
-        className="lc-icon-btn !h-7 !w-7 hover:!bg-[var(--pri-s)] hover:!text-[var(--pri)]"
-      >
-        <ArrowUpDown size={14} />
-      </button>
-    </div>
+
+      <Divider orientation="vertical" flexItem sx={{ mx: 0.5, height: 18, my: 'auto' }} />
+
+      <Tooltip title="Distribute horizontally" arrow>
+        <IconButton
+          size="small"
+          onClick={() => distributeSelected('h')}
+          sx={{
+            width: 30,
+            height: 30,
+            borderRadius: 2,
+            color: 'text.secondary',
+            '&:hover': {
+              color: 'primary.main',
+              bgcolor: 'primary.light',
+            },
+          }}
+        >
+          <ArrowLeftRight size={15} />
+        </IconButton>
+      </Tooltip>
+
+      <Tooltip title="Distribute vertically" arrow>
+        <IconButton
+          size="small"
+          onClick={() => distributeSelected('v')}
+          sx={{
+            width: 30,
+            height: 30,
+            borderRadius: 2,
+            color: 'text.secondary',
+            '&:hover': {
+              color: 'primary.main',
+              bgcolor: 'primary.light',
+            },
+          }}
+        >
+          <ArrowUpDown size={15} />
+        </IconButton>
+      </Tooltip>
+    </Paper>
   )
 }
