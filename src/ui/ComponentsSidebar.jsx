@@ -19,6 +19,7 @@ import {
   ChevronsDownUp,
   CircleSlash,
   FileCode,
+  FolderOpen,
 } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
 import { catalogForClient } from '../data/fieldCatalog'
