@@ -4,7 +4,7 @@ import { Printer, X, FileText, Image as ImageIcon, FileCode, Download, FolderOpe
 import { useLabelStore } from '../store/labelStore'
 import { useEscape } from '../hooks/useEscape'
 import { renderLabelToCanvas, exportPdf, exportPng, downloadTextFile } from '../utils/export'
-import { compileLabel } from '../services/printService'
+import { compileLabel, brandLanguage } from '../services/printService'
 import { buildExportTemplate } from '../utils/template'
 import { formatSize } from '../utils/units'
 import { sanitizeFileName } from '../utils/templateStorage'
@@ -113,8 +113,13 @@ export default function ExportDialog() {
           template: buildExportTemplate(s),
           labelData: s.labelData,
         })
-        downloadTextFile(res?.code || res?.zpl || res?.printerCode || '', `${fileBase}.zpl`)
-        addToast({ message: 'Printer code downloaded', type: 'success' })
+        // Name the file after the language the Print Service actually produced.
+        const lang = res?.language || brandLanguage(s.printerBrand)
+        downloadTextFile(
+          res?.payload || res?.zpl || res?.code || '',
+          `${fileBase}.${lang}`,
+        )
+        addToast({ message: `Printer code downloaded (${lang.toUpperCase()})`, type: 'success' })
       }
       setPrintConfig({ showExportDialog: false })
     } catch (e) {

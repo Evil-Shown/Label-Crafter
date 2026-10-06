@@ -50,6 +50,7 @@ export default function ZplPreviewPanel() {
   const printServiceUrl = useLabelStore((s) => s.printServiceUrl)
   const printServiceStatus = useLabelStore((s) => s.printServiceStatus)
   const printerDpi = useLabelStore((s) => s.printerDpi)
+  const printerBrand = useLabelStore((s) => s.printerBrand)
   const client = useLabelStore((s) => s.client)
   const width = useLabelStore((s) => s.width)
   const height = useLabelStore((s) => s.height)
@@ -57,7 +58,7 @@ export default function ZplPreviewPanel() {
 
   // The service takes a brand, not a language. Start on the language the
   // chosen printer actually speaks.
-  const [activeLang, setActiveLang] = useState(() => brandLanguage(printerBrand) || 'zpl')
+  const [activeLang, setActiveLang] = useState(() => brandLanguage(printerBrand || 'zebra') || 'zpl')
   const [code, setCode] = useState('')
   const [status, setStatus] = useState('idle') // idle | working | done | error
   const [error, setError] = useState('')

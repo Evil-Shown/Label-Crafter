@@ -184,8 +184,13 @@ export default function PropertiesPanel() {
                 >
                   <option value="zebra">Zebra</option>
                   <option value="tsc">TSC</option>
-                  <option value="epl">Zebra · EPL</option>
+                  <option value="epl">Eltron / EPL2</option>
                   <option value="datamax">Datamax</option>
+                  <option value="honeywell">Honeywell</option>
+                  <option value="citizen">Citizen</option>
+                  <option value="sato">SATO (SZPL)</option>
+                  <option value="sato-sbpl">SATO (SBPL)</option>
+                  <option value="godex">Godex</option>
                 </select>
               </Field>
               <Field label="Resolution">
