@@ -117,11 +117,12 @@ export default function BottomFooter() {
               fontWeight: 700,
               borderRadius: 9999,
               borderColor: 'divider',
-              color: 'text.secondary',
+              color: 'text.primary',
+              bgcolor: 'background.paper',
               '&:hover': {
                 borderColor: 'primary.main',
                 color: 'primary.main',
-                bgcolor: 'primary.light',
+                bgcolor: 'action.hover',
               },
             }}
           >
@@ -145,6 +146,8 @@ export default function BottomFooter() {
               borderRadius: 9999,
               fontWeight: 700,
               fontSize: '0.72rem',
+              border: '1px solid',
+              borderColor: 'primary.main',
             }}
           >
             {selectedKeys.length} selected
@@ -167,6 +170,8 @@ export default function BottomFooter() {
             fontSize: '0.75rem',
             color: 'success.main',
             bgcolor: 'success.light',
+            border: '1px solid',
+            borderColor: 'success.main',
             px: 1.2,
             py: 0.3,
             borderRadius: 9999,

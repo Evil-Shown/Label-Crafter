@@ -8,14 +8,15 @@ export function getMuiTheme(mode = 'light') {
       mode: isDark ? 'dark' : 'light',
       primary: {
         main: isDark ? '#818CF8' : '#4F46E5',
-        light: isDark ? '#C7D2FE' : '#6366F1',
+        light: isDark ? 'rgba(129, 140, 248, 0.2)' : 'rgba(79, 70, 229, 0.12)',
         dark: isDark ? '#4F46E5' : '#3730A3',
         contrastText: '#FFFFFF',
       },
       secondary: {
         main: isDark ? '#C084FC' : '#9333EA',
-        light: '#E9D5FF',
+        light: isDark ? 'rgba(192, 132, 252, 0.2)' : 'rgba(147, 51, 234, 0.12)',
         dark: '#6B21A8',
+        contrastText: '#FFFFFF',
       },
       background: {
         default: isDark ? '#0B0F19' : '#EEF2F6',
@@ -27,13 +28,19 @@ export function getMuiTheme(mode = 'light') {
       },
       divider: isDark ? '#263352' : '#E2E8F0',
       success: {
-        main: isDark ? '#34D399' : '#10B981',
+        main: isDark ? '#34D399' : '#059669',
+        light: isDark ? 'rgba(52, 211, 153, 0.16)' : '#ECFDF5',
+        contrastText: '#FFFFFF',
       },
       warning: {
-        main: isDark ? '#FBBF24' : '#F59E0B',
+        main: isDark ? '#FBBF24' : '#D97706',
+        light: isDark ? 'rgba(251, 191, 36, 0.16)' : '#FFFBEB',
+        contrastText: '#FFFFFF',
       },
       error: {
-        main: isDark ? '#F87171' : '#EF4444',
+        main: isDark ? '#F87171' : '#DC2626',
+        light: isDark ? 'rgba(248, 113, 113, 0.16)' : '#FEF2F2',
+        contrastText: '#FFFFFF',
       },
     },
     typography: {
