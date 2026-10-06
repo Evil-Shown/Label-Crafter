@@ -12,8 +12,13 @@ import BrandMark from './BrandMark'
 export default function StartupSplashScreen({ onComplete }) {
   const [stage, setStage] = useState(0) // 0: booting, 1: checking DB, 2: checking Print, 3: ready, 4: fading out
   const [closing, setClosing] = useState(false)
+  const dbServer = useLabelStore((s) => s.dbServer)
   const dbStatus = useLabelStore((s) => s.dbStatus)
   const printServiceStatus = useLabelStore((s) => s.printServiceStatus)
+  const isDbConfigured = Boolean(dbServer?.trim())
+  const isDbConnected = dbStatus === 'connected'
+  const isPrintConnected = printServiceStatus === 'connected'
+
 
   useEffect(() => {
     // Stage 1: Connect to database (after 400ms)
@@ -82,15 +87,21 @@ export default function StartupSplashScreen({ onComplete }) {
             {/* Database check step */}
             <div className="flex items-center justify-between text-xs font-semibold">
               <div className="flex items-center gap-2.5 text-slate-200">
-                <Database size={15} className={stage >= 1 ? 'text-sky-400' : 'text-slate-500'} />
+                <Database size={15} className={stage >= 1 ? (isDbConnected ? 'text-emerald-400' : isDbConfigured ? 'text-amber-400' : 'text-slate-400') : 'text-slate-500'} />
                 <span>Shared Database (SQL)</span>
               </div>
               <span className="text-[11px]">
                 {stage >= 1 ? (
-                  <span className="flex items-center gap-1 font-bold text-emerald-400">
-                    <CheckCircle2 size={13} />
-                    <span>SPIL-SQL01 OK</span>
-                  </span>
+                  !isDbConfigured ? (
+                    <span className="text-slate-400 font-normal">Not configured</span>
+                  ) : isDbConnected ? (
+                    <span className="flex items-center gap-1 font-bold text-emerald-400">
+                      <CheckCircle2 size={13} />
+                      <span>{dbServer} OK</span>
+                    </span>
+                  ) : (
+                    <span className="text-amber-300 font-normal">{dbServer ? `${dbServer} (offline)` : 'Offline'}</span>
+                  )
                 ) : (
                   <span className="text-slate-400 font-normal">Connecting…</span>
                 )}
@@ -100,15 +111,19 @@ export default function StartupSplashScreen({ onComplete }) {
             {/* Print service check step */}
             <div className="flex items-center justify-between text-xs font-semibold">
               <div className="flex items-center gap-2.5 text-slate-200">
-                <Printer size={15} className={stage >= 2 ? 'text-sky-400' : 'text-slate-500'} />
+                <Printer size={15} className={stage >= 2 ? (isPrintConnected ? 'text-emerald-400' : 'text-amber-400') : 'text-slate-500'} />
                 <span>SPIL Print Service</span>
               </div>
               <span className="text-[11px]">
                 {stage >= 2 ? (
-                  <span className="flex items-center gap-1 font-bold text-emerald-400">
-                    <CheckCircle2 size={13} />
-                    <span>Port 5088 OK</span>
-                  </span>
+                  isPrintConnected ? (
+                    <span className="flex items-center gap-1 font-bold text-emerald-400">
+                      <CheckCircle2 size={13} />
+                      <span>Connected</span>
+                    </span>
+                  ) : (
+                    <span className="text-amber-300 font-normal">Unreachable</span>
+                  )
                 ) : stage >= 1 ? (
                   <span className="text-sky-300 font-normal animate-pulse">Checking…</span>
                 ) : (

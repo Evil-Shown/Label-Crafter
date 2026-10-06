@@ -241,20 +241,22 @@ export const useLabelStore = create(
     confirmDialog: null,
     activeTab: 'design', // 'design' | 'templates' | 'settings' | 'opti'
     showSplashScreen: true,
-    firstTimeSetupOpen: false,
-    dbStatus: 'connected', // 'connected' | 'offline'
-    dbLatencyMs: 18,
-    dbLastOkAt: Date.now(),
+    firstTimeSetupOpen: !localStorage.getItem('lc-setup-done') && !localStorage.getItem('lc-db-server'),
+    dbStatus: localStorage.getItem('lc-db-server') ? 'connected' : 'offline', // 'connected' | 'offline'
+    dbLatencyMs: 0,
+    dbLastOkAt: null,
     dbRetryIn: 0,
     dbRetryStep: 0,
-    dbServer: localStorage.getItem('lc-db-server') || 'SPIL-SQL01',
-    dbDatabase: localStorage.getItem('lc-db-database') || 'SpilProduction',
+    dbServer: localStorage.getItem('lc-db-server') || '',
+    dbDatabase: localStorage.getItem('lc-db-database') || '',
     dbPort: Number(localStorage.getItem('lc-db-port')) || 1433,
     dbAuthType: localStorage.getItem('lc-db-auth') || 'windows', // 'windows' | 'sql'
-    printServiceStatus: 'connected', // 'connected' | 'unreachable'
-    printServiceLastOkAt: Date.now(),
+    printServiceStatus: 'unreachable', // 'connected' | 'unreachable'
+    printServiceLastOkAt: null,
+
     showConnectionPopover: false,
     showLoadDataModal: false,
+    showOifImportModal: false,
     showExportDialog: false,
     showFieldPicker: false,
     fieldPickerAnchor: null,
@@ -1070,14 +1072,17 @@ st.lastSavedAt = Date.now()
       })
     },
 
-    loadRealData({ source, pieceIndex, totalPieces, data }) {
+    loadRealData({ source, pieceIndex, totalPieces, data, pieces }) {
+      const idx = pieceIndex ?? 1
+      const activeData = data || (pieces && pieces[idx - 1]?.values) || {}
       set((st) => {
-        st.labelData = { ...data }
+        st.labelData = { ...activeData }
         st.hasHostPreviewData = true
         st.realDataInfo = {
           source,
-          pieceIndex: pieceIndex ?? 1,
-          totalPieces: totalPieces ?? 1,
+          pieceIndex: idx,
+          totalPieces: totalPieces ?? (pieces ? pieces.length : 1),
+          pieces: Array.isArray(pieces) ? pieces : null,
         }
       })
       get().addToast({
@@ -1102,6 +1107,9 @@ st.lastSavedAt = Date.now()
       if (next > info.totalPieces) next = 1
       set((st) => {
         st.realDataInfo.pieceIndex = next
+        if (Array.isArray(st.realDataInfo.pieces) && st.realDataInfo.pieces[next - 1]) {
+          st.labelData = { ...st.realDataInfo.pieces[next - 1].values }
+        }
       })
     },
 

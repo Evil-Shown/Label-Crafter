@@ -10,6 +10,7 @@ import {
   RefreshCw,
   TriangleAlert,
   CircleCheck,
+  Sparkles,
 } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
 import { parseOifText, pieceSummary } from '../utils/oifParser'
@@ -103,6 +104,7 @@ export default function LoadRealDataModal() {
       pieceIndex: selected,
       totalPieces: pieces.length,
       data: piece.values,
+      pieces,
     })
     close()
   }
@@ -291,6 +293,20 @@ export default function LoadRealDataModal() {
         </div>
 
         <div className="lc-modal-foot">
+          {tab === 'oif' && pieces.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                close()
+                useLabelStore.setState({ showOifImportModal: true })
+              }}
+              className="lc-btn lc-btn-secondary !h-10 mr-auto text-[var(--pri)]"
+              title="Create a template using the fields extracted from this OIF"
+            >
+              <Sparkles size={14} />
+              <span>Create template from this OIF…</span>
+            </button>
+          )}
           <button type="button" onClick={close} className="lc-btn lc-btn-secondary !h-10">
             Cancel
           </button>

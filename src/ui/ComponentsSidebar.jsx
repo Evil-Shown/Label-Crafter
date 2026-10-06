@@ -18,6 +18,7 @@ import {
   Database,
   ChevronsDownUp,
   CircleSlash,
+  FileCode,
 } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
 import { catalogForClient } from '../data/fieldCatalog'
@@ -30,6 +31,8 @@ export default function ComponentsSidebar() {
   const client = useLabelStore((s) => s.client)
   const fields = useLabelStore((s) => s.fields)
   const selectedKeys = useLabelStore((s) => s.selectedKeys)
+  const realDataInfo = useLabelStore((s) => s.realDataInfo)
+  const labelData = useLabelStore((s) => s.labelData)
   const select = useLabelStore((s) => s.select)
   const toggleFieldVisible = useLabelStore((s) => s.toggleFieldVisible)
   const toggleFieldLock = useLabelStore((s) => s.toggleFieldLock)
@@ -59,13 +62,87 @@ export default function ComponentsSidebar() {
     { label: 'DXF', Icon: Frame, onClick: addDxfField },
   ]
 
-  const catalog = catalogForClient(client)
+  const baseCatalog = catalogForClient(client)
+
+  // Opti fields only come when real OIF data is imported. Unless OIF is imported, Opti field section stays empty.
+  const catalog = (() => {
+    if (client === 'opti') {
+      if (!realDataInfo || !labelData || Object.keys(labelData).length === 0) {
+        return []
+      }
+      const existingKeys = new Set()
+      const dynamicFields = []
+
+      // Check for note slots in loaded labelData
+      for (let n = 1; n <= 10; n++) {
+        const noteObj = labelData[`note${n}`] || labelData[`Note${n}`]
+        if (noteObj && typeof noteObj === 'object') {
+          for (const [fk, fv] of Object.entries(noteObj)) {
+            if (fv != null && String(fv).trim() !== '') {
+              const num = fk.replace(/\D/g, '')
+              const slotKey = `note${n}.field${num}`
+              if (!existingKeys.has(slotKey.toLowerCase())) {
+                existingKeys.add(slotKey.toLowerCase())
+                dynamicFields.push({
+                  key: slotKey,
+                  label: `Note ${n} Field ${num}`,
+                  type: 'text',
+                  source: 'notes',
+                  sample: String(fv),
+                })
+              }
+            }
+          }
+        }
+      }
+
+      // Check piece scalar fields
+      for (const [k, v] of Object.entries(labelData)) {
+        if (k.startsWith('note') || typeof v === 'object' || v == null) continue
+        if (!existingKeys.has(k.toLowerCase()) && String(v).trim() !== '') {
+          existingKeys.add(k.toLowerCase())
+          dynamicFields.push({
+            key: k,
+            label: k.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase()).trim(),
+            type: 'text',
+            source: 'piece',
+            sample: String(v),
+          })
+        }
+      }
+
+      return dynamicFields
+    }
+
+    // For ERP:
+    if (!realDataInfo || !labelData || Object.keys(labelData).length === 0) {
+      return baseCatalog
+    }
+    const existingKeys = new Set(baseCatalog.map((c) => c.key.toLowerCase()))
+    const dynamicFields = []
+    for (const [k, v] of Object.entries(labelData)) {
+      if (typeof v === 'object' || v == null) continue
+      if (!existingKeys.has(k.toLowerCase()) && String(v).trim() !== '') {
+        existingKeys.add(k.toLowerCase())
+        dynamicFields.push({
+          key: k,
+          label: k.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase()).trim(),
+          type: 'text',
+          source: 'piece',
+          sample: String(v),
+        })
+      }
+    }
+    return dynamicFields.length ? [...baseCatalog, ...dynamicFields] : baseCatalog
+  })()
+
   const q = fieldSearch.trim().toLowerCase()
   const filteredCatalog = catalog.filter(
     (f) =>
       !q ||
       (f.label || f.key).toLowerCase().includes(q) ||
-      f.key.toLowerCase().includes(q),
+      f.key.toLowerCase().includes(q) ||
+      (f.sample && f.sample.toLowerCase().includes(q)),
   )
 
   const sortedFields = [...fields].sort((a, b) => (b.zIndex ?? 0) - (a.zIndex ?? 0))
@@ -96,26 +173,51 @@ export default function ComponentsSidebar() {
         <div className="px-3 pb-2 pt-3">
           <div className="mb-2 flex items-center justify-between">
             <h2 className="lc-panel-title">{client === 'erp' ? 'ERP fields' : 'Opti fields'}</h2>
-            <span className="text-[11px] font-semibold text-[var(--pri)]">drag to canvas</span>
+            {catalog.length > 0 && (
+              <span className="text-[11px] font-semibold text-[var(--pri)]">drag to canvas</span>
+            )}
           </div>
-          <div className="relative">
-            <Search size={15} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--mut)]" />
-            <input
-              type="search"
-              placeholder={`Search ${catalog.length} fields…`}
-              value={fieldSearch}
-              onChange={(e) => setFieldSearch(e.target.value)}
-              className="lc-input !h-[34px] !pl-8"
-            />
-          </div>
+          {catalog.length > 0 && (
+            <div className="relative">
+              <Search size={15} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--mut)]" />
+              <input
+                type="search"
+                placeholder={`Search ${catalog.length} fields…`}
+                value={fieldSearch}
+                onChange={(e) => setFieldSearch(e.target.value)}
+                className="lc-input !h-[34px] !pl-8"
+              />
+            </div>
+          )}
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
-          {filteredCatalog.length === 0 && (
+          {catalog.length === 0 ? (
+            <div className="flex flex-col items-center justify-center px-3 py-6 text-center">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--panel-2)] text-[var(--mut)] mb-2.5">
+                <FileCode size={20} />
+              </div>
+              <p className="text-[12.5px] font-medium text-[var(--tx)] mb-1">
+                No Opti fields loaded
+              </p>
+              <p className="text-[11.5px] leading-relaxed text-[var(--mut)] mb-3">
+                Import an .OIF file to automatically extract and populate piece and note fields.
+              </p>
+              <button
+                type="button"
+                onClick={() => useLabelStore.getState().setModal('showOifImportModal', true)}
+                className="lc-btn lc-btn-primary lc-btn-sm"
+              >
+                <FolderOpen size={13} />
+                <span>Import OIF file</span>
+              </button>
+            </div>
+          ) : filteredCatalog.length === 0 ? (
             <p className="px-2 py-6 text-center text-[13px] text-[var(--mut)]">
               No field matches “{fieldSearch}”.
             </p>
-          )}
+          ) : null}
+
           {filteredCatalog.map((field) => {
             const isNote = field.source === 'notes' || field.key.toLowerCase().includes('note')
             return (

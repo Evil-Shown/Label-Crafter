@@ -17,6 +17,7 @@ import OptiLabelsSettingsView from './views/OptiLabelsSettingsView'
 import NewTemplateModal from './modals/NewTemplateModal'
 import AddShapeModal from './modals/AddShapeModal'
 import LoadRealDataModal from './modals/LoadRealDataModal'
+import OifTemplateWizardModal from './modals/OifTemplateWizardModal'
 import ExportDialog from './modals/ExportDialog'
 import FieldPickerModal from './modals/FieldPickerModal'
 import FirstRunWizardModal from './modals/FirstRunWizardModal'
@@ -157,6 +158,7 @@ export default function App() {
       <NewTemplateModal />
       <AddShapeModal />
       <LoadRealDataModal />
+      <OifTemplateWizardModal />
       <ExportDialog />
       <FieldPickerModal />
       <FirstRunWizardModal />
