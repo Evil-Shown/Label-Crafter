@@ -81,18 +81,98 @@ export function buildFieldMappings(fields = []) {
   return mappings
 }
 
+function isUsableValue(v) {
+  if (v === undefined || v === null) return false
+  if (typeof v === 'object') return false
+  const s = String(v).trim()
+  return s !== '' && s !== '***' && s !== '-' && s !== '—' && s !== '–'
+}
+
+function normalizeKey(k) {
+  return String(k || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/[_-]/g, '')
+}
+
 export function lookupPath(data, path) {
   if (!data || path == null || path === '') return undefined
-  const key = String(path).trim()
-  if (Object.prototype.hasOwnProperty.call(data, key) && data[key] != null && data[key] !== '') {
-    return data[key]
+  const rawKey = String(path).trim()
+
+  // 1. Exact match on direct property
+  if (Object.prototype.hasOwnProperty.call(data, rawKey) && isUsableValue(data[rawKey])) {
+    return data[rawKey]
   }
-  let cur = data
-  for (const part of key.split('.')) {
-    if (cur == null || typeof cur !== 'object') return undefined
-    cur = cur[part] ?? cur[`field${part}`]
+
+  // 2. Dotted nested traversal (e.g. note1.field2 or parameters.projectName)
+  if (rawKey.includes('.')) {
+    let cur = data
+    for (const part of rawKey.split('.')) {
+      if (cur == null || typeof cur !== 'object') return undefined
+      cur = cur[part] ?? cur[`field${part}`]
+    }
+    if (isUsableValue(cur)) return cur
+    return undefined
   }
-  return cur
+
+  const nk = normalizeKey(rawKey)
+
+  // 3. Opti-specific token aliases (mirrors spil-opti labelFieldResolver.js)
+  if (nk === 'size' || nk === 'dimensions') {
+    const d = data.dimensions || data.Dimensions || data.size
+    if (isUsableValue(d)) return d
+    const w = data.width || data.disWidth
+    const h = data.height || data.disHeight
+    const t = data.thickness
+    if (w && h) {
+      return t ? `${Math.round(w)} x ${Math.round(h)} x ${t}` : `${Math.round(w)} x ${Math.round(h)}`
+    }
+  }
+
+  if (nk === 'machines') {
+    const raw = data.note2?.field10 ?? data.Note2?.field10 ?? data.machines
+    if (isUsableValue(raw)) return String(raw)
+  }
+
+  if (nk === 'batchnumber' || nk === 'batchno' || nk === 'batchnum' || nk === 'batchnumbe') {
+    for (const k of ['batchNumber', 'BatchNumber', 'batchNo', 'BatchNo', 'BatchNum', 'batchnumbe']) {
+      if (isUsableValue(data[k])) return data[k]
+    }
+  }
+
+  if (nk === 'ordernumber' || nk === 'orderno') {
+    for (const k of ['orderNumber', 'OrderNumber', 'OrderNo', 'orderno', 'order_no']) {
+      if (isUsableValue(data[k])) return data[k]
+    }
+  }
+
+  if (nk === 'custpo' || nk === 'custorderno') {
+    for (const k of ['custPO', 'CustPO', 'custOrderNo', 'CustOrderNo']) {
+      if (isUsableValue(data[k])) return data[k]
+    }
+  }
+
+  if (nk === 'pieceid' || nk === 'axpieceid') {
+    for (const k of ['pieceId', 'PieceId', 'axpieceId', 'AXPiece', 'axPieceId']) {
+      if (isUsableValue(data[k])) return data[k]
+    }
+  }
+
+  if (nk === 'description' || nk === 'glassdescription') {
+    for (const k of ['description', 'Description', 'glassDescription', 'descriptionSearch']) {
+      if (isUsableValue(data[k])) return data[k]
+    }
+  }
+
+  // 4. Normalized key scan across data keys
+  for (const k of Object.keys(data)) {
+    if (normalizeKey(k) === nk && isUsableValue(data[k])) {
+      return data[k]
+    }
+  }
+
+  return undefined
 }
 
 export function isTextLikeType(type) {
