@@ -54,8 +54,8 @@ migrateLegacyLibrary()
 
 const defaultTemplate = () => ({
   ...MSG(),
-  id: 'LBL_001',
-  name: 'MSG — Premium Shower',
+  id: 'LBL_NEW',
+  name: 'Standard Production Label',
 })
 
 /** Strip Immer proxies and non-serializable values before history/export clones. */
@@ -1111,13 +1111,14 @@ st.lastSavedAt = Date.now()
 
       // The database is reached through the same design service endpoint.
       try {
-        await listServerTemplates(st.printServiceUrl, st.client)
+        const templates = await listServerTemplates(st.printServiceUrl, st.client)
         set((s) => {
           s.dbStatus = 'connected'
           s.dbLastOkAt = Date.now()
           s.dbLatencyMs = Date.now() - started
           s.dbRetryIn = 0
           s.dbRetryStep = 0
+          if (Array.isArray(templates)) s.serverTemplates = templates
         })
       } catch {
         set((s) => {
