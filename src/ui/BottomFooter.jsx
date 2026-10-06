@@ -1,107 +1,105 @@
-import { Undo2, Check, X, Redo2, Image, FileText, Cloud } from 'lucide-react'
-import { getTemplateFingerprint, useLabelStore } from '../store/labelStore'
-import { exportPng, exportPdf } from '../utils/export'
-import { formatSize } from '../utils/units'
-import { toast } from './Toast'
+import { useEffect, useState } from 'react'
+import { ZoomIn, ZoomOut, Maximize, Check } from 'lucide-react'
+import { useLabelStore } from '../store/labelStore'
+import { pxToMm } from '../utils/units'
+
+function lastSavedLabel(ts) {
+  if (!ts) return 'Not saved yet'
+  const secs = Math.round((Date.now() - ts) / 1000)
+  if (secs < 45) return 'Last saved just now'
+  const mins = Math.round(secs / 60)
+  if (mins === 1) return 'Last saved 1 min ago'
+  if (mins < 60) return `Last saved ${mins} min ago`
+  const hours = Math.round(mins / 60)
+  return hours === 1 ? 'Last saved 1 hour ago' : `Last saved ${hours} hours ago`
+}
 
 export default function BottomFooter() {
-  const undo = useLabelStore((s) => s.undo)
-  const redo = useLabelStore((s) => s.redo)
-  const canUndo = useLabelStore((s) => s._history.length > 0)
-  const canRedo = useLabelStore((s) => s._future.length > 0)
-  const saveToLibrary = useLabelStore((s) => s.saveToLibrary)
-  const saveToDesignService = useLabelStore((s) => s.saveToDesignService)
-  const saveToHost = useLabelStore((s) => s.saveToHost)
-  const designSession = useLabelStore((s) => s.designSession)
-  const hostedInApp = useLabelStore((s) => s.hostedInApp)
-  const client = useLabelStore((s) => s.client)
-  const addToast = useLabelStore((s) => s.addToast)
-  const name = useLabelStore((s) => s.name)
-  const width = useLabelStore((s) => s.width)
-  const height = useLabelStore((s) => s.height)
-  const unit = useLabelStore((s) => s.unit) || 'mm'
-  const requestConfirmation = useLabelStore((s) => s.requestConfirmation)
-  const discardUnsavedChanges = useLabelStore((s) => s.discardUnsavedChanges)
-  const hasUnsavedChanges = useLabelStore((s) => getTemplateFingerprint(s) !== s._savedSnapshot)
+  const zoom = useLabelStore((s) => s.zoom)
+  const setView = useLabelStore((s) => s.setView)
+  const fitToScreen = useLabelStore((s) => s.fitToScreen)
+  const cursorPos = useLabelStore((s) => s.cursorPos)
+  const selectedKeys = useLabelStore((s) => s.selectedKeys)
+  const margins = useLabelStore((s) => s.margins)
+  const lastSavedAt = useLabelStore((s) => s.lastSavedAt)
+  const [, force] = useState(0)
 
-  const handlePng = async () => {
-    const state = useLabelStore.getState()
-    const ok = await exportPng(state)
-    toast(ok ? 'PNG exported' : 'PNG export failed', ok ? 'success' : 'error')
+  // Keep the "last saved" copy honest without re-rendering constantly.
+  useEffect(() => {
+    const id = setInterval(() => force((n) => n + 1), 20000)
+    return () => clearInterval(id)
+  }, [])
+
+  const handleFit = () => {
+    const canvasWrap = document.querySelector('.lc-canvas-wrap')
+    if (canvasWrap) {
+      const rect = canvasWrap.getBoundingClientRect()
+      fitToScreen(rect.width, rect.height)
+    }
   }
 
-  const handlePdf = async () => {
-    const state = useLabelStore.getState()
-    const ok = await exportPdf(state)
-    toast(ok ? 'PDF print dialog opened' : 'PDF export blocked — allow popups', ok ? 'success' : 'error')
+  const mm = (px) => {
+    const v = pxToMm(px)
+    return Number.isFinite(v) ? v.toFixed(1) : '0.0'
   }
 
   return (
-    <footer
-      className="lc-footer flex h-[58px] shrink-0 items-center justify-between border-t border-[var(--lc-panel-border)] bg-[var(--lc-toolbar-bg)] px-5 backdrop-blur-md"
-      style={{ boxShadow: '0 -1px 0 var(--lc-panel-border)' }}
-    >
-      <p className="text-[11px] font-medium text-[var(--lc-text-muted)]">
-        <span className="font-semibold text-[var(--lc-text)]">{name}</span>
-        {' · '}
-        {formatSize(width, height, unit)}
-      </p>
+    <footer className="lc-footer flex h-11 shrink-0 items-center justify-between gap-4 px-4 text-[13px] text-[var(--mut)] select-none">
+      {/* 12. Zoom %, Fit, cursor in mm, selection count */}
+      <div className="flex min-w-0 items-center gap-4">
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setView({ zoom: Math.max(0.15, zoom / 1.15) })}
+            className="lc-icon-btn !h-7 !w-7"
+            title="Zoom out"
+          >
+            <ZoomOut size={15} />
+          </button>
+          <span className="w-12 text-center text-[13px] font-semibold text-[var(--tx-2)]">
+            {Math.round(zoom * 100)}%
+          </span>
+          <button
+            type="button"
+            onClick={() => setView({ zoom: Math.min(8, zoom * 1.15) })}
+            className="lc-icon-btn !h-7 !w-7"
+            title="Zoom in"
+          >
+            <ZoomIn size={15} />
+          </button>
+        </div>
 
-      <div className="flex items-center gap-2">
-        <button type="button" onClick={handlePng} className="lc-btn lc-btn-outline !text-xs" title="Export PNG">
-          <Image size={14} /> PNG
+        <button
+          type="button"
+          onClick={handleFit}
+          className="lc-chip-btn !h-[30px]"
+          title="Fit the label to the window (Ctrl+0)"
+        >
+          <Maximize size={14} />
+          <span>Fit</span>
         </button>
-        <button type="button" onClick={handlePdf} className="lc-btn lc-btn-outline !text-xs" title="Export PDF">
-          <FileText size={14} /> PDF
-        </button>
-        <div className="mx-1 h-5 w-px bg-[var(--lc-panel-border)]" />
-        <button type="button" onClick={undo} disabled={!canUndo} className="lc-btn lc-btn-outline !text-xs">
-          <Undo2 size={14} /> Undo
-        </button>
-        <button type="button" onClick={redo} disabled={!canRedo} className="lc-btn lc-btn-ghost !text-xs">
-          <Redo2 size={14} /> Redo
-        </button>
-        <div className="mx-1 h-5 w-px bg-[var(--lc-panel-border)]" />
-        {hasUnsavedChanges && (
-          <>
-            <button
-              type="button"
-              onClick={() => {
-                if (designSession) {
-                  saveToDesignService().catch((err) =>
-                    addToast({ message: err.message || 'Save failed', type: 'error' }),
-                  )
-                } else if (hostedInApp || (window.parent && window.parent !== window)) {
-                  saveToHost()
-                } else {
-                  saveToLibrary()
-                }
-              }}
-              className="lc-btn lc-btn-primary !text-xs"
-              title={
-                designSession || hostedInApp
-                  ? `Save this template back to ${client === 'erp' ? 'ERP' : 'Opti'}`
-                  : 'Save this template to the local library'
-              }
-            >
-              {designSession || hostedInApp ? <Cloud size={14} /> : <Check size={14} />}
-              {designSession
-                ? `Save to ${client === 'erp' ? 'ERP' : 'Opti'}`
-                : hostedInApp
-                  ? `Save to ${client === 'erp' ? 'ERP' : 'Opti'}`
-                  : 'Save to Library'}
-            </button>
-            <button type="button" onClick={() => requestConfirmation({
-              title: 'Discard unsaved changes?',
-              message: 'Restore the template to its last saved library version.',
-              confirmLabel: 'Discard changes',
-              tone: 'danger',
-              onConfirm: discardUnsavedChanges,
-            })} className="lc-btn lc-btn-danger !text-xs">
-              <X size={14} /> Discard
-            </button>
-          </>
+
+        <div className="h-4 w-px bg-[var(--line)]" />
+
+        <span className="truncate">
+          X {mm(cursorPos?.x ?? 0)} mm · Y {mm(cursorPos?.y ?? 0)} mm
+        </span>
+        {selectedKeys.length > 0 && (
+          <span className="flex-none text-[13px] text-[var(--mut)]">
+            {selectedKeys.length} selected
+          </span>
         )}
+      </div>
+
+      <div className="flex flex-none items-center gap-4">
+        <span className="truncate">
+          Margins {margins?.left ?? 0} · {margins?.right ?? 0} · {margins?.top ?? 0} ·{' '}
+          {margins?.bottom ?? 0} mm
+        </span>
+        <span className="flex items-center gap-1.5 font-semibold text-[var(--ok)]">
+          <Check size={14} />
+          <span>{lastSavedLabel(lastSavedAt)}</span>
+        </span>
       </div>
     </footer>
   )

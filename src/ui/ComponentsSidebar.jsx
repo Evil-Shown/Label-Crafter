@@ -1,175 +1,224 @@
+import { useState } from 'react'
 import {
   Type,
+  Heading,
+  Square,
   Barcode,
   QrCode,
-  Heading,
-  Image as ImageIcon,
+  SquareCheck,
   Minus,
   Shapes,
+  Image as ImageIcon,
   Frame,
-  Layers,
-  ChevronUp,
-  ChevronDown,
-  Trash2,
-  Square,
-  SquareCheck,
-  Circle,
-  Table,
+  Search,
   Eye,
   EyeOff,
   Lock,
   Unlock,
+  Database,
+  ChevronsDownUp,
+  CircleSlash,
 } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
-import { PanelHeader, SectionLabel } from './primitives'
-import DataFieldsPanel from './DataFieldsPanel'
+import { catalogForClient } from '../data/fieldCatalog'
 import { mappingLabel } from '../utils/template'
-
-const TYPE_ICONS = {
-  text: Type,
-  checkbox: SquareCheck,
-  header: Heading,
-  barcode: Barcode,
-  qrcode: QrCode,
-  line: Minus,
-  shape: Shapes,
-  image: ImageIcon,
-  table: Table,
-}
+import { elementIcon } from '../elements/typeMeta'
 
 export default function ComponentsSidebar() {
-  const labelType = useLabelStore((s) => s.labelType)
-  const addTextField = useLabelStore((s) => s.addTextField)
-  const addBlackBoxField = useLabelStore((s) => s.addBlackBoxField)
-  const addBarcodeField = useLabelStore((s) => s.addBarcodeField)
-  const addCheckboxField = useLabelStore((s) => s.addCheckboxField)
-  const addQrField = useLabelStore((s) => s.addQrField)
-  const addHeaderField = useLabelStore((s) => s.addHeaderField)
-  const addImageField = useLabelStore((s) => s.addImageField)
-  const addLineField = useLabelStore((s) => s.addLineField)
-  const addRoundedRectField = useLabelStore((s) => s.addRoundedRectField)
-  const addEllipseField = useLabelStore((s) => s.addEllipseField)
-  const addTableField = useLabelStore((s) => s.addTableField)
-  const addDxfField = useLabelStore((s) => s.addDxfField)
-  const setModal = useLabelStore((s) => s.setModal)
+  const [fieldSearch, setFieldSearch] = useState('')
+  const [layersOpen, setLayersOpen] = useState(true)
+  const client = useLabelStore((s) => s.client)
   const fields = useLabelStore((s) => s.fields)
   const selectedKeys = useLabelStore((s) => s.selectedKeys)
   const select = useLabelStore((s) => s.select)
-  const reorderField = useLabelStore((s) => s.reorderField)
-  const deleteField = useLabelStore((s) => s.deleteField)
-  const toggleFieldLock = useLabelStore((s) => s.toggleFieldLock)
   const toggleFieldVisible = useLabelStore((s) => s.toggleFieldVisible)
+  const toggleFieldLock = useLabelStore((s) => s.toggleFieldLock)
+  const addTextField = useLabelStore((s) => s.addTextField)
+  const addHeaderField = useLabelStore((s) => s.addHeaderField)
+  const addBlackBoxField = useLabelStore((s) => s.addBlackBoxField)
+  const addBarcodeField = useLabelStore((s) => s.addBarcodeField)
+  const addQrField = useLabelStore((s) => s.addQrField)
+  const addCheckboxField = useLabelStore((s) => s.addCheckboxField)
+  const addLineField = useLabelStore((s) => s.addLineField)
+  const addRoundedRectField = useLabelStore((s) => s.addRoundedRectField)
+  const addImageField = useLabelStore((s) => s.addImageField)
+  const addDxfField = useLabelStore((s) => s.addDxfField)
+  const addBoundField = useLabelStore((s) => s.addBoundField)
 
-  const isOffcut = labelType === 'offcut'
-
+  // 6. Ten tools in a grid (Table removed — spec §12)
   const tools = [
-    { label: 'Text', icon: Type, onClick: addTextField },
-    { label: 'Black Box', icon: Square, onClick: addBlackBoxField },
-    { label: 'Barcode', icon: Barcode, onClick: addBarcodeField },
-    { label: 'Checkbox', icon: SquareCheck, onClick: addCheckboxField },
-    { label: 'QR Code', icon: QrCode, onClick: addQrField },
-    { label: 'Header', icon: Heading, onClick: addHeaderField },
-    { label: 'Image', icon: ImageIcon, onClick: addImageField },
-    { label: 'Line', icon: Minus, onClick: addLineField },
-    { label: 'Rounded', icon: Shapes, onClick: addRoundedRectField },
-    { label: 'Ellipse', icon: Circle, onClick: addEllipseField },
-    { label: 'Table', icon: Table, onClick: addTableField },
-    { label: 'Shape', icon: Shapes, onClick: () => setModal('showAddShapeModal', true) },
-    { label: 'DXF', icon: Frame, onClick: addDxfField },
+    { label: 'Text', Icon: Type, onClick: addTextField },
+    { label: 'Header', Icon: Heading, onClick: addHeaderField },
+    { label: 'Black box', Icon: Square, onClick: addBlackBoxField },
+    { label: 'Barcode', Icon: Barcode, onClick: addBarcodeField },
+    { label: 'QR', Icon: QrCode, onClick: addQrField },
+    { label: 'Checkbox', Icon: SquareCheck, onClick: addCheckboxField },
+    { label: 'Line', Icon: Minus, onClick: addLineField },
+    { label: 'Shape', Icon: Shapes, onClick: addRoundedRectField },
+    { label: 'Image', Icon: ImageIcon, onClick: addImageField },
+    { label: 'DXF', Icon: Frame, onClick: addDxfField },
   ]
+
+  const catalog = catalogForClient(client)
+  const q = fieldSearch.trim().toLowerCase()
+  const filteredCatalog = catalog.filter(
+    (f) =>
+      !q ||
+      (f.label || f.key).toLowerCase().includes(q) ||
+      f.key.toLowerCase().includes(q),
+  )
 
   const sortedFields = [...fields].sort((a, b) => (b.zIndex ?? 0) - (a.zIndex ?? 0))
 
   return (
-    <aside className="lc-sidebar lc-sidebar-left flex h-full min-h-0 w-[248px] shrink-0 flex-col overflow-hidden border-r border-[var(--lc-panel-border)] bg-[var(--lc-panel)]">
-      <PanelHeader
-        title="Components"
-        badge={
-          <span className={`lc-badge ${isOffcut ? 'lc-badge-offcut' : 'lc-badge-prod'}`}>
-            {isOffcut ? 'Offcut' : 'Production'}
-          </span>
-        }
-      />
+    <aside className="lc-sidebar-left flex h-full w-[280px] shrink-0 flex-col border-r border-[var(--line)] text-[var(--tx)] select-none">
+      {/* 6. ADD ELEMENT — ten tools */}
+      <section className="border-b border-[var(--line)] p-3">
+        <h2 className="lc-panel-title mb-2.5">Add element</h2>
+        <div className="grid grid-cols-4 gap-2">
+          {tools.map(({ label, Icon, onClick }) => (
+            <button
+              key={label}
+              type="button"
+              onClick={onClick}
+              className="lc-tool-btn"
+              title={`Add ${label}`}
+            >
+              <Icon size={18} />
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
+      </section>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
-      <DataFieldsPanel />
+      {/* 7. Fields panel — searchable, drag onto the label */}
+      <section className="flex max-h-[54%] min-h-[180px] flex-col border-b border-[var(--line)]">
+        <div className="px-3 pb-2 pt-3">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="lc-panel-title">{client === 'erp' ? 'ERP fields' : 'Opti fields'}</h2>
+            <span className="text-[11px] font-semibold text-[var(--pri)]">drag to canvas</span>
+          </div>
+          <div className="relative">
+            <Search size={15} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--mut)]" />
+            <input
+              type="search"
+              placeholder={`Search ${catalog.length} fields…`}
+              value={fieldSearch}
+              onChange={(e) => setFieldSearch(e.target.value)}
+              className="lc-input !h-[34px] !pl-8"
+            />
+          </div>
+        </div>
 
-      <div className="p-3">
-        <SectionLabel>Add element</SectionLabel>
-        <div className="grid grid-cols-2 gap-2">
-          {tools.map((tool) => {
-            const Icon = tool.icon
+        <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+          {filteredCatalog.length === 0 && (
+            <p className="px-2 py-6 text-center text-[13px] text-[var(--mut)]">
+              No field matches “{fieldSearch}”.
+            </p>
+          )}
+          {filteredCatalog.map((field) => {
+            const isNote = field.source === 'notes' || field.key.toLowerCase().includes('note')
             return (
-              <button key={tool.label} type="button" onClick={tool.onClick} className="lc-tool-btn" title={`Add ${tool.label}`}>
-                <Icon size={18} strokeWidth={1.75} />
-                <span>{tool.label}</span>
+              <button
+                key={field.key}
+                type="button"
+                draggable
+                onDragStart={(e) => e.dataTransfer.setData('text/plain', JSON.stringify(field))}
+                onClick={() => addBoundField(field)}
+                className="lc-field-row"
+                title={`Drag onto the label, or click to add ${field.label || field.key}`}
+              >
+                <Database size={15} className="flex-none text-[var(--mut)]" />
+                <span className="min-w-0 flex-1">
+                  <span className="lc-field-name block truncate">{field.label || field.key}</span>
+                  <span className="lc-field-key block truncate">{field.key}</span>
+                </span>
+                <span className={`lc-badge flex-none ${isNote ? 'lc-badge-warn' : 'lc-badge-opti'}`}>
+                  {isNote ? 'Note' : 'Piece'}
+                </span>
               </button>
             )
           })}
         </div>
-      </div>
-      </div>
+      </section>
 
-      <div className="flex h-[34%] min-h-[168px] max-h-[46%] shrink-0 flex-col border-t border-[var(--lc-panel-border)]">
-        <div className="flex items-center gap-1.5 px-3 py-2.5">
-          <Layers size={13} className="text-[var(--lc-text-muted)]" />
-          <SectionLabel>Layers · {fields.length}</SectionLabel>
+      {/* 8. Layers — every element with visibility, lock and mapping chip */}
+      <section className="flex min-h-[160px] flex-1 flex-col">
+        <div className="flex items-center justify-between border-b border-[var(--line)] px-3 py-2.5">
+          <h2 className="lc-panel-title">Layers · {fields.length}</h2>
+          <button
+            type="button"
+            className="lc-icon-btn !h-6 !w-6"
+            onClick={() => setLayersOpen((v) => !v)}
+            title={layersOpen ? 'Collapse layers' : 'Expand layers'}
+          >
+            {layersOpen ? <ChevronsDownUp size={14} /> : <ChevronsDownUp size={14} className="rotate-180" />}
+          </button>
         </div>
-        <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 pb-3">
-          {sortedFields.length === 0 ? (
-            <p className="px-2 py-4 text-center text-[11px] text-[var(--lc-text-muted)]">No elements yet</p>
-          ) : (
-            sortedFields.map((f) => {
+
+        {layersOpen && (
+          <div className="min-h-0 flex-1 overflow-y-auto p-1.5">
+            {sortedFields.length === 0 && (
+              <p className="px-2 py-6 text-center text-[13px] text-[var(--mut)]">
+                Nothing on the label yet.
+              </p>
+            )}
+            {sortedFields.map((f) => {
               const isSelected = selectedKeys.includes(f.fieldKey)
-              const LayerIcon = TYPE_ICONS[f.type] || Shapes
+              const Icon = elementIcon(f)
+              const chip = mappingLabel(f)
               return (
                 <div
                   key={f.fieldKey}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => select([f.fieldKey])}
-                  className={`lc-layer-row group ${isSelected ? 'selected' : ''} ${f.hidden ? 'opacity-40' : ''}`}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      select([f.fieldKey])
+                    }
+                  }}
+                  className={`lc-layer-row ${isSelected ? 'selected' : ''}`}
                 >
-                  <LayerIcon size={12} className="shrink-0 opacity-60" />
-                  <span className="min-w-0 flex-1 truncate">
-                    {f.label || f.fieldKey}
-                    {mappingLabel(f) ? (
-                      <span className="ml-1 font-mono text-[9px] text-[var(--lc-accent)]">{mappingLabel(f)}</span>
-                    ) : null}
-                  </span>
-                  <div className="flex shrink-0 items-center">
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); toggleFieldVisible(f.fieldKey) }}
-                      className="lc-icon-btn !h-5 !w-5"
-                      title={f.hidden ? 'Show' : 'Hide'}
-                    >
-                      {f.hidden ? <EyeOff size={11} /> : <Eye size={11} />}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); toggleFieldLock(f.fieldKey) }}
-                      className="lc-icon-btn !h-5 !w-5"
-                      title={f.locked ? 'Unlock' : 'Lock'}
-                    >
-                      {f.locked ? <Lock size={11} /> : <Unlock size={11} />}
-                    </button>
-                    <div className="flex items-center">
-                      <button type="button" onClick={(e) => { e.stopPropagation(); reorderField(f.fieldKey, 'up') }} className="lc-icon-btn !h-5 !w-5">
-                        <ChevronUp size={11} />
-                      </button>
-                      <button type="button" onClick={(e) => { e.stopPropagation(); reorderField(f.fieldKey, 'down') }} className="lc-icon-btn !h-5 !w-5">
-                        <ChevronDown size={11} />
-                      </button>
-                      <button type="button" onClick={(e) => { e.stopPropagation(); deleteField(f.fieldKey) }} className="lc-icon-btn !h-5 !w-5 hover:!text-red-500">
-                        <Trash2 size={11} />
-                      </button>
-                    </div>
-                  </div>
+                  <Icon size={15} className="lc-layer-type" />
+                  <span className="lc-layer-name">{f.label || f.fieldKey}</span>
+                  {chip && <span className="lc-key-chip flex-none">{chip}</span>}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggleFieldVisible(f.fieldKey)
+                    }}
+                    className="lc-icon-btn !h-6 !w-6"
+                    title={f.hidden ? 'Show on label' : 'Hide from label'}
+                  >
+                    {f.hidden ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggleFieldLock(f.fieldKey)
+                    }}
+                    className="lc-icon-btn !h-6 !w-6"
+                    title={f.locked ? 'Unlock' : 'Lock position'}
+                  >
+                    {f.locked ? <Lock size={14} /> : <Unlock size={14} />}
+                  </button>
                 </div>
               )
-            })
-          )}
-        </div>
-      </div>
+            })}
+          </div>
+        )}
+
+        {!layersOpen && (
+          <p className="px-3 py-2 text-[12px] text-[var(--mut)]">
+            <CircleSlash size={12} className="mr-1 inline" />
+            Layers collapsed
+          </p>
+        )}
+      </section>
     </aside>
   )
 }

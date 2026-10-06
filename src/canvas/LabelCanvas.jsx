@@ -16,8 +16,6 @@ import {
 } from '../utils/geometry'
 import AlignmentToolbar from '../ui/AlignmentToolbar'
 import ContextMenu from '../ui/ContextMenu'
-import StatusBar from '../ui/StatusBar'
-import Minimap from '../ui/Minimap'
 
 function clearGroup(group) {
   while (group.children.length) {
@@ -33,28 +31,38 @@ function buildGrid(gridGroup, labelW, labelH, gridMm, showGrid, isDark) {
   if (!showGrid) return
   const step = mmToPx(gridMm)
   const lines = []
-  for (let x = 0; x <= labelW; x += step) lines.push(x, 0, 0.5, x, -labelH, 0.5)
-  for (let y = 0; y <= labelH; y += step) lines.push(0, -y, 0.5, labelW, -y, 0.5)
+  for (let x = 0; x <= labelW; x += step) lines.push(x, 0, 0.6, x, -labelH, 0.6)
+  for (let y = 0; y <= labelH; y += step) lines.push(0, -y, 0.6, labelW, -y, 0.6)
   const geo = new THREE.BufferGeometry()
   geo.setAttribute('position', new THREE.Float32BufferAttribute(lines, 3))
   gridGroup.add(new THREE.LineSegments(geo, new THREE.LineBasicMaterial({
-    color: isDark ? 0x334155 : 0xd1d5db, transparent: true, opacity: 0.6,
+    color: isDark ? 0x22304a : 0xe6ebf2, transparent: true, opacity: 0.9,
   })))
 }
 
 function buildPaper(contentGroup, labelW, labelH, isDark) {
-  let shadow = contentGroup.getObjectByName('__paper_shadow__')
-  if (!shadow) {
-    shadow = new THREE.Mesh(
-      new THREE.PlaneGeometry(1, 1),
-      new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.12 }),
-    )
-    shadow.name = '__paper_shadow__'
-    contentGroup.add(shadow)
-  }
-  shadow.scale.set(labelW + 8, labelH + 8, 1)
-  shadow.position.set(labelW / 2, -labelH / 2, -2)
-  shadow.material.opacity = isDark ? 0.35 : 0.1
+  // Soft drop shadow: three stacked translucent plates give a flat-UI shadow
+  // without post-processing, and keep the paper edge crisp.
+  const LAYERS = [
+    { grow: 14, opacity: 0.05, z: -6 },
+    { grow: 9, opacity: 0.06, z: -5 },
+    { grow: 5, opacity: 0.07, z: -4 },
+  ]
+  LAYERS.forEach((l, i) => {
+    const key = `__paper_shadow_${i}__`
+    let plate = contentGroup.getObjectByName(key)
+    if (!plate) {
+      plate = new THREE.Mesh(
+        new THREE.PlaneGeometry(1, 1),
+        new THREE.MeshBasicMaterial({ color: 0x0f172a, transparent: true, depthWrite: false }),
+      )
+      plate.name = key
+      contentGroup.add(plate)
+    }
+    plate.scale.set(labelW + l.grow, labelH + l.grow, 1)
+    plate.position.set(labelW / 2, -labelH / 2, l.z)
+    plate.material.opacity = isDark ? l.opacity * 2.2 : l.opacity
+  })
 
   let paper = contentGroup.getObjectByName('__paper__')
   if (!paper) {
@@ -64,7 +72,8 @@ function buildPaper(contentGroup, labelW, labelH, isDark) {
   }
   paper.scale.set(labelW, labelH, 1)
   paper.position.set(labelW / 2, -labelH / 2, -1)
-  paper.material.color.set(isDark ? 0xf8fafc : 0xffffff)
+  // The label is always white — like real paper — in both themes (spec §1.8).
+  paper.material.color.set(0xffffff)
 }
 
 function buildLabelBorder(overlayGroup, labelW, labelH, isDark) {
@@ -76,7 +85,12 @@ function buildLabelBorder(overlayGroup, labelW, labelH, isDark) {
   ]
   const border = new THREE.LineLoop(
     new THREE.BufferGeometry().setFromPoints(pts),
-    new THREE.LineBasicMaterial({ color: isDark ? 0x64748b : 0x94a3b8, depthTest: false }),
+    new THREE.LineBasicMaterial({
+      color: isDark ? 0x3b4a63 : 0xcbd5e1,
+      transparent: true,
+      opacity: 0.9,
+      depthTest: false,
+    }),
   )
   overlayGroup.add(border)
 }
@@ -85,11 +99,12 @@ function buildSelectionGizmo(overlayGroup, f, isPrimary) {
   const { x, y, width: w, height: h } = f
   const cx = x + w / 2
   const cy = -(y + h / 2)
-  const color = isPrimary ? 0x4f46e5 : 0x818cf8
+  // Spec §4.1: 2 px --pri outline plus 4 corner handles.
+  const color = isPrimary ? 0x2563eb : 0x93c5fd
 
   const fill = new THREE.Mesh(
     new THREE.PlaneGeometry(w, h),
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.08, depthTest: false }),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.07, depthTest: false }),
   )
   fill.position.set(cx, cy, 2)
   overlayGroup.add(fill)
@@ -103,19 +118,26 @@ function buildSelectionGizmo(overlayGroup, f, isPrimary) {
 
   if (!isPrimary) return
 
-  const hs = 5
-  const coords = [
-    [x, -y], [x + w / 2, -y], [x + w, -y],
-    [x + w, -(y + h / 2)], [x + w, -(y + h)],
-    [x + w / 2, -(y + h)], [x, -(y + h)], [x, -(y + h / 2)],
-  ]
-  coords.forEach(([hx, hy]) => {
+  // Four corner handles only (spec §4.1).
+  const hs = 7
+  ;[
+    [x, -y],
+    [x + w, -y],
+    [x + w, -(y + h)],
+    [x, -(y + h)],
+  ].forEach(([hx, hy]) => {
     const handle = new THREE.Mesh(
       new THREE.PlaneGeometry(hs, hs),
-      new THREE.MeshBasicMaterial({ color: 0x4f46e5, depthTest: false }),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false }),
     )
     handle.position.set(hx, hy, 3)
     overlayGroup.add(handle)
+    const border = new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.PlaneGeometry(hs, hs)),
+      new THREE.LineBasicMaterial({ color, depthTest: false }),
+    )
+    border.position.set(hx, hy, 3.1)
+    overlayGroup.add(border)
   })
 
   // Rotation handle
@@ -125,15 +147,25 @@ function buildSelectionGizmo(overlayGroup, f, isPrimary) {
       new THREE.Vector3(cx, -y, 3),
       new THREE.Vector3(cx, rotY, 3),
     ]),
-    new THREE.LineBasicMaterial({ color: 0x4f46e5, depthTest: false }),
+    new THREE.LineBasicMaterial({ color, depthTest: false }),
   )
   overlayGroup.add(rotLine)
   const rotHandle = new THREE.Mesh(
-    new THREE.CircleGeometry(4, 12),
-    new THREE.MeshBasicMaterial({ color: 0x4f46e5, depthTest: false }),
+    new THREE.CircleGeometry(5, 16),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false }),
   )
   rotHandle.position.set(cx, rotY, 3.1)
   overlayGroup.add(rotHandle)
+  const rotRing = new THREE.LineLoop(
+    new THREE.BufferGeometry().setFromPoints(
+      new THREE.EllipseCurve(0, 0, 5, 5, 0, Math.PI * 2, false, 0)
+        .getPoints(16)
+        .map((p) => new THREE.Vector3(p.x, p.y, 0)),
+    ),
+    new THREE.LineBasicMaterial({ color, depthTest: false }),
+  )
+  rotRing.position.set(cx, rotY, 3.2)
+  overlayGroup.add(rotRing)
 }
 
 export default function LabelCanvas() {
@@ -153,13 +185,7 @@ export default function LabelCanvas() {
   const height = useLabelStore((s) => s.height)
   const globalStyles = useLabelStore((s) => s.globalStyles)
   const labelData = useLabelStore((s) => s.labelData)
-  const hasHostPreviewData = useLabelStore((s) => s.hasHostPreviewData)
   const client = useLabelStore((s) => s.client)
-  const hasBoundFields = useLabelStore((s) => s.fields.some((f) => (
-    (typeof f.value === 'string' && f.value.includes('{{'))
-    || Number(f.noteField) > 0
-    || (Array.isArray(f.source) && f.source.length > 0)
-  )))
   const showLiveTokens = useLabelStore((s) => s.showLiveTokens)
   const zoom = useLabelStore((s) => s.zoom)
   const panX = useLabelStore((s) => s.panX)
@@ -568,22 +594,6 @@ export default function LabelCanvas() {
         return <div key={i} className="pointer-events-none absolute left-0 right-0 h-px bg-pink-500 opacity-80" style={{ top: p.y }} />
       })}
 
-      {!hasHostPreviewData && hasBoundFields && (
-        <div className="pointer-events-none absolute inset-x-0 top-3 z-20 flex justify-center px-4">
-          <div className="max-w-md rounded-md border border-dashed border-[var(--lc-panel-border)] bg-[var(--lc-panel)]/92 px-3 py-2 text-center shadow-sm backdrop-blur-sm">
-            <p className="text-[11px] font-semibold text-[var(--lc-text)]">
-              No live preview data from {client === 'erp' ? 'ERP' : 'Opti'}
-            </p>
-            <p className="mt-0.5 text-[10px] leading-snug text-[var(--lc-text-muted)]">
-              Bound fields render blank until the host sends real values. Crafter never fills in sample
-              records — open it from {client === 'erp' ? 'ERP' : 'Opti'} with a piece or order selected.
-            </p>
-          </div>
-        </div>
-      )}
-
-      <StatusBar />
-      <Minimap />
       {contextMenu && <ContextMenu {...contextMenu} onClose={() => setContextMenu(null)} />}
     </div>
   )

@@ -59,11 +59,23 @@ export async function sendToPrinter({
   return res.json()
 }
 
-export async function checkServiceHealth(baseUrl) {
+export async function checkServiceHealth(baseUrl, timeoutMs = 2000) {
   const url = `${baseUrl.replace(/\/$/, '')}/api/health`
-  const res = await fetch(url, { headers: { Accept: 'application/json' } })
+  const res = await fetch(url, {
+    headers: { Accept: 'application/json' },
+    signal: AbortSignal.timeout(timeoutMs),
+  })
   if (!res.ok) throw new Error(`Service returned ${res.status}`)
   const data = await res.json()
   if (!data?.ok) throw new Error('Service did not report ready')
   return data
+}
+
+/** Host label for banners and the status popover ("localhost:5088"). */
+export function printServiceHost(url) {
+  try {
+    return new URL(url).host
+  } catch {
+    return String(url || '')
+  }
 }

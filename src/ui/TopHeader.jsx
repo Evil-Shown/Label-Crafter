@@ -1,138 +1,469 @@
+import { useEffect, useRef, useState } from 'react'
 import {
-  Maximize2,
-  X,
-  LayoutTemplate,
+  Tag,
+  PenTool,
+  LayoutGrid,
+  Settings as SettingsIcon,
   Sun,
   Moon,
+  Keyboard,
+  Save as SaveIcon,
+  CircleAlert,
+  Database,
+  Printer,
+  X,
+  Plus,
   FolderOpen,
   FileDown,
-  Plus,
-  Grid2x2,
+  Maximize,
+  Minimize,
+  Eye,
   Cloud,
-  Library,
 } from 'lucide-react'
-import { useLabelStore } from '../store/labelStore'
-import { IconButton } from './primitives'
+import { useLabelStore, getTemplateFingerprint } from '../store/labelStore'
+import appIcon from '../assets/app_icon.png'
+import { formatSize } from '../utils/units'
+
+function StatusPill({ label, ok, onClick, title }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      className="flex items-center gap-2 rounded-full border border-white/12 bg-white/8 px-3 py-1.5 text-[12.5px] font-semibold text-[#D6E2F0] transition-colors hover:bg-white/14"
+    >
+      <span className={`h-1.5 w-1.5 rounded-full ${ok ? 'bg-[#22C55E]' : 'bg-[#F87171]'}`} />
+      {label}
+    </button>
+  )
+}
 
 export default function TopHeader() {
   const name = useLabelStore((s) => s.name)
-  const margins = useLabelStore((s) => s.margins)
-  const setMargins = useLabelStore((s) => s.setMargins)
+  const width = useLabelStore((s) => s.width)
+  const height = useLabelStore((s) => s.height)
+  const activeTab = useLabelStore((s) => s.activeTab)
+  const setActiveTab = useLabelStore((s) => s.setActiveTab)
+  const client = useLabelStore((s) => s.client)
+  const setClient = useLabelStore((s) => s.setClient)
+  const dbStatus = useLabelStore((s) => s.dbStatus)
+  const dbServer = useLabelStore((s) => s.dbServer)
+  const dbDatabase = useLabelStore((s) => s.dbDatabase)
+  const printServiceStatus = useLabelStore((s) => s.printServiceStatus)
+  const printServiceUrl = useLabelStore((s) => s.printServiceUrl)
   const theme = useLabelStore((s) => s.theme)
   const toggleTheme = useLabelStore((s) => s.toggleTheme)
-  const setModal = useLabelStore((s) => s.setModal)
   const setPrintConfig = useLabelStore((s) => s.setPrintConfig)
-  const pickAndImportJsonFile = useLabelStore((s) => s.pickAndImportJsonFile)
-  const exportCurrentTemplateJson = useLabelStore((s) => s.exportCurrentTemplateJson)
-  const requestConfirmation = useLabelStore((s) => s.requestConfirmation)
+  const setModal = useLabelStore((s) => s.setModal)
+  const saveToLibrary = useLabelStore((s) => s.saveToLibrary)
   const saveToDesignService = useLabelStore((s) => s.saveToDesignService)
   const saveToHost = useLabelStore((s) => s.saveToHost)
+  const exportTemplate = useLabelStore((s) => s.exportTemplate)
+  const designSession = useLabelStore((s) => s.designSession)
   const hostedInApp = useLabelStore((s) => s.hostedInApp)
   const addToast = useLabelStore((s) => s.addToast)
-  const designSession = useLabelStore((s) => s.designSession)
-  const client = useLabelStore((s) => s.client)
+  const setTemplateMeta = useLabelStore((s) => s.setTemplateMeta)
+  const dbLastOkAt = useLabelStore((s) => s.dbLastOkAt)
+  const printServiceLastOkAt = useLabelStore((s) => s.printServiceLastOkAt)
+  const checkServiceHealth = useLabelStore((s) => s.checkServiceHealth)
 
-  const marginKeys = [
-    { key: 'left', label: 'L' },
-    { key: 'right', label: 'R' },
-    { key: 'top', label: 'T' },
-    { key: 'bottom', label: 'B' },
-  ]
+  const [isRenaming, setIsRenaming] = useState(false)
+  const [editingName, setEditingName] = useState(name)
+  const [showStatusPopover, setShowStatusPopover] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const statusRef = useRef(null)
+
+  const hasUnsavedChanges = useLabelStore((s) => getTemplateFingerprint(s) !== s._savedSnapshot)
+  const isDbOffline = dbStatus !== 'connected'
+
+  useEffect(() => {
+    if (!showStatusPopover) return undefined
+    const onDown = (e) => {
+      if (statusRef.current && !statusRef.current.contains(e.target)) setShowStatusPopover(false)
+    }
+    const onKey = (e) => {
+      if (e.key === 'Escape') setShowStatusPopover(false)
+    }
+    window.addEventListener('pointerdown', onDown)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('pointerdown', onDown)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [showStatusPopover])
+
+  const sinceLabel = (ts) => {
+    if (!ts) return 'not checked yet'
+    const mins = Math.round((Date.now() - ts) / 60000)
+    if (mins < 1) return 'just now'
+    if (mins === 1) return '1 min ago'
+    return `${mins} min ago`
+  }
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(() => {})
+      document.documentElement.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {})
     } else {
-      document.exitFullscreen().catch(() => {})
+      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {})
     }
   }
 
+  const downloadJson = (data, fileName) => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = fileName
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleExportJson = () => {
+    try {
+      downloadJson(exportTemplate(), `${name.replace(/\s+/g, '_')}_template.json`)
+      addToast({ message: 'Template JSON downloaded', type: 'success' })
+    } catch (e) {
+      addToast({ message: 'Export failed: ' + e.message, type: 'error' })
+    }
+  }
+
+  const handleImportJson = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (evt) => {
+      try {
+        const json = JSON.parse(evt.target.result)
+        useLabelStore.getState().importTemplate(json)
+        addToast({ message: `Imported template "${json.name || file.name}"`, type: 'success' })
+      } catch {
+        addToast({ message: 'Invalid template JSON file', type: 'error' })
+      }
+    }
+    reader.readAsText(file)
+    e.target.value = ''
+  }
+
+  const handleSave = () => {
+    if (isDbOffline) {
+      addToast({ message: 'Read-only: the database is offline, so saving is paused.', type: 'warning' })
+      return
+    }
+    if (designSession) {
+      saveToDesignService().catch((err) =>
+        addToast({ message: err.message || 'Save failed', type: 'error' })
+      )
+    } else if (hostedInApp || (window.parent && window.parent !== window)) {
+      saveToHost()
+    } else {
+      saveToLibrary()
+    }
+  }
+
+  const tabs = [
+    { id: 'design', label: 'Design', Icon: PenTool },
+    { id: 'templates', label: 'Templates', Icon: LayoutGrid },
+    { id: 'settings', label: 'Settings', Icon: SettingsIcon },
+  ]
+
+  const serviceHost = (() => {
+    try {
+      return new URL(printServiceUrl).host
+    } catch {
+      return printServiceUrl
+    }
+  })()
+
   return (
-    <header
-      className="lc-top-header flex min-h-[64px] shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-[var(--lc-panel-border)] bg-[var(--lc-toolbar-bg)] px-4 py-2 backdrop-blur-md"
-      style={{ boxShadow: 'var(--lc-shadow-sm)' }}
-    >
-      <div className="flex items-center gap-3">
-        <div className="lc-brand-mark flex h-10 w-10 items-center justify-center rounded-xl shadow-md">
-          <img src="/crafter-mark.png" alt="" className="lc-brand-image" />
+    <header className="lc-top-header flex h-14 shrink-0 items-center justify-between gap-4 px-4 text-white select-none">
+      {/* 1. App title + subtitle + new template */}
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="flex h-9 w-9 flex-none items-center justify-center rounded-[10px] overflow-hidden shadow-sm ring-1 ring-white/20">
+          <img src={appIcon} alt="App Icon" className="h-full w-full object-cover scale-105" />
         </div>
-        <div>
-          <h1 className="text-[15px] font-extrabold leading-none tracking-tight text-[var(--lc-text)]">Label Designer</h1>
-          <p className="mt-0.5 max-w-[220px] truncate text-[10px] font-medium text-[var(--lc-text-muted)]">
-            {designSession
-              ? `${client === 'erp' ? 'ERP' : 'Opti'} session · ${name || 'Label'}`
-              : (name || 'Standalone designer')}
+        <div className="min-w-0">
+          {isRenaming ? (
+            <input
+              type="text"
+              value={editingName}
+              autoFocus
+              onChange={(e) => setEditingName(e.target.value)}
+              onBlur={() => {
+                if (editingName.trim()) setTemplateMeta({ name: editingName.trim() })
+                setIsRenaming(false)
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  if (editingName.trim()) setTemplateMeta({ name: editingName.trim() })
+                  setIsRenaming(false)
+                }
+                if (e.key === 'Escape') setIsRenaming(false)
+              }}
+              className="h-6 w-40 rounded-[7px] border border-white/25 bg-black/25 px-2 text-[15px] font-bold text-white outline-none"
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setEditingName(name)
+                setIsRenaming(true)
+              }}
+              className="block text-left text-[15px] font-bold leading-tight text-white hover:underline"
+              title="Click to rename the template"
+            >
+              Label Designer
+            </button>
+          )}
+          <p className="truncate text-[11px] font-medium text-[var(--nav-ink)]">
+            {name} · {formatSize(width, height)}
           </p>
         </div>
-        <button type="button" onClick={() => setModal('showNewModal', true)} className="lc-btn lc-btn-outline ml-1 !py-1 !px-2.5 !text-xs">
-          <Plus size={13} /> New
-        </button>
-      </div>
 
-      <div className="hidden items-center gap-2 lg:flex">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--lc-text-muted)]">Margins</span>
-        <div className="lc-margin-group">
-          {marginKeys.map(({ key, label }) => (
-            <label key={key}>
-              {label}
-              <input type="number" step="0.5" value={margins?.[key] ?? 0} onChange={(e) => setMargins({ [key]: Number(e.target.value) })} />
-            </label>
-          ))}
-          <span className="text-[10px] text-[var(--lc-text-muted)]">mm</span>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center justify-end gap-1">
-        <IconButton icon={theme === 'dark' ? Sun : Moon} title={theme === 'dark' ? 'Light mode' : 'Dark mode'} onClick={toggleTheme} />
-        <div className="mx-1 h-5 w-px bg-[var(--lc-panel-border)]" />
-        <IconButton
-          icon={Library}
-          title="Open templates saved on the label service"
-          onClick={() => setModal('showServerLibrary', true)}
-        />
-        <IconButton
-          icon={Cloud}
-          title={hostedInApp || (typeof window !== 'undefined' && window.parent !== window)
-            ? 'Save template back to the host app'
-            : 'Save template to the label service'}
-          onClick={() => {
-            const embedded = hostedInApp || (window.parent && window.parent !== window)
-            if (embedded && !designSession) {
-              saveToHost()
-              return
-            }
-            saveToDesignService().catch((err) => addToast({ message: err.message || 'Save failed', type: 'error' }))
-          }}
-        />
-        <IconButton icon={FolderOpen} title="Import template JSON" onClick={pickAndImportJsonFile} />
-        <IconButton icon={FileDown} title="Download current template as JSON" onClick={exportCurrentTemplateJson} />
-        <div className="mx-1 h-5 w-px bg-[var(--lc-panel-border)]" />
-        <button type="button" onClick={() => setPrintConfig({ showTemplateGallery: true })} className="lc-btn lc-btn-ghost !py-1.5 !px-2.5 !text-xs">
-          <LayoutTemplate size={14} /> Templates
-        </button>
-        <button type="button" onClick={() => setPrintConfig({ showBatchPreview: true })} className="lc-btn lc-btn-ghost !py-1.5 !px-2.5 !text-xs">
-          <Grid2x2 size={14} /> Batch
-        </button>
-        <IconButton icon={Maximize2} title="Fullscreen" onClick={toggleFullscreen} />
         <button
           type="button"
-          onClick={() => requestConfirmation({
-            title: 'Exit Label Designer?',
-            message: 'Close the designer window. Save your work first if you need to keep recent edits.',
-            confirmLabel: 'Exit designer',
-            tone: 'danger',
-            onConfirm: () => {
-              if (window.parent && window.parent !== window) {
-                window.parent.postMessage({ type: 'spil-label-designer-close' }, '*')
-              } else {
-                window.close()
-              }
-            },
-          })}
-          className="lc-icon-btn hover:!bg-red-50 hover:!text-red-500 dark:hover:!bg-red-950/30"
-          title="Close"
+          onClick={() => setModal('showNewModal', true)}
+          className="ml-1 flex flex-none items-center gap-1.5 rounded-[7px] border border-white/20 bg-white/10 px-2.5 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-white/18"
+          title="Create a new template"
         >
-          <X size={15} />
+          <Plus size={14} />
+          <span>New</span>
+        </button>
+      </div>
+
+      {/* 2. Text tabs */}
+      <nav className="flex flex-none items-center gap-1 rounded-[10px] border border-white/10 bg-black/25 p-1">
+        {tabs.map(({ id, label, Icon }) => {
+          const on = activeTab === id
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setActiveTab(id)}
+              className={`flex items-center gap-1.5 rounded-[7px] px-3 py-1.5 text-[13px] font-semibold transition-colors ${
+                on ? 'bg-white/16 text-white' : 'text-[var(--nav-ink)] hover:bg-white/8 hover:text-white'
+              }`}
+            >
+              <Icon size={15} />
+              <span>{label}</span>
+            </button>
+          )
+        })}
+      </nav>
+
+      <div className="flex min-w-0 flex-1 items-center justify-end gap-2.5">
+        {hasUnsavedChanges && (
+          <div className="flex flex-none items-center gap-1.5 text-[12.5px] font-semibold text-[#FBBF24]">
+            <CircleAlert size={15} />
+            <span className="hidden lg:inline">Unsaved changes</span>
+          </div>
+        )}
+
+        {/* 3. Opti / ERP switch */}
+        <div className="flex flex-none items-center rounded-[10px] border border-white/10 bg-black/25 p-1">
+          {['opti', 'erp'].map((c) => {
+            const on = client === c
+            return (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setClient(c)}
+                className={`rounded-[7px] px-3.5 py-1 text-[13px] font-bold transition-colors ${
+                  on
+                    ? c === 'opti'
+                      ? 'bg-[var(--pri)] text-white'
+                      : 'bg-[var(--erp)] text-white'
+                    : 'text-[var(--nav-ink)] hover:text-white'
+                }`}
+              >
+                {c === 'opti' ? 'Opti' : 'ERP'}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* 4. Status dots with details popover */}
+        <div className="relative flex flex-none" ref={statusRef}>
+          <div className="flex items-center gap-1.5">
+            <StatusPill
+              label="Database"
+              ok={!isDbOffline}
+              onClick={() => setShowStatusPopover((v) => !v)}
+              title="Database connection details"
+            />
+            <StatusPill
+              label="Print service"
+              ok={printServiceStatus === 'connected'}
+              onClick={() => setShowStatusPopover((v) => !v)}
+              title="Print service connection details"
+            />
+          </div>
+
+          {showStatusPopover && (
+            <div className="lc-pop absolute right-0 top-11 w-[408px] p-3">
+              <div className="flex items-center justify-between pb-2">
+                <span className="lc-dialog-title !text-[13px]">Connection status</span>
+                <button
+                  type="button"
+                  className="lc-icon-btn !h-6 !w-6"
+                  onClick={() => setShowStatusPopover(false)}
+                  title="Close"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+
+              <div className="mt-1 flex items-start justify-between gap-3 py-2">
+                <div className="flex min-w-0 items-start gap-2">
+                  <Database size={15} className="mt-0.5 flex-none text-[var(--mut)]" />
+                  <div className="min-w-0">
+                    <div className="text-[13px] font-bold text-[var(--tx)]">Database</div>
+                    <div className="lc-mono truncate text-[11.5px] text-[var(--mut)]">
+                      {dbServer} · {dbDatabase}
+                    </div>
+                    <div className="text-[11.5px] text-[var(--mut)]">Last OK {sinceLabel(dbLastOkAt)}</div>
+                  </div>
+                </div>
+                <span className={`lc-connection-status ${isDbOffline ? 'is-offline' : 'is-online'}`}>
+                  {isDbOffline ? 'Offline' : 'Connected'}
+                </span>
+              </div>
+
+              <div className="lc-divider" />
+
+              <div className="flex items-start justify-between gap-3 py-2">
+                <div className="flex min-w-0 items-start gap-2">
+                  <Printer size={15} className="mt-0.5 flex-none text-[var(--mut)]" />
+                  <div className="min-w-0">
+                    <div className="text-[13px] font-bold text-[var(--tx)]">Print service</div>
+                    <div className="lc-mono truncate text-[11.5px] text-[var(--mut)]">{serviceHost}</div>
+                    <div className="text-[11.5px] text-[var(--mut)]">
+                      Last OK {printServiceStatus === 'connected' ? 'just now' : sinceLabel(printServiceLastOkAt)}
+                    </div>
+                  </div>
+                </div>
+                <span
+                  className={`lc-connection-status ${
+                    printServiceStatus === 'connected' ? 'is-online' : 'is-offline'
+                  }`}
+                >
+                  {printServiceStatus === 'connected' ? 'Connected' : 'Unreachable'}
+                </span>
+              </div>
+
+              <div className="lc-divider" />
+
+              <div className="flex items-center justify-between gap-2 pt-2">
+                <p className="text-[11.5px] leading-snug text-[var(--mut)]">
+                  Check that the service “SPIL Label Print” is running on this PC.
+                </p>
+                <button
+                  type="button"
+                  className="lc-btn lc-btn-secondary lc-btn-sm flex-none"
+                  onClick={() => {
+                    checkServiceHealth?.()
+                    addToast({ message: 'Checking connections…', type: 'info' })
+                  }}
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Utility icon-only actions (universal actions, tooltiped per §1.4) */}
+        <div className="flex flex-none items-center gap-1">
+          <input
+            type="file"
+            id="header-import-json"
+            accept=".json"
+            className="hidden"
+            onChange={handleImportJson}
+          />
+          <button
+            type="button"
+            onClick={() => document.getElementById('header-import-json')?.click()}
+            className="lc-icon-btn !text-[#C7D6E8] hover:!bg-white/12 hover:!text-white"
+            title="Import template JSON"
+          >
+            <FolderOpen size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={handleExportJson}
+            className="lc-icon-btn !text-[#C7D6E8] hover:!bg-white/12 hover:!text-white"
+            title="Download template JSON"
+          >
+            <FileDown size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setPrintConfig({ showBatchPreview: true })}
+            className="lc-icon-btn !text-[#C7D6E8] hover:!bg-white/12 hover:!text-white"
+            title="Live host preview"
+          >
+            <Eye size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setModal('showServerLibrary', true)}
+            className="lc-icon-btn !text-[#C7D6E8] hover:!bg-white/12 hover:!text-white"
+            title="Template library sync"
+          >
+            <Cloud size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            className="lc-icon-btn !text-[#C7D6E8] hover:!bg-white/12 hover:!text-white"
+            title={isFullscreen ? 'Exit full screen' : 'Full screen (F11)'}
+          >
+            {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
+          </button>
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="lc-icon-btn !text-[#C7D6E8] hover:!bg-white/12 hover:!text-white"
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
+          <button
+            type="button"
+            onClick={() => setPrintConfig({ showShortcuts: true })}
+            className="lc-icon-btn !text-[#C7D6E8] hover:!bg-white/12 hover:!text-white"
+            title="Keyboard shortcuts (?)"
+          >
+            <Keyboard size={16} />
+          </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => useLabelStore.setState({ showExportDialog: true })}
+          className="lc-btn flex-none border-white/18 bg-white/10 text-white hover:bg-white/18"
+        >
+          Export
+        </button>
+
+        {/* 5. Save */}
+        <button
+          type="button"
+          disabled={isDbOffline}
+          onClick={handleSave}
+          className={`lc-btn flex-none ${
+            isDbOffline
+              ? 'border-white/20 bg-white/8 text-[#9FB3CA]'
+              : 'border-[var(--ok)] bg-[var(--ok)] text-white hover:border-[#15803D] hover:bg-[#15803D]'
+          }`}
+          title={
+            isDbOffline
+              ? 'Read-only: the database is offline, so saving is paused'
+              : 'Save template to the shared database (Ctrl+S)'
+          }
+        >
+          <SaveIcon size={15} />
+          <span>Save</span>
         </button>
       </div>
     </header>
