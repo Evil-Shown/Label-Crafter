@@ -81,8 +81,13 @@ function plainValue(value) {
 function jsonReplacer(_key, value) {
   if (value == null) return value
   if (typeof value === 'function') return undefined
+  if (typeof window !== 'undefined' && (value === window || value === document)) return undefined
   if (typeof Node !== 'undefined' && value instanceof Node) return undefined
-  if (typeof value === 'object' && value.constructor?.name?.endsWith('Element')) return undefined
+  if (typeof Event !== 'undefined' && value instanceof Event) return undefined
+  if (typeof value === 'object') {
+    if (value.nativeEvent || value._reactName || value.constructor?.name?.endsWith('Event')) return undefined
+    if (value.constructor?.name?.endsWith('Element') || value.constructor?.name === 'Window') return undefined
+  }
   return value
 }
 
@@ -366,9 +371,19 @@ export const useLabelStore = create(
 
     addField(factory, overrides = {}) {
       get().pushHistory()
+      // Guard against React SyntheticEvent or DOM events passed when called directly from onClick
+      const safeOverrides =
+        overrides &&
+        typeof overrides === 'object' &&
+        !overrides.nativeEvent &&
+        !overrides.target &&
+        !overrides._reactName &&
+        typeof overrides.preventDefault !== 'function'
+          ? overrides
+          : {}
       set((st) => {
         const n = st.fields.length
-        const f = factory({ x: 10 + n * 10, y: 10 + n * 10, ...overrides })
+        const f = factory({ x: 10 + n * 10, y: 10 + n * 10, ...safeOverrides })
         f.zIndex = n
         st.fields.push(f)
         st.selectedKeys = [f.fieldKey]
