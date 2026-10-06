@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Database, Printer, CheckCircle2, ShieldCheck, Sparkles } from 'lucide-react'
+import { Database, Printer, CheckCircle2, ShieldCheck } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
 import appIcon from '../assets/app_icon.png'
 
@@ -61,18 +61,15 @@ export default function StartupSplashScreen({ onComplete }) {
 
       {/* Main Glass Splash Card */}
       <div className="relative z-10 flex flex-col items-center w-full max-w-md p-8 animate-splash-card">
-        {/* App Icon with glowing badge */}
+        {/* App Icon */}
         <div className="relative mb-6">
-          <div className="relative flex h-24 w-24 items-center justify-center rounded-3xl overflow-hidden shadow-[0_16px_40px_rgba(0,0,0,0.5),0_0_30px_rgba(37,99,235,0.45)] ring-1 ring-white/20 animate-badge-pulse">
+          <div className="relative flex h-24 w-24 items-center justify-center rounded-3xl overflow-hidden shadow-[0_16px_40px_rgba(0,0,0,0.5),0_0_30px_rgba(37,99,235,0.45)] ring-1 ring-white/20">
             <img
               src={appIcon}
               alt="Label Designer Icon"
               className="h-full w-full object-cover scale-105"
             />
           </div>
-          <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 ring-2 ring-[#0A1C38] shadow-sm">
-            <Sparkles size={13} className="text-white" />
-          </span>
         </div>
 
         {/* Title */}

@@ -40,29 +40,43 @@ function buildGrid(gridGroup, labelW, labelH, gridMm, showGrid, isDark) {
   })))
 }
 
+/** One blurred plate gives a soft paper shadow without post-processing. */
+function shadowTexture(labelW, labelH, isDark) {
+  const pad = 48
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.max(1, Math.round(labelW + pad * 2))
+  canvas.height = Math.max(1, Math.round(labelH + pad * 2))
+  const ctx = canvas.getContext('2d')
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  ctx.shadowColor = isDark ? 'rgba(0,0,0,0.75)' : 'rgba(15,23,42,0.30)'
+  ctx.shadowBlur = 22
+  ctx.shadowOffsetY = 8
+  ctx.fillStyle = '#000'
+  ctx.fillRect(pad, pad, canvas.width - pad * 2, canvas.height - pad * 2)
+  const tex = new THREE.CanvasTexture(canvas)
+  tex.needsUpdate = true
+  return tex
+}
+
 function buildPaper(contentGroup, labelW, labelH, isDark) {
-  // Soft drop shadow: three stacked translucent plates give a flat-UI shadow
-  // without post-processing, and keep the paper edge crisp.
-  const LAYERS = [
-    { grow: 14, opacity: 0.05, z: -6 },
-    { grow: 9, opacity: 0.06, z: -5 },
-    { grow: 5, opacity: 0.07, z: -4 },
-  ]
-  LAYERS.forEach((l, i) => {
-    const key = `__paper_shadow_${i}__`
-    let plate = contentGroup.getObjectByName(key)
-    if (!plate) {
-      plate = new THREE.Mesh(
-        new THREE.PlaneGeometry(1, 1),
-        new THREE.MeshBasicMaterial({ color: 0x0f172a, transparent: true, depthWrite: false }),
-      )
-      plate.name = key
-      contentGroup.add(plate)
-    }
-    plate.scale.set(labelW + l.grow, labelH + l.grow, 1)
-    plate.position.set(labelW / 2, -labelH / 2, l.z)
-    plate.material.opacity = isDark ? l.opacity * 2.2 : l.opacity
-  })
+  const key = '__paper_shadow__'
+  let shadow = contentGroup.getObjectByName(key)
+  if (!shadow) {
+    shadow = new THREE.Mesh(
+      new THREE.PlaneGeometry(1, 1),
+      new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false }),
+    )
+    shadow.name = key
+    contentGroup.add(shadow)
+  }
+  const pad = 48
+  if (shadow.userData.w !== labelW || shadow.userData.h !== labelH || shadow.userData.dark !== isDark) {
+    shadow.material.map?.dispose()
+    shadow.material.map = shadowTexture(labelW, labelH, isDark)
+    shadow.scale.set(labelW + pad * 2, labelH + pad * 2, 1)
+    shadow.userData = { w: labelW, h: labelH, dark: isDark }
+  }
+  shadow.position.set(labelW / 2, -labelH / 2, -3)
 
   let paper = contentGroup.getObjectByName('__paper__')
   if (!paper) {
@@ -208,10 +222,8 @@ export default function LabelCanvas() {
     const sm = sceneRef.current
     if (!sm) return { x: 0, y: 0 }
     const s = useLabelStore.getState()
-    return screenToLabelLocal(sm, clientX, clientY, s.zoom, s.panX, s.panY)
+    return screenToLabelLocal(sm, clientX, clientY)
   }
-
-  const texturePixelRatio = getTexturePixelRatio(zoom)
 
   const syncMeshes = useCallback(async () => {
     const sm = sceneRef.current
@@ -244,7 +256,7 @@ export default function LabelCanvas() {
     }
     sm.setTransform(zoom, panX, panY)
     sm.render()
-  }, [fields, labelData, globalStyles, showLiveTokens, selectedKeys, labelW, labelH, width, height, gridMm, showGrid, texturePixelRatio, panX, panY, isDark])
+  }, [fields, labelData, globalStyles, showLiveTokens, selectedKeys, labelW, labelH, gridMm, showGrid, zoom, panX, panY, isDark])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -252,6 +264,7 @@ export default function LabelCanvas() {
     const sm = new SceneManager(canvas)
     sceneRef.current = sm
 
+    // Re-fit on window resize so the label always sits centred and fully visible.
     const fit = () => {
       sm.resize()
       const parent = canvas.parentElement
@@ -261,6 +274,11 @@ export default function LabelCanvas() {
         const view = computeFitView(mmToPx(s.width), mmToPx(s.height), rect.width, rect.height)
         useLabelStore.getState().setView(view)
       }
+      sm.setTransform(
+        useLabelStore.getState().zoom,
+        useLabelStore.getState().panX,
+        useLabelStore.getState().panY,
+      )
       sm.render()
     }
 
@@ -399,7 +417,7 @@ export default function LabelCanvas() {
     if (inter.mode === 'pan') {
       const dx = e.clientX - inter.x
       const dy = e.clientY - inter.y
-      store.setView({ panX: inter.panX + dx, panY: inter.panY - dy })
+      store.setView({ panX: inter.panX - dx, panY: inter.panY + dy })
       return
     }
 
@@ -567,8 +585,8 @@ export default function LabelCanvas() {
       {/* Marquee overlay */}
       {marquee && sceneRef.current && (() => {
         const sm = sceneRef.current
-        const tl = labelLocalToCanvasPx(sm, marquee.x, marquee.y, zoom, panX, panY)
-        const br = labelLocalToCanvasPx(sm, marquee.x + marquee.w, marquee.y + marquee.h, zoom, panX, panY)
+        const tl = labelLocalToCanvasPx(sm, marquee.x, marquee.y)
+        const br = labelLocalToCanvasPx(sm, marquee.x + marquee.w, marquee.y + marquee.h)
         return (
           <div
             className="pointer-events-none absolute border-2 border-indigo-500 bg-indigo-500/10"
@@ -587,10 +605,10 @@ export default function LabelCanvas() {
         if (!sceneRef.current) return null
         const sm = sceneRef.current
         if (g.axis === 'v') {
-          const p = labelLocalToCanvasPx(sm, g.pos, 0, zoom, panX, panY)
+          const p = labelLocalToCanvasPx(sm, g.pos, 0)
           return <div key={i} className="pointer-events-none absolute top-0 bottom-0 w-px bg-pink-500 opacity-80" style={{ left: p.x }} />
         }
-        const p = labelLocalToCanvasPx(sm, 0, g.pos, zoom, panX, panY)
+        const p = labelLocalToCanvasPx(sm, 0, g.pos)
         return <div key={i} className="pointer-events-none absolute left-0 right-0 h-px bg-pink-500 opacity-80" style={{ top: p.y }} />
       })}
 

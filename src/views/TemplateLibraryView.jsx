@@ -1,26 +1,58 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Search,
   Plus,
-  ArrowUpDown,
+  Upload,
+  Download,
   MoreVertical,
   Pencil,
   Copy,
-  Download,
+  FileJson,
   Trash2,
   Star,
   Check,
+  LayoutGrid,
+  ArrowUpDown,
+  TriangleAlert,
+  X,
 } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
-import { formatTemplateSize } from '../utils/units'
+import { downloadJsonFile, sanitizeFileName } from '../utils/templateStorage'
 import TemplatePreviewThumb from '../ui/TemplatePreviewThumb'
+
+const SORTS = [
+  { id: 'edited', label: 'Last edited' },
+  { id: 'name', label: 'Name' },
+  { id: 'size', label: 'Size' },
+]
+
+function MenuItem({ icon: Icon, children, onClick, danger }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex w-full items-center gap-2 rounded-[7px] px-2 py-1.5 text-left text-[13px] font-medium transition-colors ${
+        danger
+          ? 'text-[var(--err)] hover:bg-[var(--err-s)]'
+          : 'text-[var(--tx-2)] hover:bg-[var(--bg)] hover:text-[var(--tx)]'
+      }`}
+    >
+      <Icon size={14} className="flex-none" />
+      {children}
+    </button>
+  )
+}
 
 export default function TemplateLibraryView() {
   const [search, setSearch] = useState('')
-  const [filterType, setFilterType] = useState('all') // 'all' | 'production' | 'offcut'
+  const [filterType, setFilterType] = useState('all')
+  const [sort, setSort] = useState('edited')
+  const [sortOpen, setSortOpen] = useState(false)
   const [activeMenuId, setActiveMenuId] = useState(null)
-  const [deleteConfirmTemplate, setDeleteConfirmTemplate] = useState(null)
+  const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleteInputName, setDeleteInputName] = useState('')
+  const [renaming, setRenaming] = useState(null)
+  const [renameValue, setRenameValue] = useState('')
 
   const client = useLabelStore((s) => s.client)
   const templateLibrary = useLabelStore((s) => s.templateLibrary)
@@ -29,352 +61,433 @@ export default function TemplateLibraryView() {
   const loadFromLibrary = useLabelStore((s) => s.loadFromLibrary)
   const deleteFromLibrary = useLabelStore((s) => s.deleteFromLibrary)
   const setDefaultTemplate = useLabelStore((s) => s.setDefaultTemplate)
-  const exportCurrentTemplateJson = useLabelStore((s) => s.exportCurrentTemplateJson)
   const exportAllTemplatesJson = useLabelStore((s) => s.exportAllTemplatesJson)
   const pickAndImportJsonFile = useLabelStore((s) => s.pickAndImportJsonFile)
   const setActiveTab = useLabelStore((s) => s.setActiveTab)
   const setModal = useLabelStore((s) => s.setModal)
   const addToast = useLabelStore((s) => s.addToast)
 
-  // Filter templates for current client
-  const clientTemplates = templateLibrary.filter((t) => {
-    // If tagged with client or default
-    return !t.client || t.client === client
-  })
+  const clientLabel = client === 'erp' ? 'ERP' : 'Opti'
 
-  const filtered = clientTemplates.filter((t) => {
-    const matchesSearch = (t.name || t.id).toLowerCase().includes(search.toLowerCase())
-    if (!matchesSearch) return false
-    if (filterType === 'production') return t.labelType === 'production'
-    if (filterType === 'offcut') return t.labelType === 'offcut'
-    return true
-  })
+  // R2: a template saved for one client is never visible to the other.
+  const clientTemplates = useMemo(
+    () => templateLibrary.filter((t) => (t.client || 'opti') === client),
+    [templateLibrary, client],
+  )
 
-  const prodCount = clientTemplates.filter((t) => t.labelType === 'production').length
-  const offcutCount = clientTemplates.filter((t) => t.labelType === 'offcut').length
+  const counts = useMemo(
+    () => ({
+      all: clientTemplates.length,
+      production: clientTemplates.filter((t) => (t.labelType || 'production') === 'production').length,
+      offcut: clientTemplates.filter((t) => t.labelType === 'offcut').length,
+    }),
+    [clientTemplates],
+  )
 
-  const handleOpen = (tpl) => {
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    const list = clientTemplates.filter((t) => {
+      if (q && !`${t.name || ''} ${t.id}`.toLowerCase().includes(q)) return false
+      if (filterType === 'production') return (t.labelType || 'production') === 'production'
+      if (filterType === 'offcut') return t.labelType === 'offcut'
+      return true
+    })
+    const byArea = (t) => Math.max(1, (t.width || 1) * (t.height || 1))
+    return [...list].sort((a, b) => {
+      if (sort === 'name') return (a.name || '').localeCompare(b.name || '')
+      if (sort === 'size') return byArea(b) - byArea(a)
+      return new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0)
+    })
+  }, [clientTemplates, search, filterType, sort])
+
+  const open = (tpl) => {
     loadFromLibrary(tpl.id)
     setActiveTab('design')
   }
 
-  const handleDuplicate = (tpl) => {
-    const copy = {
-      ...tpl,
-      id: `LBL_${Date.now().toString().slice(-4)}`,
-      name: `${tpl.name} (Copy)`,
-      updatedAt: new Date().toISOString(),
-    }
-    useLabelStore.getState().importTemplate(copy)
-    useLabelStore.getState().saveToLibrary()
-    addToast({ message: `Duplicated “${tpl.name}”`, type: 'success' })
+  const duplicate = (tpl) => {
+    const state = useLabelStore.getState()
+    const nums = clientTemplates
+      .map((t) => String(t.id || '').match(/^(?:LBL|ERP)_(\d+)$/i))
+      .filter(Boolean)
+      .map((m) => Number(m[1]))
+    const prefix = client === 'erp' ? 'ERP' : 'LBL'
+    const next = `G${prefix}_${String((nums.length ? Math.max(...nums) : 0) + 1).padStart(3, '0')}`
+    state.importTemplate({ ...tpl, id: next, name: `${tpl.name} (Copy)` })
+    state.saveToLibrary()
+    addToast({ message: `Duplicated “${tpl.name}” as ${next}`, type: 'success' })
+    setActiveMenuId(null)
+  }
+
+  // Rename writes straight back to the library so the shared list stays in step.
+  const commitRename = (tpl) => {
+    const value = renameValue.trim()
+    setRenaming(null)
+    setActiveMenuId(null)
+    if (!value || value === tpl.name) return
+    const state = useLabelStore.getState()
+    state.templateLibrary = state.templateLibrary.map((t) =>
+      t.id === tpl.id ? { ...t, name: value, updatedAt: new Date().toISOString() } : t,
+    )
+    state.templateLibrary = [...state.templateLibrary]
+    addToast({ message: `Renamed to “${value}”`, type: 'success' })
+  }
+
+  const exportOne = (tpl) => {
+    downloadJsonFile(tpl, `${sanitizeFileName(tpl.name)}_template.json`)
+    addToast({ message: `Exported “${tpl.name}”`, type: 'success' })
     setActiveMenuId(null)
   }
 
   const handleDelete = () => {
-    if (!deleteConfirmTemplate) return
-    if (deleteConfirmTemplate.id === defaultTemplateId) {
-      addToast({ message: 'The default template cannot be deleted', type: 'error' })
+    if (!deleteTarget) return
+    if (deleteTarget.id === defaultTemplateId) {
+      addToast({ message: 'The default template cannot be deleted', type: 'warning' })
       return
     }
-    if (deleteInputName !== deleteConfirmTemplate.name) {
-      addToast({ message: 'Name does not match', type: 'error' })
+    if (deleteInputName !== deleteTarget.name) {
+      addToast({ message: 'The name does not match', type: 'error' })
       return
     }
-    deleteFromLibrary(deleteConfirmTemplate.id)
-    setDeleteConfirmTemplate(null)
+    deleteFromLibrary(deleteTarget.id)
+    addToast({ message: `Deleted “${deleteTarget.name}”`, type: 'success' })
+    setDeleteTarget(null)
     setDeleteInputName('')
   }
 
-  return (
-    <div className="flex h-full flex-1 flex-col overflow-y-auto bg-[var(--bg)] p-8 text-[var(--tx)] select-none">
-      {/* Title & Stats */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black capitalize tracking-tight text-[var(--tx)]">
-            {client === 'erp' ? 'ERP templates' : 'Opti templates'}
-          </h1>
-          <p className="mt-1 text-xs text-[var(--mut)]">
-            {clientTemplates.length} templates in the shared database · {client === 'erp' ? 'ERP' : 'Opti'} picks its default from here
-          </p>
-        </div>
+  const FILTERS = [
+    { id: 'all', label: 'All' },
+    { id: 'production', label: 'Production' },
+    { id: 'offcut', label: 'Offcut' },
+  ]
 
-        {/* Global actions: Search, Import, Export, New */}
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Search size={14} className="absolute left-3 top-2.5 text-[var(--mut)]" />
-            <input
-              type="text"
-              placeholder="Search templates..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-9 w-64 rounded-lg border border-[var(--line)] bg-[var(--panel)] pl-9 pr-3 text-xs text-[var(--tx)] placeholder:text-[var(--mut)] focus:border-[var(--pri)] focus:outline-none"
-            />
+  return (
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-[var(--bg)]">
+      <div className="min-h-0 flex-1 overflow-y-auto px-8 py-7">
+        {/* Title + actions */}
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="lc-page-title">{clientLabel} templates</h1>
+            <p className="mt-1 text-[13px] text-[var(--mut)]">
+              {counts.all === 0
+                ? `No ${clientLabel} templates yet · ${clientLabel} picks its default from here`
+                : `${counts.all} template${counts.all === 1 ? '' : 's'} in the shared database · ${clientLabel} picks its default from here`}
+            </p>
           </div>
 
-          <button
-            type="button"
-            onClick={pickAndImportJsonFile}
-            className="flex h-9 items-center gap-1.5 rounded-lg border border-[var(--line)] bg-[var(--panel)] px-3 text-xs font-semibold text-[var(--tx)] hover:bg-[var(--line-subtle)]"
-          >
-            Import JSON
-          </button>
-
-          <button
-            type="button"
-            onClick={exportAllTemplatesJson}
-            className="flex h-9 items-center gap-1.5 rounded-lg border border-[var(--line)] bg-[var(--panel)] px-3 text-xs font-semibold text-[var(--tx)] hover:bg-[var(--line-subtle)]"
-          >
-            Export all
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setModal('showNewModal', true)}
-            className="flex h-9 items-center gap-1.5 rounded-lg bg-[var(--pri)] px-4 text-xs font-bold text-white shadow-sm hover:bg-blue-700"
-          >
-            <Plus size={14} />
-            <span>New template</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Filter Chips & Sort */}
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setFilterType('all')}
-            className={`rounded-full px-3 py-1 text-xs font-bold transition-all ${
-              filterType === 'all'
-                ? 'bg-blue-100 text-[var(--pri)] dark:bg-blue-950/60 dark:text-blue-300'
-                : 'text-[var(--mut)] hover:text-[var(--tx)]'
-            }`}
-          >
-            All · {clientTemplates.length}
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilterType('production')}
-            className={`rounded-full px-3 py-1 text-xs font-bold transition-all ${
-              filterType === 'production'
-                ? 'bg-blue-100 text-[var(--pri)] dark:bg-blue-950/60 dark:text-blue-300'
-                : 'text-[var(--mut)] hover:text-[var(--tx)]'
-            }`}
-          >
-            Production · {prodCount}
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilterType('offcut')}
-            className={`rounded-full px-3 py-1 text-xs font-bold transition-all ${
-              filterType === 'offcut'
-                ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
-                : 'text-[var(--mut)] hover:text-[var(--tx)]'
-            }`}
-          >
-            Offcut · {offcutCount}
-          </button>
-        </div>
-
-        <div className="flex items-center gap-1.5 text-xs text-[var(--mut)]">
-          <span>Sort:</span>
-          <span className="font-semibold text-[var(--tx)]">Last edited ▾</span>
-        </div>
-      </div>
-
-      {/* Template Grid */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        {filtered.map((tpl) => {
-          const isDefault = tpl.id === defaultTemplateId || tpl.isDefault
-          const isCurrent = tpl.id === currentTemplateId
-          const isOffcut = tpl.labelType === 'offcut'
-
-          return (
-            <div
-              key={tpl.id}
-              className={`relative flex flex-col justify-between rounded-xl border bg-[var(--panel)] p-4 shadow-sm transition-all hover:shadow-md ${
-                isDefault
-                  ? 'border-2 border-emerald-500 shadow-emerald-500/10'
-                  : isOffcut && isDefault
-                  ? 'border-2 border-amber-500'
-                  : 'border-[var(--line)]'
-              }`}
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--mut)]" />
+              <input
+                type="search"
+                placeholder="Search templates…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="lc-input !h-10 !w-[330px] !pl-9"
+              />
+            </div>
+            <button type="button" onClick={pickAndImportJsonFile} className="lc-btn lc-btn-secondary !h-10">
+              <Upload size={15} />
+              <span>Import JSON</span>
+            </button>
+            <button type="button" onClick={exportAllTemplatesJson} className="lc-btn lc-btn-secondary !h-10">
+              <Download size={15} />
+              <span>Export all</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setModal('showNewModal', true)}
+              className="lc-btn lc-btn-primary !h-10"
             >
-              {/* Preview Box */}
-              <div
-                onClick={() => handleOpen(tpl)}
-                className="flex h-36 items-center justify-center rounded-lg bg-[var(--bg)] p-2 cursor-pointer border border-[var(--line-subtle)]"
+              <Plus size={15} />
+              <span>New template</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Filters + sort */}
+        <div className="mb-6 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            {FILTERS.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => setFilterType(f.id)}
+                className={`lc-chip-btn ${filterType === f.id ? 'is-on' : ''}`}
               >
-                <div className="flex h-28 w-20 flex-col items-center justify-between rounded border border-slate-300 bg-white p-2 shadow-xs dark:border-slate-700">
-                  <div className="h-1.5 w-full rounded bg-slate-800" />
-                  <div className="space-y-1 w-full">
-                    <div className="h-4 w-full bg-slate-200" />
-                    <div className="h-1 w-3/4 bg-slate-300" />
-                    <div className="h-1 w-1/2 bg-slate-300" />
-                  </div>
-                  <div className="h-1 w-full bg-slate-200" />
-                </div>
-              </div>
+                {f.label} · {counts[f.id]}
+              </button>
+            ))}
+          </div>
 
-              {/* Title & Metadata */}
-              <div className="mt-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="truncate font-bold text-sm text-[var(--tx)]" title={tpl.name}>
-                    {tpl.name}
-                  </h3>
-                  {isDefault && (
-                    <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                      ★ Default
-                    </span>
-                  )}
-                </div>
-                <p className="mt-1 text-[11px] text-[var(--mut)]">
-                  {Math.round(tpl.width)} × {Math.round(tpl.height)} mm · {tpl.labelType} · edited 2 Oct
-                </p>
-              </div>
-
-              {/* Card Footer Actions */}
-              <div className="mt-4 flex items-center justify-between gap-1.5 pt-2 border-t border-[var(--line)]">
-                <button
-                  type="button"
-                  onClick={() => handleOpen(tpl)}
-                  className="flex-1 rounded-md bg-[var(--pri)] py-1.5 text-center text-xs font-bold text-white hover:bg-blue-700 transition-colors"
-                >
-                  Open
-                </button>
-
-                {isDefault ? (
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setSortOpen((v) => !v)}
+              aria-expanded={sortOpen}
+              className="lc-chip-btn"
+            >
+              <ArrowUpDown size={15} />
+              <span>Sort: {SORTS.find((s) => s.id === sort)?.label}</span>
+            </button>
+            {sortOpen && (
+              <div className="lc-pop right-0 top-11 w-[168px] p-1">
+                {SORTS.map((s) => (
                   <button
+                    key={s.id}
                     type="button"
-                    onClick={() => handleDuplicate(tpl)}
-                    className="flex-1 rounded-md border border-[var(--line)] py-1.5 text-center text-xs font-semibold text-[var(--tx)] hover:bg-[var(--line-subtle)]"
+                    onClick={() => {
+                      setSort(s.id)
+                      setSortOpen(false)
+                    }}
+                    className="flex w-full items-center justify-between rounded-[7px] px-2 py-1.5 text-left text-[13px] font-medium text-[var(--tx-2)] hover:bg-[var(--bg)]"
                   >
-                    Duplicate
+                    {s.label}
+                    {sort === s.id && <Check size={14} className="text-[var(--pri)]" />}
                   </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setDefaultTemplate(tpl.id)}
-                    className="flex-1 rounded-md border border-[var(--line)] py-1.5 text-center text-xs font-semibold text-[var(--tx)] hover:bg-[var(--line-subtle)]"
-                  >
-                    Set default
-                  </button>
-                )}
-
-                {/* ⋯ Three dots menu */}
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setActiveMenuId(activeMenuId === tpl.id ? null : tpl.id)}
-                    className="flex h-7 w-7 items-center justify-center rounded-md border border-[var(--line)] text-[var(--mut)] hover:text-[var(--tx)]"
-                  >
-                    <MoreVertical size={13} />
-                  </button>
-
-                  {activeMenuId === tpl.id && (
-                    <div className="absolute bottom-8 right-0 z-50 w-36 rounded-lg border border-[var(--line)] bg-[var(--panel)] p-1 shadow-xl">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDefaultTemplate(tpl.id)
-                          setActiveMenuId(null)
-                        }}
-                        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-[var(--tx)] hover:bg-[var(--line-subtle)]"
-                      >
-                        <Star size={12} /> Set as default
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDuplicate(tpl)}
-                        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-[var(--tx)] hover:bg-[var(--line-subtle)]"
-                      >
-                        <Copy size={12} /> Duplicate
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          exportCurrentTemplateJson()
-                          setActiveMenuId(null)
-                        }}
-                        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-[var(--tx)] hover:bg-[var(--line-subtle)]"
-                      >
-                        <Download size={12} /> Export JSON
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDeleteConfirmTemplate(tpl)
-                          setActiveMenuId(null)
-                        }}
-                        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
-                      >
-                        <Trash2 size={12} /> Delete...
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Delete Confirmation Modal (Screen 7.3 / delete.png) */}
-      {deleteConfirmTemplate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-          <div className="w-full max-w-md rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-6 shadow-2xl">
-            <div className="flex items-start gap-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-600 dark:bg-red-950">
-                <Trash2 size={20} />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-base font-bold text-[var(--tx)]">
-                  Delete “{deleteConfirmTemplate.name}”?
-                </h3>
-                <p className="mt-1 text-xs text-[var(--mut)]">
-                  This removes it from the shared database for {client === 'erp' ? 'ERP' : 'Opti'}. It cannot be undone.
-                </p>
-              </div>
-            </div>
-
-            {deleteConfirmTemplate.id === defaultTemplateId ? (
-              <div className="mt-4 rounded-lg bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                ⚠️ The default template cannot be deleted. Set another default first.
-              </div>
-            ) : (
-              <div className="mt-4 space-y-3">
-                <label className="block text-xs font-semibold text-[var(--mut)]">
-                  Type the template name to confirm
-                </label>
-                <input
-                  type="text"
-                  placeholder={deleteConfirmTemplate.name}
-                  value={deleteInputName}
-                  onChange={(e) => setDeleteInputName(e.target.value)}
-                  className="h-9 w-full rounded-lg border border-[var(--line)] bg-[var(--input-bg)] px-3 text-xs text-[var(--tx)] focus:outline-none focus:ring-1 focus:ring-red-500"
-                />
+                ))}
               </div>
             )}
+          </div>
+        </div>
 
-            <div className="mt-6 flex items-center justify-end gap-2">
+        {/* Cards */}
+        {filtered.length === 0 ? (
+          <div className="lc-card lc-empty-state">
+            <span className="lc-empty-icon">
+              <LayoutGrid size={22} />
+            </span>
+            <div>
+              <h2 className="lc-dialog-title">
+                {clientTemplates.length === 0 ? `No ${clientLabel} templates yet` : 'Nothing matches your search'}
+              </h2>
+              <p className="mt-1 text-[13px] text-[var(--mut)]">
+                {clientTemplates.length === 0
+                  ? `Create the first ${clientLabel} label template. ${clientLabel} will then be able to pick it as its default.`
+                  : 'Try a different search term or filter.'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setModal('showNewModal', true)}
+              className="lc-btn lc-btn-primary mt-1"
+            >
+              <Plus size={15} />
+              <span>New template</span>
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
+            {filtered.map((tpl) => {
+              const isDefault = tpl.id === defaultTemplateId || tpl.isDefault
+              const isOffcut = tpl.labelType === 'offcut'
+              return (
+                <article
+                  key={tpl.id}
+                  className={`lc-template-card flex flex-col p-3 ${
+                    isDefault ? (isOffcut ? 'is-default-offcut' : 'is-default') : ''
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => open(tpl)}
+                    className="lc-preview-frame relative h-[200px] w-full p-2"
+                    title={`Open “${tpl.name}”`}
+                  >
+                    <TemplatePreviewThumb template={tpl} />
+                    {tpl.id === currentTemplateId && (
+                      <span className="lc-badge lc-badge-opti absolute left-2 top-2 !bg-[var(--pri)] !text-white">
+                        Open
+                      </span>
+                    )}
+                  </button>
+
+                  <div className="mt-3 flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      {renaming === tpl.id ? (
+                        <input
+                          autoFocus
+                          value={renameValue}
+                          onChange={(e) => setRenameValue(e.target.value)}
+                          onBlur={() => commitRename(tpl)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') commitRename(tpl)
+                            if (e.key === 'Escape') setRenaming(null)
+                          }}
+                          className="lc-input !h-7 !px-1.5 !text-[13px]"
+                        />
+                      ) : (
+                        <h3 className="truncate text-[13px] font-bold text-[var(--tx)]" title={tpl.name}>
+                          {tpl.name}
+                        </h3>
+                      )}
+                      <p className="mt-0.5 text-[11.5px] text-[var(--mut)]">
+                        {Math.round(tpl.width)} × {Math.round(tpl.height)} mm ·{' '}
+                        {isOffcut ? 'Offcut' : 'Production'}
+                      </p>
+                      <p className="lc-mono mt-0.5 text-[11px] text-[var(--mut)]">
+                        {tpl.id} · {editedLabel(tpl.updatedAt)}
+                      </p>
+                    </div>
+                    {isDefault && (
+                      <span
+                        className={`lc-badge flex-none ${isOffcut ? 'lc-badge-warn' : 'lc-badge-ok'}`}
+                        title={isOffcut ? 'Default offcut label' : 'Default production label'}
+                      >
+                        <Star size={11} />
+                        Default
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="mt-3 flex items-center gap-1.5 border-t border-[var(--line)] pt-3">
+                    <button type="button" onClick={() => open(tpl)} className="lc-btn lc-btn-primary lc-btn-sm flex-1">
+                      <Pencil size={13} />
+                      <span>Open</span>
+                    </button>
+                    {isDefault ? (
+                      <button type="button" onClick={() => duplicate(tpl)} className="lc-btn lc-btn-secondary lc-btn-sm flex-1">
+                        <Copy size={13} />
+                        <span>Duplicate</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setDefaultTemplate(tpl.id)}
+                        className="lc-btn lc-btn-secondary lc-btn-sm flex-1"
+                      >
+                        <Star size={13} />
+                        <span>Set default</span>
+                      </button>
+                    )}
+
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setActiveMenuId(activeMenuId === tpl.id ? null : tpl.id)}
+                        aria-label={`More actions for ${tpl.name}`}
+                        className="lc-icon-btn !h-7 !w-7"
+                      >
+                        <MoreVertical size={15} />
+                      </button>
+                      {activeMenuId === tpl.id && (
+                        <div className="lc-pop bottom-9 right-0 z-30 w-[200px] p-1">
+                          <MenuItem
+                            icon={Star}
+                            onClick={() => {
+                              setDefaultTemplate(tpl.id)
+                              setActiveMenuId(null)
+                            }}
+                          >
+                            Set as default
+                          </MenuItem>
+                          <MenuItem
+                            icon={Pencil}
+                            onClick={() => {
+                              setRenaming(tpl.id)
+                              setRenameValue(tpl.name || '')
+                              setActiveMenuId(null)
+                            }}
+                          >
+                            Rename…
+                          </MenuItem>
+                          <MenuItem icon={Copy} onClick={() => duplicate(tpl)}>
+                            Duplicate
+                          </MenuItem>
+                          <MenuItem icon={FileJson} onClick={() => exportOne(tpl)}>
+                            Export JSON
+                          </MenuItem>
+                          <div className="lc-divider my-1" />
+                          <MenuItem
+                            icon={Trash2}
+                            danger
+                            onClick={() => {
+                              setDeleteTarget(tpl)
+                              setDeleteInputName('')
+                              setActiveMenuId(null)
+                            }}
+                          >
+                            Delete…
+                          </MenuItem>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* 7.3 Delete confirmation — type the name to confirm */}
+      {deleteTarget && (
+        <div className="lc-modal-overlay" onClick={() => setDeleteTarget(null)}>
+          <div
+            className="lc-modal !max-w-[480px]"
+            onClick={(e) => e.stopPropagation()}
+            role="alertdialog"
+            aria-modal="true"
+          >
+            <div className="lc-modal-head !items-start">
+              <span className="lc-confirm-icon is-danger">
+                <Trash2 size={19} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <h2 className="lc-dialog-title">Delete “{deleteTarget.name}”?</h2>
+                <p className="mt-1 text-[13px] text-[var(--mut)]">
+                  This removes the template from the shared database for {clientLabel}. It cannot be
+                  undone.
+                </p>
+              </div>
+              <button type="button" className="lc-icon-btn" onClick={() => setDeleteTarget(null)} title="Close">
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="lc-modal-body">
+              {deleteTarget.id === defaultTemplateId ? (
+                <div className="lc-msg lc-msg-warn">
+                  <TriangleAlert size={15} className="flex-none" />
+                  <span>The default template cannot be deleted. Set another default first.</span>
+                </div>
+              ) : (
+                <>
+                  <label className="lc-label-plain mb-1.5 block" htmlFor="delete-confirm-input">
+                    Type the template name to confirm
+                  </label>
+                  <input
+                    id="delete-confirm-input"
+                    type="text"
+                    autoFocus
+                    placeholder={deleteTarget.name}
+                    value={deleteInputName}
+                    onChange={(e) => setDeleteInputName(e.target.value)}
+                    className="lc-input !h-10"
+                  />
+                </>
+              )}
+            </div>
+
+            <div className="lc-modal-foot">
               <button
                 type="button"
                 onClick={() => {
-                  setDeleteConfirmTemplate(null)
+                  setDeleteTarget(null)
                   setDeleteInputName('')
                 }}
-                className="rounded-lg border border-[var(--line)] px-4 py-2 text-xs font-semibold text-[var(--tx)] hover:bg-[var(--line-subtle)]"
+                className="lc-btn lc-btn-secondary"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                disabled={deleteConfirmTemplate.id === defaultTemplateId || deleteInputName !== deleteConfirmTemplate.name}
+                disabled={deleteTarget.id === defaultTemplateId || deleteInputName !== deleteTarget.name}
                 onClick={handleDelete}
-                className="rounded-lg bg-red-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-red-700 disabled:opacity-50"
+                className="lc-btn lc-btn-danger"
               >
-                Delete template
+                <Trash2 size={14} />
+                <span>Delete template</span>
               </button>
             </div>
           </div>
@@ -382,4 +495,12 @@ export default function TemplateLibraryView() {
       )}
     </div>
   )
+}
+
+function editedLabel(iso) {
+  if (!iso) return 'just now'
+  const days = Math.round((Date.now() - new Date(iso).getTime()) / 86400000)
+  if (days <= 0) return 'edited today'
+  if (days === 1) return 'edited yesterday'
+  return `edited ${days} days ago`
 }

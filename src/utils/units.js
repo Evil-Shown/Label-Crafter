@@ -91,19 +91,19 @@ export function computeMarginLayout(widthMm, heightMm, margins) {
   }
 }
 
-/** Center label in orthographic viewport (world origin = screen center). */
-export function computeFitView(labelW, labelH, canvasW, canvasH, fill = 0.78) {
-  const view = 300
-  const aspect = Math.max(0.1, canvasW / Math.max(1, canvasH))
-  const worldW = 2 * view * aspect
-  const worldH = 2 * view
-  const targetW = worldW * fill
-  const targetH = worldH * fill
-  const zoom = Math.min(targetW / labelW, targetH / labelH, 8)
+/**
+ * Center the label in the viewport. Zoom is design-pixels-per-CSS-pixel, so
+ * 100 % draws one design pixel as one screen pixel.
+ */
+export function computeFitView(labelW, labelH, canvasW, canvasH, fill = 0.68) {
+  const w = Math.max(1, canvasW)
+  const h = Math.max(1, canvasH)
+  const zoom = Math.min((w * fill) / Math.max(1, labelW), (h * fill) / Math.max(1, labelH), 8)
   const clampedZoom = Math.max(0.15, zoom)
   return {
     zoom: clampedZoom,
-    panX: -labelW * clampedZoom / 2,
-    panY: labelH * clampedZoom / 2,
+    // The camera looks at the middle of the label.
+    panX: labelW / 2,
+    panY: -labelH / 2,
   }
 }

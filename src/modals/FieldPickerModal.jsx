@@ -1,159 +1,195 @@
-import { useState, useEffect, useRef } from 'react'
-import {
-  Search,
-  Database,
-  ArrowRight,
-  X,
-} from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { Search, Database, Clock } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
 import { catalogForClient } from '../data/fieldCatalog'
 
+const RECENT_KEY = 'lc-recent-field-keys'
+const GROUPS = [
+  { id: 'piece', label: 'Piece' },
+  { id: 'size', label: 'Size' },
+  { id: 'production', label: 'Production' },
+]
+
+const SIZE_HINTS = ['dimension', 'width', 'height', 'area', 'thickness', 'size']
+const PRODUCTION_HINTS = ['service', 'marks', 'weight', 'batch', 'glass', 'temper', 'edge', 'qty']
+
+function groupFor(key) {
+  const k = key.toLowerCase()
+  if (SIZE_HINTS.some((h) => k.includes(h))) return 'size'
+  if (PRODUCTION_HINTS.some((h) => k.includes(h))) return 'production'
+  return 'piece'
+}
+
+function readRecent() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]')
+    return Array.isArray(raw) ? raw.filter((k) => typeof k === 'string') : []
+  } catch {
+    return []
+  }
+}
+
 export default function FieldPickerModal() {
-  const isOpen = useLabelStore((s) => s.showFieldPicker)
-  const client = useLabelStore((s) => s.client)
+  const open = useLabelStore((s) => s.showFieldPicker)
   const callback = useLabelStore((s) => s.fieldPickerCallback)
+  const client = useLabelStore((s) => s.client)
+  const catalog = useMemo(() => catalogForClient(client), [client])
+
   const [query, setQuery] = useState('')
-  const [activeGroup, setActiveGroup] = useState('All')
-  const [selectedIndex, setSelectedIndex] = useState(0)
+  const [active, setActive] = useState(0)
+  const [recent, setRecent] = useState(readRecent)
   const inputRef = useRef(null)
 
-  const catalog = catalogForClient(client)
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return catalog
+    return catalog.filter(
+      (f) =>
+        (f.label || '').toLowerCase().includes(q) || f.key.toLowerCase().includes(q),
+    )
+  }, [catalog, query])
 
-  // Categorize
-  const categorized = catalog.map((item) => {
-    let group = 'Piece'
-    const k = item.key.toLowerCase()
-    if (k.includes('width') || k.includes('height') || k.includes('dim') || k.includes('area')) {
-      group = 'Size'
-    } else if (k.includes('opti') || k.includes('date') || k.includes('batch') || k.includes('trans')) {
-      group = 'Production'
-    }
-    return { ...item, group }
-  })
-
-  const filtered = categorized.filter((item) => {
-    const matchesGroup = activeGroup === 'All' || item.group === activeGroup
-    const matchesSearch = item.label.toLowerCase().includes(query.toLowerCase()) ||
-                          item.key.toLowerCase().includes(query.toLowerCase())
-    return matchesGroup && matchesSearch
-  })
+  // Recently used keys are listed first and are always included when searching.
+  const rows = useMemo(() => {
+    const rest = filtered.filter((f) => !recent.includes(f.key))
+    const recentFields = recent
+      .map((k) => catalog.find((f) => f.key === k))
+      .filter(Boolean)
+      .filter((f) => !query || `${f.label} ${f.key}`.toLowerCase().includes(query.trim().toLowerCase()))
+    return [...recentFields, ...rest]
+  }, [filtered, recent, catalog, query])
 
   useEffect(() => {
-    if (isOpen) {
-      setQuery('')
-      setSelectedIndex(0)
-      setTimeout(() => inputRef.current?.focus(), 50)
-    }
-  }, [isOpen])
+    if (!open) return
+    setQuery('')
+    setActive(0)
+    setRecent(readRecent())
+    const t = setTimeout(() => inputRef.current?.focus(), 30)
+    return () => clearTimeout(t)
+  }, [open])
 
-  if (!isOpen) return null
+  useEffect(() => {
+    setActive(0)
+  }, [query])
 
-  const handleSelect = (key) => {
-    if (callback) callback(key)
-    useLabelStore.setState({ showFieldPicker: false, fieldPickerCallback: null })
+  const close = () => useLabelStore.setState({ showFieldPicker: false, fieldPickerCallback: null })
+
+  const choose = (key) => {
+    const next = [key, ...recent.filter((k) => k !== key)].slice(0, 3)
+    localStorage.setItem(RECENT_KEY, JSON.stringify(next))
+    callback?.(key)
+    close()
   }
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      setSelectedIndex((prev) => Math.min(prev + 1, filtered.length - 1))
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      setSelectedIndex((prev) => Math.max(prev - 1, 0))
-    } else if (e.key === 'Enter') {
-      e.preventDefault()
-      if (filtered[selectedIndex]) {
-        handleSelect(filtered[selectedIndex].key)
+  useEffect(() => {
+    if (!open) return undefined
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        close()
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setActive((i) => Math.min(i + 1, rows.length - 1))
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setActive((i) => Math.max(i - 1, 0))
+      } else if (e.key === 'Enter') {
+        e.preventDefault()
+        const row = rows[active]
+        if (row) choose(row.key)
       }
-    } else if (e.key === 'Escape') {
-      useLabelStore.setState({ showFieldPicker: false, fieldPickerCallback: null })
     }
-  }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  })
 
-  return (
+  if (!open) return null
+
+  let lastGroup = null
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 select-none"
-      onClick={() => useLabelStore.setState({ showFieldPicker: false, fieldPickerCallback: null })}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.42)] p-4"
+      onClick={close}
     >
       <div
-        className="w-full max-w-sm rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-3.5 shadow-2xl text-[var(--tx)]"
+        className="lc-modal !max-w-[520px] !max-h-[560px]"
         onClick={(e) => e.stopPropagation()}
-        onKeyDown={handleKeyDown}
+        role="listbox"
+        aria-label="Choose a field"
       >
-        {/* Search input */}
-        <div className="relative">
-          <Search size={14} className="absolute left-3 top-2.5 text-[var(--mut)]" />
-          <input
-            ref={inputRef}
-            type="text"
-            placeholder="Search fields (e.g. ord, dim)..."
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value)
-              setSelectedIndex(0)
-            }}
-            className="h-9 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] pl-9 pr-3 text-xs font-semibold text-[var(--tx)] placeholder:text-[var(--mut)] focus:border-[var(--pri)] focus:outline-none"
-          />
+        <div className="border-b border-[var(--line)] p-4">
+          <div className="relative">
+            <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--mut)]" />
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search fields…"
+              className="lc-input !h-11 !pl-9"
+            />
+          </div>
         </div>
 
-        {/* Group chips */}
-        <div className="mt-2 flex items-center gap-1.5 border-b border-[var(--line)] pb-2 text-[11px] font-bold">
-          {['All', 'Piece', 'Size', 'Production'].map((g) => (
-            <button
-              key={g}
-              type="button"
-              onClick={() => {
-                setActiveGroup(g)
-                setSelectedIndex(0)
-              }}
-              className={`rounded-md px-2 py-0.5 transition-all ${
-                activeGroup === g
-                  ? 'bg-blue-100 text-[var(--pri)] dark:bg-blue-950 dark:text-blue-300'
-                  : 'text-[var(--mut)] hover:text-[var(--tx)]'
-              }`}
-            >
-              {g}
-            </button>
-          ))}
-        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-2" role="presentation">
+          {rows.length === 0 && (
+            <p className="px-3 py-8 text-center text-[13px] text-[var(--mut)]">
+              No field matches “{query}”.
+            </p>
+          )}
 
-        {/* List of fields */}
-        <div className="mt-2 max-h-72 overflow-y-auto space-y-1">
-          {filtered.length === 0 ? (
-            <div className="py-6 text-center text-xs text-[var(--mut)]">No matching fields found</div>
-          ) : (
-            filtered.map((item, idx) => {
-              const isSelected = selectedIndex === idx
-              return (
-                <div
-                  key={item.key}
-                  onClick={() => handleSelect(item.key)}
-                  onMouseEnter={() => setSelectedIndex(idx)}
-                  className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 cursor-pointer text-xs transition-colors ${
-                    isSelected
-                      ? 'bg-blue-50 text-[var(--pri)] font-semibold dark:bg-blue-950/60'
-                      : 'hover:bg-[var(--line-subtle)] text-[var(--tx)]'
+          {rows.map((f, i) => {
+            const group = recent.slice(0, 3).includes(f.key) && i < 3 ? 'recent' : groupFor(f.key)
+            const showHeading = group !== lastGroup
+            lastGroup = group
+            const isActive = i === active
+            return (
+              <div key={f.fieldKey || f.key}>
+                {showHeading && (
+                  <div className="flex items-center gap-1.5 px-3 pb-1 pt-3">
+                    {group === 'recent' ? (
+                      <Clock size={12} className="text-[var(--mut)]" />
+                    ) : (
+                      <Database size={12} className="text-[var(--mut)]" />
+                    )}
+                    <span className="lc-panel-title">
+                      {group === 'recent' ? 'Recently used' : GROUPS.find((g) => g.id === group)?.label}
+                    </span>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={isActive}
+                  onMouseEnter={() => setActive(i)}
+                  onClick={() => choose(f.key)}
+                  className={`flex w-full items-center gap-2.5 rounded-[7px] px-3 py-2 text-left transition-colors ${
+                    isActive ? 'bg-[var(--pri-s)]' : 'hover:bg-[var(--bg)]'
                   }`}
                 >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Database size={13} className="shrink-0 opacity-70" />
-                    <span className="truncate">{item.label}</span>
-                  </div>
-                  <span className="shrink-0 font-mono text-[10px] text-[var(--mut)]">
-                    {item.key}
+                  <Database size={14} className="flex-none text-[var(--mut)] opacity-70" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[13px] font-semibold text-[var(--tx)]">
+                      {f.label || f.key}
+                    </span>
+                    <span className="lc-mono block truncate text-[11.5px] text-[var(--mut)]">{f.key}</span>
                   </span>
-                </div>
-              )
-            })
-          )}
+                  {f.source === 'notes' && <span className="lc-badge lc-badge-warn flex-none">Note</span>}
+                </button>
+              </div>
+            )
+          })}
         </div>
 
-        {/* Keyboard hints */}
-        <div className="mt-2 pt-2 border-t border-[var(--line)] flex items-center justify-between text-[10px] text-[var(--mut)]">
-          <span>↑↓ to move · Enter to choose</span>
-          <span>Esc to close</span>
+        <div className="border-t border-[var(--line)] px-4 py-2.5">
+          <p className="text-[11.5px] text-[var(--mut)]">
+            ↑↓ to move · Enter to choose · 3 recently used shown first
+          </p>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

@@ -1,188 +1,312 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   FileCode,
   FolderOpen,
   Database,
   X,
   Check,
+  Info,
+  RefreshCw,
+  TriangleAlert,
+  CircleCheck,
 } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
+import { parseOifText, pieceSummary } from '../utils/oifParser'
+import { listErpOrders, getErpOrder } from '../services/designApi'
+
+const LAST_FILE_KEY = 'lc-last-oif-name'
 
 export default function LoadRealDataModal() {
   const isOpen = useLabelStore((s) => s.showLoadDataModal)
   const client = useLabelStore((s) => s.client)
+  const printServiceUrl = useLabelStore((s) => s.printServiceUrl)
   const loadRealData = useLabelStore((s) => s.loadRealData)
+  const addToast = useLabelStore((s) => s.addToast)
 
-  const [tab, setTab] = useState('oif') // 'oif' | 'erp'
-  const [selectedPieceId, setSelectedPieceId] = useState(7)
+  const [tab, setTab] = useState('oif')
+  const [pieces, setPieces] = useState([])
+  const [sourceName, setSourceName] = useState('')
+  const [selected, setSelected] = useState(1)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [orders, setOrders] = useState([])
+  const [ordersError, setOrdersError] = useState('')
+
+  const close = () => useLabelStore.setState({ showLoadDataModal: false })
+
+  const loadOrders = useCallback(async () => {
+    setLoading(true)
+    setOrdersError('')
+    try {
+      setOrders(await listErpOrders(printServiceUrl))
+    } catch (e) {
+      setOrders([])
+      setOrdersError(
+        e.message || 'Could not reach the database, so ERP orders cannot be listed.',
+      )
+    } finally {
+      setLoading(false)
+    }
+  }, [printServiceUrl])
+
+  useEffect(() => {
+    if (!isOpen) return
+    setError('')
+    if (tab === 'erp' && orders.length === 0 && !loading) loadOrders()
+    // Reset the remembered file name when the dialog is reopened.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, tab])
+
+  const onFile = async (file) => {
+    if (!file) return
+    setError('')
+    try {
+      const text = await file.text()
+      const parsed = parseOifText(text)
+      setPieces(parsed)
+      setSourceName(file.name)
+      setSelected(parsed[0].index)
+      localStorage.setItem(LAST_FILE_KEY, file.name)
+    } catch (e) {
+      setPieces([])
+      setSourceName(file.name)
+      setError(e.message)
+    }
+  }
+
+  const openErpOrder = async (order) => {
+    setError('')
+    setLoading(true)
+    try {
+      const data = await getErpOrder(printServiceUrl, order.orderNo || order.OrderNo)
+      const bag = data.values || data
+      const list = Array.isArray(data.pieces) && data.pieces.length ? data.pieces : [bag]
+      setPieces(list.map((p, i) => ({ index: i + 1, values: p.values || p })))
+      setSourceName(`ERP order ${order.orderNo || order.OrderNo}`)
+      setSelected(1)
+      addToast({
+        message: `Loaded ERP order ${order.orderNo || order.OrderNo}`,
+        type: 'success',
+      })
+    } catch (e) {
+      setError(e.message || 'That ERP order could not be read.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const apply = () => {
+    const piece = pieces.find((p) => p.index === selected)
+    if (!piece) return
+    loadRealData({
+      source: sourceName,
+      pieceIndex: selected,
+      totalPieces: pieces.length,
+      data: piece.values,
+    })
+    close()
+  }
 
   if (!isOpen) return null
 
-  const pieces = [
-    { id: 1, size: '1200 × 800', custPo: 'PO-88213', service: 'Polish' },
-    { id: 7, size: '1500 × 900', custPo: 'PO-88213', service: 'Holes ×4' },
-    { id: 12, size: '600 × 400', custPo: 'PO-88240', service: '—' },
-    { id: 13, size: '600 × 400', custPo: 'PO-88240', service: '—' },
-  ]
+  const remembered = localStorage.getItem(LAST_FILE_KEY)
+  const chosen = pieces.find((p) => p.index === selected)
 
-  const handleApply = () => {
-    loadRealData({
-      source: tab === 'oif' ? 'Project 1265.oif' : 'ERP Order SO-9942',
-      pieceIndex: selectedPieceId,
-      totalPieces: 42,
-      data: {
-        orderNumber: 'SO-24581-07',
-        customerName: 'MS GLASS',
-        route: 'Route 12',
-        glassSpec: 'TOUGHENED 10MM',
-        Dimensions: '1500 × 900',
-        custPO: 'PO-88213',
-        marks: 'LEFT EDGE',
-        service1: 'Polish',
-        service2: 'Holes ×4',
-        service3: '',
-        Barcode: 'SO-24581-07',
-        barcode: 'SO-24581-07',
-      },
-    })
-    useLabelStore.setState({ showLoadDataModal: false })
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 select-none">
-      <div className="w-full max-w-xl rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-6 shadow-2xl text-[var(--tx)]">
-        {/* Header */}
-        <div className="flex items-start justify-between pb-4 border-b border-[var(--line)]">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100 text-[var(--pri)] dark:bg-blue-950">
-              <FileCode size={18} />
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-[var(--tx)]">
-                Load real data for preview
-              </h2>
-              <p className="text-xs text-[var(--mut)]">
-                The canvas and printer code use real values only. Nothing is saved to the template.
-              </p>
-            </div>
+  return createPortal(
+    <div className="lc-modal-overlay" onClick={close}>
+      <div
+        className="lc-modal !max-w-[680px]"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Load real data"
+      >
+        <div className="lc-modal-head">
+          <span className="lc-modal-head-icon">
+            <FileCode size={18} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h2 className="lc-dialog-title">Load real data</h2>
+            <p className="mt-0.5 text-[13px] text-[var(--mut)]">
+              Bound fields show their key until a real piece or order is loaded. Nothing is ever
+              filled in for you.
+            </p>
           </div>
-          <button
-            type="button"
-            onClick={() => useLabelStore.setState({ showLoadDataModal: false })}
-            className="text-[var(--mut)] hover:text-[var(--tx)]"
-          >
+          <button type="button" className="lc-icon-btn" onClick={close} title="Close">
             <X size={16} />
           </button>
         </div>
 
-        {/* Source Switcher */}
-        <div className="mt-4 grid grid-cols-2 rounded-lg bg-[var(--bg)] p-1 border border-[var(--line)]">
-          <button
-            type="button"
-            onClick={() => setTab('oif')}
-            className={`flex items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-semibold transition-all ${
-              tab === 'oif'
-                ? 'bg-[var(--panel)] text-[var(--pri)] shadow-xs'
-                : 'text-[var(--mut)]'
-            }`}
-          >
-            <FolderOpen size={13} />
-            <span>Opti project file (.oif)</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('erp')}
-            className={`flex items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-semibold transition-all ${
-              tab === 'erp'
-                ? 'bg-[var(--panel)] text-[var(--pri)] shadow-xs'
-                : 'text-[var(--mut)]'
-            }`}
-          >
-            <Database size={13} />
-            <span>ERP order from database</span>
-          </button>
-        </div>
-
-        {/* File / Project Bar */}
-        <div className="mt-4 flex items-center justify-between rounded-xl border border-[var(--line)] bg-[var(--bg)] p-3">
-          <div className="flex items-center gap-2 text-xs font-medium text-[var(--tx)]">
-            <FolderOpen size={15} className="text-[var(--mut)]" />
-            <span>D:\Opti\Projects\<strong>1265.oif</strong></span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-              42 pieces
-            </span>
-            <button
-              type="button"
-              className="rounded-lg border border-[var(--line)] bg-[var(--panel)] px-2.5 py-1 text-xs font-semibold text-[var(--tx)] hover:bg-[var(--line-subtle)]"
-            >
-              Browse...
+        <div className="lc-modal-body">
+          <div className="lc-segment mb-5">
+            <button type="button" className={tab === 'oif' ? 'is-on' : ''} onClick={() => setTab('oif')}>
+              <FolderOpen size={14} />
+              Opti project file (.oif)
+            </button>
+            <button type="button" className={tab === 'erp' ? 'is-on' : ''} onClick={() => setTab('erp')}>
+              <Database size={14} />
+              ERP order from database
             </button>
           </div>
-        </div>
 
-        {/* Pieces Table */}
-        <div className="mt-4">
-          <span className="text-xs font-bold text-[var(--mut)] mb-2 block">Choose a piece</span>
-          <div className="overflow-hidden rounded-xl border border-[var(--line)]">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-[var(--bg)] text-[var(--mut)] font-semibold border-b border-[var(--line)]">
-                <tr>
-                  <th className="py-2 px-3">Piece</th>
-                  <th className="py-2 px-3">Size (mm)</th>
-                  <th className="py-2 px-3">Cust PO</th>
-                  <th className="py-2 px-3">Service 1</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--line)]">
-                {pieces.map((p) => {
-                  const isSelected = selectedPieceId === p.id
-                  return (
-                    <tr
-                      key={p.id}
-                      onClick={() => setSelectedPieceId(p.id)}
-                      className={`cursor-pointer transition-colors ${
-                        isSelected
-                          ? 'bg-blue-50/70 font-semibold text-[var(--pri)] dark:bg-blue-950/40'
-                          : 'hover:bg-[var(--line-subtle)]'
-                      }`}
+          {tab === 'oif' ? (
+            <>
+              <div className="lc-card flex items-center gap-3 px-4 py-3">
+                <FileCode size={16} className="flex-none text-[var(--mut)]" />
+                <span className="min-w-0 flex-1 truncate text-[13px] text-[var(--tx)]">
+                  {sourceName || (remembered ? `Last used: ${remembered}` : 'No file chosen yet')}
+                </span>
+                <label className="lc-btn lc-btn-secondary flex-none !h-9">
+                  <FolderOpen size={14} />
+                  <span>Browse…</span>
+                  <input
+                    type="file"
+                    accept=".oif,.json,application/json"
+                    className="hidden"
+                    onChange={(e) => {
+                      onFile(e.target.files?.[0])
+                      e.target.value = ''
+                    }}
+                  />
+                </label>
+              </div>
+
+              {error && (
+                <div className="lc-msg lc-msg-err mt-4">
+                  <TriangleAlert size={15} className="flex-none" />
+                  <span className="text-[13px] font-medium">{error}</span>
+                </div>
+              )}
+
+              {pieces.length > 0 && (
+                <>
+                  <p className="lc-label mb-2 mt-5 block">Choose a piece</p>
+                  <div className="lc-card max-h-[280px] overflow-y-auto">
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="border-b border-[var(--line)]">
+                          {['Piece', 'Size (mm)', 'Cust PO', 'Service 1'].map((h) => (
+                            <th key={h} className="lc-label px-4 py-2.5 font-bold">
+                              {h}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pieces.map((p) => {
+                          const s = pieceSummary(p)
+                          const on = selected === p.index
+                          return (
+                            <tr
+                              key={p.index}
+                              onClick={() => setSelected(p.index)}
+                              className={`cursor-pointer border-b border-[var(--line)] last:border-b-0 ${
+                                on ? 'bg-[var(--pri-s)]' : 'hover:bg-[var(--bg)]'
+                              }`}
+                            >
+                              <td className="px-4 py-2.5">
+                                <span className="flex items-center gap-2 text-[13px] font-semibold text-[var(--tx)]">
+                                  {on && <Check size={14} className="text-[var(--pri)]" />}
+                                  {p.index}
+                                </span>
+                              </td>
+                              <td className="px-4 py-2.5 text-[13px] text-[var(--tx-2)]">{s.size || '—'}</td>
+                              <td className="px-4 py-2.5 text-[13px] text-[var(--tx-2)]">{s.custPo || '—'}</td>
+                              <td className="px-4 py-2.5 text-[13px] text-[var(--tx-2)]">{s.service || '—'}</td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+
+              {pieces.length === 0 && !error && (
+                <div className="lc-msg lc-msg-info mt-4">
+                  <Info size={15} className="flex-none" />
+                  <span className="flex-1 text-[13px] font-medium">
+                    Choose the .oif file that Opti exported for this job. Note mappings from the
+                    project are applied automatically.
+                  </span>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              {ordersError && (
+                <div className="lc-msg lc-msg-warn">
+                  <TriangleAlert size={15} className="flex-none" />
+                  <span className="flex-1 text-[13px] font-medium">{ordersError}</span>
+                  <button type="button" onClick={loadOrders} className="lc-btn lc-btn-sm lc-btn-secondary flex-none">
+                    <RefreshCw size={13} />
+                    <span>Retry</span>
+                  </button>
+                </div>
+              )}
+
+              {orders.length > 0 && (
+                <div className="lc-card divide-y divide-[var(--line)]">
+                  {orders.map((o) => (
+                    <button
+                      key={o.orderNo || o.OrderNo}
+                      type="button"
+                      onClick={() => openErpOrder(o)}
+                      className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-[var(--bg)]"
                     >
-                      <td className="py-2 px-3">{p.id}</td>
-                      <td className="py-2 px-3">{p.size}</td>
-                      <td className="py-2 px-3">{p.custPo}</td>
-                      <td className="py-2 px-3">{p.service}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+                      <span className="min-w-0">
+                        <span className="block text-[13px] font-bold text-[var(--tx)]">
+                          {o.orderNo || o.OrderNo}
+                        </span>
+                        <span className="block truncate text-[12px] text-[var(--mut)]">
+                          {[o.customerName, o.description].filter(Boolean).join(' · ') || 'No description'}
+                        </span>
+                      </span>
+                      <span className="lc-badge flex-none lc-badge-erp">Read only</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {loading && (
+                <p className="py-6 text-center text-[13px] text-[var(--mut)]">Loading orders…</p>
+              )}
+
+              {!loading && orders.length === 0 && !ordersError && (
+                <p className="py-6 text-center text-[13px] text-[var(--mut)]">
+                  No ERP orders were found for this client.
+                </p>
+              )}
+            </>
+          )}
+
+          {chosen && tab === 'oif' && (
+            <div className="lc-msg lc-msg-ok mt-5">
+              <CircleCheck size={15} className="flex-none" />
+              <span className="flex-1 text-[13px] font-medium">
+                Piece {chosen.index} of {pieces.length} is ready to use.
+              </span>
+            </div>
+          )}
         </div>
 
-        <div className="mt-3 flex items-center gap-2 rounded-lg bg-blue-50/60 p-2.5 text-xs text-blue-700 dark:bg-blue-950/30 dark:text-blue-300">
-          <span>ℹ️</span>
-          <span>Notes mapping from this project's Labels settings is applied automatically.</span>
-        </div>
-
-        {/* Footer */}
-        <div className="mt-6 flex items-center justify-end gap-2 pt-2 border-t border-[var(--line)]">
-          <button
-            type="button"
-            onClick={() => useLabelStore.setState({ showLoadDataModal: false })}
-            className="rounded-lg border border-[var(--line)] px-4 py-2 text-xs font-semibold text-[var(--tx)] hover:bg-[var(--line-subtle)]"
-          >
+        <div className="lc-modal-foot">
+          <button type="button" onClick={close} className="lc-btn lc-btn-secondary !h-10">
             Cancel
           </button>
           <button
             type="button"
-            onClick={handleApply}
-            className="rounded-lg bg-[var(--pri)] px-5 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700"
+            onClick={apply}
+            disabled={pieces.length === 0}
+            className="lc-btn lc-btn-primary !h-10"
           >
-            Use piece {selectedPieceId}
+            <Check size={15} />
+            <span>{pieces.length ? `Use piece ${selected}` : 'Choose a piece'}</span>
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

@@ -1,41 +1,98 @@
-import { useState, useEffect } from 'react'
-import { X, Sparkles } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
+import {
+  X,
+  Plus,
+  Check,
+  Sparkles,
+  FilePlus2,
+  Copy,
+  Upload,
+  TriangleAlert,
+} from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
+import { LABEL_SIZE_PRESETS } from '../data/templatePresets'
+
+const SIZES = [
+  { id: '100x150', w: 100, h: 150, label: '100 × 150 mm' },
+  { id: '100x111', w: 100, h: 111, label: '100 × 111 mm' },
+  { id: '100x60', w: 100, h: 60, label: '100 × 60 mm' },
+  { id: '100x50', w: 100, h: 50, label: '100 × 50 mm' },
+  { id: '90x43', w: 90, h: 43, label: '90 × 43 mm · Opti' },
+  { id: '4x6in', w: 102, h: 152, label: '4 × 6 in' },
+]
+
+const STARTS = [
+  { id: 'blank', label: 'Blank', Icon: FilePlus2 },
+  { id: 'copy', label: 'Copy of current', Icon: Copy },
+  { id: 'json', label: 'Import JSON', Icon: Upload },
+]
+
+/** Size cards keep their true proportions so the shape is obvious (spec §7.1). */
+function SizeCard({ size, selected, onClick }) {
+  const box = 52
+  const scale = box / Math.max(size.w, size.h)
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex flex-col items-center gap-2 rounded-[10px] border-2 px-2 py-3 transition-colors ${
+        selected
+          ? 'border-[var(--pri)] bg-[var(--panel)]'
+          : 'border-[var(--line)] bg-[var(--panel)] hover:border-[var(--mut)]'
+      }`}
+    >
+      <span className="flex h-[56px] items-center justify-center">
+        <span
+          className="block rounded-[2px] border bg-[var(--bg)]"
+          style={{
+            width: Math.max(6, size.w * scale),
+            height: Math.max(6, size.h * scale),
+            borderColor: selected ? 'var(--pri)' : 'var(--line)',
+          }}
+        />
+      </span>
+      <span className="text-center text-[11.5px] font-medium leading-tight text-[var(--tx-2)]">
+        {size.label}
+      </span>
+    </button>
+  )
+}
 
 export default function NewTemplateModal() {
   const isOpen = useLabelStore((s) => s.showNewModal)
   const setModal = useLabelStore((s) => s.setModal)
   const createNewTemplate = useLabelStore((s) => s.createNewTemplate)
+  const importTemplate = useLabelStore((s) => s.importTemplate)
+  const pickAndImportJsonFile = useLabelStore((s) => s.pickAndImportJsonFile)
+  const saveToLibrary = useLabelStore((s) => s.saveToLibrary)
   const client = useLabelStore((s) => s.client)
+  const currentName = useLabelStore((s) => s.name)
 
-  const [name, setName] = useState('Premium Showers v2')
+  const [name, setName] = useState('')
   const [selectedSizeId, setSelectedSizeId] = useState('100x150')
   const [width, setWidth] = useState(100)
   const [height, setHeight] = useState(150)
   const [labelType, setLabelType] = useState('production')
-  const [startFrom, setStartFrom] = useState('blank') // 'blank' | 'copy' | 'json'
-
-  const sizePresets = [
-    { id: '100x150', w: 100, h: 150, label: '100 × 150 mm', aspect: 'h-12 w-8' },
-    { id: '100x60', w: 100, h: 60, label: '100 × 60 mm', aspect: 'h-8 w-12' },
-    { id: '90x43', w: 90, h: 43, label: '90 × 43 mm · Opti', aspect: 'h-7 w-12' },
-    { id: '100x50', w: 100, h: 50, label: '100 × 50 mm', aspect: 'h-7 w-12' },
-    { id: '75x50', w: 75, h: 50, label: '75 × 50 mm', aspect: 'h-8 w-11' },
-    { id: '4x6in', w: 102, h: 152, label: '4 × 6 in', aspect: 'h-12 w-8' },
-  ]
+  const [startFrom, setStartFrom] = useState('blank')
+  const [touched, setTouched] = useState(false)
 
   useEffect(() => {
-    if (isOpen) {
-      setName('New label template')
-      setWidth(100)
-      setHeight(150)
-      setSelectedSizeId('100x150')
-      setLabelType('production')
-      setStartFrom('blank')
-    }
+    if (!isOpen) return
+    setName('Premium Showers v2')
+    setWidth(100)
+    setHeight(150)
+    setSelectedSizeId('100x150')
+    setLabelType('production')
+    setStartFrom('blank')
+    setTouched(false)
   }, [isOpen])
 
   if (!isOpen) return null
+
+  const clientLabel = client === 'erp' ? 'ERP' : 'OPTI'
+  const trimmed = name.trim()
+  const nameError = touched && !trimmed
 
   const handleSelectPreset = (p) => {
     setSelectedSizeId(p.id)
@@ -44,179 +101,182 @@ export default function NewTemplateModal() {
   }
 
   const handleCreate = () => {
-    createNewTemplate({
-      name: name.trim() || 'New Label',
-      width: Number(width) || 100,
-      height: Number(height) || 60,
-      unit: 'mm',
-      labelType,
-    })
+    setTouched(true)
+    if (!trimmed) return
+
+    if (startFrom === 'json') {
+      setModal('showNewModal', false)
+      pickAndImportJsonFile()
+      return
+    }
+
+    if (startFrom === 'copy') {
+      // Keep the current layout, resize it to the chosen label, rename it.
+      const s = useLabelStore.getState()
+      importTemplate(
+        {
+          ...s,
+          id: undefined,
+          name: trimmed,
+          width: Number(width) || s.width,
+          height: Number(height) || s.height,
+          labelType,
+          client,
+          sections: undefined,
+        },
+        { markSaved: false },
+      )
+      saveToLibrary()
+    } else {
+      createNewTemplate({
+        name: trimmed,
+        width: Number(width) || 100,
+        height: Number(height) || 60,
+        unit: 'mm',
+        labelType,
+      })
+    }
     setModal('showNewModal', false)
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 select-none">
-      <div className="w-full max-w-lg rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-6 shadow-2xl text-[var(--tx)]">
-        {/* Header */}
-        <div className="flex items-start justify-between pb-3 border-b border-[var(--line)]">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-[var(--pri)] dark:bg-blue-950">
-              <Sparkles size={18} />
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-[var(--tx)]">
-                New label template
-              </h2>
-              <p className="text-xs text-[var(--mut)]">
-                It will be saved for <span className="rounded bg-blue-100 px-1 py-0.2 font-bold uppercase text-blue-800 text-[9px] dark:bg-blue-950 dark:text-blue-300">{client}</span> · switch Opti/ERP in the top bar
-              </p>
-            </div>
+  return createPortal(
+    <div className="lc-modal-overlay" onClick={() => setModal('showNewModal', false)}>
+      <div
+        className="lc-modal !max-w-[790px]"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="New template"
+      >
+        <div className="lc-modal-head">
+          <span className="lc-modal-head-icon">
+            <Sparkles size={18} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h2 className="lc-dialog-title">New template</h2>
+            <p className="mt-0.5 text-[13px] text-[var(--mut)]">
+              It will be saved for <span className="lc-badge lc-badge-opti">{clientLabel}</span> ·
+              switch Opti / ERP in the top bar
+            </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setModal('showNewModal', false)}
-            className="text-[var(--mut)] hover:text-[var(--tx)]"
-          >
+          <button type="button" className="lc-icon-btn" onClick={() => setModal('showNewModal', false)} title="Close">
             <X size={16} />
           </button>
         </div>
 
-        <div className="mt-4 space-y-4">
-          {/* Name */}
+        <div className="lc-modal-body">
           <div>
-            <label className="text-xs font-semibold text-[var(--mut)] block mb-1">Name</label>
+            <label className="lc-label mb-1.5 block" htmlFor="new-tpl-name">
+              Template name
+            </label>
             <input
+              id="new-tpl-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="h-9 w-full rounded-lg border border-[var(--line)] bg-[var(--input-bg)] px-3 text-xs font-semibold text-[var(--tx)] focus:border-[var(--pri)] focus:outline-none"
               autoFocus
+              className="lc-input !h-10"
+              placeholder="e.g. MSG — Premium Shower"
             />
+            {nameError && (
+              <p className="mt-1.5 flex items-center gap-1.5 text-[12px] font-semibold text-[var(--err)]">
+                <TriangleAlert size={13} />
+                A name is required. Names are unique per client.
+              </p>
+            )}
           </div>
 
-          {/* Size Cards */}
-          <div>
-            <label className="text-xs font-semibold text-[var(--mut)] block mb-1.5">Size</label>
+          <div className="mt-6">
+            <p className="lc-label mb-2.5 block">Size</p>
             <div className="grid grid-cols-6 gap-2">
-              {sizePresets.map((p) => {
-                const isSelected = selectedSizeId === p.id
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => handleSelectPreset(p)}
-                    className={`flex flex-col items-center justify-center rounded-xl border p-2 text-center transition-all ${
-                      isSelected
-                        ? 'border-2 border-[var(--pri)] bg-blue-50/60 dark:bg-blue-950/40 text-[var(--pri)]'
-                        : 'border-[var(--line)] text-[var(--tx)] hover:bg-[var(--line-subtle)]'
-                    }`}
-                  >
-                    <div className={`mb-1.5 rounded border border-current opacity-80 ${p.aspect}`} />
-                    <span className="text-[10px] font-bold leading-tight">{p.label}</span>
-                  </button>
-                )
-              })}
+              {SIZES.map((s) => (
+                <SizeCard
+                  key={s.id}
+                  size={s}
+                  selected={selectedSizeId === s.id}
+                  onClick={() => handleSelectPreset(s)}
+                />
+              ))}
             </div>
           </div>
 
-          {/* Custom Width, Height, Type */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="mt-6 grid grid-cols-3 gap-3">
             <div>
-              <label className="text-xs font-semibold text-[var(--mut)] block mb-1">Width (mm)</label>
-              <input
-                type="number"
-                value={width}
-                onChange={(e) => setWidth(Number(e.target.value))}
-                className="h-8 w-full rounded-lg border border-[var(--line)] bg-[var(--input-bg)] px-2.5 text-xs font-semibold focus:outline-none"
-              />
+              <label className="lc-label mb-1.5 block" htmlFor="new-tpl-w">
+                Width
+              </label>
+              <div className="lc-input-unit">
+                <input
+                  id="new-tpl-w"
+                  type="number"
+                  value={width}
+                  onChange={(e) => setWidth(Number(e.target.value))}
+                  className="lc-input !h-9"
+                />
+                <span>mm</span>
+              </div>
             </div>
             <div>
-              <label className="text-xs font-semibold text-[var(--mut)] block mb-1">Height (mm)</label>
-              <input
-                type="number"
-                value={height}
-                onChange={(e) => setHeight(Number(e.target.value))}
-                className="h-8 w-full rounded-lg border border-[var(--line)] bg-[var(--input-bg)] px-2.5 text-xs font-semibold focus:outline-none"
-              />
+              <label className="lc-label mb-1.5 block" htmlFor="new-tpl-h">
+                Height
+              </label>
+              <div className="lc-input-unit">
+                <input
+                  id="new-tpl-h"
+                  type="number"
+                  value={height}
+                  onChange={(e) => setHeight(Number(e.target.value))}
+                  className="lc-input !h-9"
+                />
+                <span>mm</span>
+              </div>
             </div>
             <div>
-              <label className="text-xs font-semibold text-[var(--mut)] block mb-1">Type</label>
-              <div className="grid grid-cols-2 rounded-lg bg-[var(--bg)] p-0.5 border border-[var(--line)] text-xs font-semibold">
-                <button
-                  type="button"
-                  onClick={() => setLabelType('production')}
-                  className={`rounded py-1 transition-all ${
-                    labelType === 'production' ? 'bg-[var(--panel)] text-[var(--pri)] shadow-xs' : 'text-[var(--mut)]'
-                  }`}
-                >
-                  Production
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLabelType('offcut')}
-                  className={`rounded py-1 transition-all ${
-                    labelType === 'offcut' ? 'bg-[var(--panel)] text-[var(--pri)] shadow-xs' : 'text-[var(--mut)]'
-                  }`}
-                >
-                  Offcut
-                </button>
+              <label className="lc-label mb-1.5 block">Type</label>
+              <div className="lc-segment !h-9">
+                {['production', 'offcut'].map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    className={labelType === t ? 'is-on' : ''}
+                    onClick={() => setLabelType(t)}
+                  >
+                    {t === 'production' ? 'Production' : 'Offcut'}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
 
-          {/* Start From */}
-          <div>
-            <label className="text-xs font-semibold text-[var(--mut)] block mb-1.5">Start from</label>
-            <div className="grid grid-cols-3 rounded-lg bg-[var(--bg)] p-1 border border-[var(--line)] text-xs font-semibold text-center">
-              <button
-                type="button"
-                onClick={() => setStartFrom('blank')}
-                className={`rounded py-1.5 transition-all ${
-                  startFrom === 'blank' ? 'bg-[var(--panel)] text-[var(--pri)] shadow-xs' : 'text-[var(--mut)]'
-                }`}
-              >
-                📄 Blank
-              </button>
-              <button
-                type="button"
-                onClick={() => setStartFrom('copy')}
-                className={`rounded py-1.5 transition-all ${
-                  startFrom === 'copy' ? 'bg-[var(--panel)] text-[var(--pri)] shadow-xs' : 'text-[var(--mut)]'
-                }`}
-              >
-                📑 Copy of current
-              </button>
-              <button
-                type="button"
-                onClick={() => setStartFrom('json')}
-                className={`rounded py-1.5 transition-all ${
-                  startFrom === 'json' ? 'bg-[var(--panel)] text-[var(--pri)] shadow-xs' : 'text-[var(--mut)]'
-                }`}
-              >
-                📥 Import JSON
-              </button>
+          <div className="mt-6">
+            <p className="lc-label mb-2.5 block">Start from</p>
+            <div className="lc-segment">
+              {STARTS.map(({ id, label, Icon }) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={startFrom === id ? 'is-on' : ''}
+                  onClick={() => setStartFrom(id)}
+                >
+                  <Icon size={14} />
+                  {id === 'copy' ? `Copy of current (${currentName})` : label}
+                </button>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="mt-6 flex items-center justify-end gap-2 pt-3 border-t border-[var(--line)]">
-          <button
-            type="button"
-            onClick={() => setModal('showNewModal', false)}
-            className="rounded-lg border border-[var(--line)] px-4 py-2 text-xs font-semibold text-[var(--tx)] hover:bg-[var(--line-subtle)]"
-          >
+        <div className="lc-modal-foot">
+          <button type="button" onClick={() => setModal('showNewModal', false)} className="lc-btn lc-btn-secondary !h-10">
             Cancel
           </button>
-          <button
-            type="button"
-            onClick={handleCreate}
-            className="rounded-lg bg-[var(--pri)] px-5 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700"
-          >
-            Create template
+          <button type="button" onClick={handleCreate} className="lc-btn lc-btn-primary !h-10">
+            {startFrom === 'json' ? <Upload size={15} /> : <Plus size={15} />}
+            <span>{startFrom === 'json' ? 'Choose a JSON file' : 'Create template'}</span>
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
