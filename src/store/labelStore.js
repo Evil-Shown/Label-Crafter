@@ -168,20 +168,11 @@ function applyTemplateSnapshot(st, data) {
 const initialTemplate = defaultTemplate()
 
 /**
- * The shared database is not reachable until first-run setup finishes, so a new
- * PC starts from the built-in catalogue instead of an empty library.
+ * A clean app starts with an empty template library unless the user has created
+ * or imported templates previously.
  */
 function initialTemplateLibrary() {
-  const stored = loadTemplates()
-  if (stored.length) return stored
-  const now = new Date().toISOString()
-  const seeded = SEED_TEMPLATES.map((tpl, i) => ({
-    ...tpl,
-    createdAt: tpl.updatedAt || now,
-    updatedAt: tpl.updatedAt || new Date(Date.now() - (i + 1) * 86400000).toISOString(),
-  }))
-  saveTemplates(seeded)
-  return seeded
+  return loadTemplates()
 }
 
 export const useLabelStore = create(
@@ -261,12 +252,8 @@ export const useLabelStore = create(
     showFieldPicker: false,
     fieldPickerAnchor: null,
     fieldPickerCallback: null,
-    realDataInfo: null, // { source: 'Project 1265.oif', pieceIndex: 7, totalPieces: 42 }
-    recentActivity: [
-      { id: '1', time: 'Today 15:31', client: 'opti', text: 'MSG saved · revision 14' },
-      { id: '2', time: 'Today 11:02', client: 'opti', text: 'Default set to MSG (from Opti)' },
-      { id: '3', time: 'Yesterday', client: 'erp', text: 'Glass Order Label created' },
-    ],
+    realDataInfo: null,
+    recentActivity: [],
     // Key chips are on by default: an unmapped field must be visible as its
     // key (spec R10) so the designer can see what still needs binding.
     showKeysOnCanvas: true,

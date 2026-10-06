@@ -184,6 +184,7 @@ export default function FirstRunWizardModal() {
                       type="text"
                       value={server}
                       onChange={(e) => setServer(e.target.value)}
+                      placeholder="e.g. localhost or SQL-SERVER"
                       className="lc-input !h-10"
                     />
                   </div>
@@ -194,8 +195,9 @@ export default function FirstRunWizardModal() {
                     <input
                       id="fw-port"
                       type="number"
-                      value={port}
+                      value={port || ''}
                       onChange={(e) => setPort(Number(e.target.value))}
+                      placeholder="1433"
                       className="lc-input !h-10"
                     />
                   </div>
@@ -208,6 +210,7 @@ export default function FirstRunWizardModal() {
                       type="text"
                       value={dbName}
                       onChange={(e) => setDbName(e.target.value)}
+                      placeholder="e.g. SpilProduction"
                       className="lc-input !h-10"
                     />
                   </div>
