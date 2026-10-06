@@ -898,9 +898,28 @@ st.lastSavedAt = Date.now()
     },
 
     setDefaultTemplate(id) {
-      setDefaultTemplateId(id)
-      set({ defaultTemplateId: id })
-      get().addToast({ message: 'Default template updated', type: 'success' })
+      const currentDefault = get().defaultTemplateId
+      const targetId = currentDefault === id || !id ? null : id
+
+      // Update in localStorage
+      setDefaultTemplateId(targetId)
+
+      // Also ensure any template with isDefault flag in templateLibrary is updated
+      const templates = loadTemplates().map((t) => ({
+        ...t,
+        isDefault: t.id === targetId,
+      }))
+      saveTemplates(templates)
+
+      set({
+        defaultTemplateId: targetId,
+        templateLibrary: templates,
+      })
+
+      get().addToast({
+        message: targetId ? 'Default template updated' : 'Default template cleared (normal template)',
+        type: 'success',
+      })
     },
 
     exportCurrentTemplateJson() {
