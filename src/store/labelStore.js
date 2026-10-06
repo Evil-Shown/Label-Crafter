@@ -189,9 +189,11 @@ export const useLabelStore = create(
     printerBrand: localStorage.getItem('lc-printer-brand') || 'zebra',
     printerHost: localStorage.getItem('lc-printer-host') || '192.168.1.100',
     printerPort: Number(localStorage.getItem('lc-printer-port')) || 9100,
-    snapToGrid: true,
+    // Grid, snap and edges are opt-in helpers — off by default so the label
+    // looks like the printed result until the designer asks for guides.
+    snapToGrid: false,
     snapToElements: true,
-    snapToEdges: true,
+    snapToEdges: false,
     gridMm: 1,
     showMargins: true,
     showRulers: true,
@@ -248,10 +250,12 @@ export const useLabelStore = create(
       { id: '2', time: 'Today 11:02', client: 'opti', text: 'Default set to MSG (from Opti)' },
       { id: '3', time: 'Yesterday', client: 'erp', text: 'Glass Order Label created' },
     ],
-    showKeysOnCanvas: false,
+    // Key chips are on by default: an unmapped field must be visible as its
+    // key (spec R10) so the designer can see what still needs binding.
+    showKeysOnCanvas: true,
     lastSavedAt: null,
-    showGrid: true,
-    showEdges: true,
+    showGrid: false,
+    showEdges: false,
     _history: [],
     _future: [],
     _savedSnapshot: snapshotKey(initialTemplate),
