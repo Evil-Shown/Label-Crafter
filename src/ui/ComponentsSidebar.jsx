@@ -67,49 +67,73 @@ export default function ComponentsSidebar() {
   // Opti fields only come when real OIF data is imported. Unless OIF is imported, Opti field section stays empty.
   const catalog = (() => {
     if (client === 'opti') {
-      if (!realDataInfo || !labelData || Object.keys(labelData).length === 0) {
+      if (!realDataInfo || (!labelData && !realDataInfo.pieces)) {
         return []
       }
       const existingKeys = new Set()
       const dynamicFields = []
 
-      // Check for note slots in loaded labelData
-      for (let n = 1; n <= 10; n++) {
-        const noteObj = labelData[`note${n}`] || labelData[`Note${n}`]
-        if (noteObj && typeof noteObj === 'object') {
-          for (const [fk, fv] of Object.entries(noteObj)) {
-            if (fv != null && String(fv).trim() !== '') {
-              const num = fk.replace(/\D/g, '')
-              const slotKey = `note${n}.field${num}`
-              if (!existingKeys.has(slotKey.toLowerCase())) {
-                existingKeys.add(slotKey.toLowerCase())
-                dynamicFields.push({
-                  key: slotKey,
-                  label: `Note ${n} Field ${num}`,
-                  type: 'text',
-                  source: 'notes',
-                  sample: String(fv),
-                })
+      // If multiple pieces are loaded from OIF, scan across all pieces (or fallback to labelData)
+      const piecesToScan = (Array.isArray(realDataInfo.pieces) && realDataInfo.pieces.length > 0)
+        ? realDataInfo.pieces.map((p) => p.values || p)
+        : [labelData]
+
+      for (const piece of piecesToScan) {
+        if (!piece || typeof piece !== 'object') continue
+
+        // Check for note slots
+        for (let n = 1; n <= 10; n++) {
+          const noteObj = piece[`note${n}`] || piece[`Note${n}`]
+          if (noteObj && typeof noteObj === 'object') {
+            for (const [fk, fv] of Object.entries(noteObj)) {
+              if (fv != null && String(fv).trim() !== '') {
+                const num = fk.replace(/\D/g, '')
+                const slotKey = `note${n}.field${num}`
+                const low = slotKey.toLowerCase()
+                if (!existingKeys.has(low)) {
+                  existingKeys.add(low)
+                  dynamicFields.push({
+                    key: slotKey,
+                    label: `Note ${n} Field ${num}`,
+                    type: 'text',
+                    source: 'notes',
+                    sample: String(fv),
+                    noteNo: n,
+                    fieldNo: Number(num) || 0,
+                  })
+                }
               }
             }
           }
         }
-      }
 
-      // Check piece scalar fields
-      for (const [k, v] of Object.entries(labelData)) {
-        if (k.startsWith('note') || typeof v === 'object' || v == null) continue
-        if (!existingKeys.has(k.toLowerCase()) && String(v).trim() !== '') {
-          existingKeys.add(k.toLowerCase())
-          dynamicFields.push({
-            key: k,
-            label: k.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase()).trim(),
-            type: 'text',
-            source: 'piece',
-            sample: String(v),
-          })
+        // Check piece scalar fields
+        for (const [k, v] of Object.entries(piece)) {
+          if (k.startsWith('note') || k.startsWith('Note') || typeof v === 'object' || v == null) continue
+          const low = k.toLowerCase()
+          if (!existingKeys.has(low) && String(v).trim() !== '') {
+            existingKeys.add(low)
+            dynamicFields.push({
+              key: k,
+              label: k.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase()).trim(),
+              type: 'text',
+              source: 'piece',
+              sample: String(v),
+            })
+          }
         }
       }
+
+      // Sort notes nicely: noteNo then fieldNo
+      dynamicFields.sort((a, b) => {
+        if (a.source === 'notes' && b.source === 'notes') {
+          return a.noteNo === b.noteNo ? a.fieldNo - b.fieldNo : a.noteNo - b.noteNo
+        }
+        if (a.source === 'piece' && b.source === 'piece') {
+          return a.label.localeCompare(b.label)
+        }
+        return a.source === 'piece' ? -1 : 1
+      })
 
       return dynamicFields
     }
