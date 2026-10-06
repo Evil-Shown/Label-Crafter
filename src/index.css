@@ -8,23 +8,23 @@
    no glass, no glow. Icons Lucide 14-16px. Radius 7/10/16.
    ═══════════════════════════════════════════════════════════════ */
 :root {
-  /* ════ Material Design 3 (Material You / Expressive) Tokens ════ */
-  --nav: #1E1B4B;
-  --nav-end: #312E81;
-  --nav-soft: #4338CA;
-  --nav-ink: #C7D2FE;
+  /* ════ Professional Dark Navy & Royal Blue Design System Tokens ════ */
+  --nav: #0F2240;
+  --nav-end: #16305A;
+  --nav-soft: #1B3557;
+  --nav-ink: #93A3BB;
 
-  /* M3 Primary: Indigo / Electric Blue (#4F46E5 & #6366F1) */
-  --pri: #4F46E5;
-  --pri-hover: #4338CA;
-  --pri-s: rgba(79, 70, 229, 0.12);
-  --pri-line: #A5B4FC;
+  /* Primary: Professional Royal Blue (#2563EB & #1D4ED8) */
+  --pri: #2563EB;
+  --pri-hover: #1D4ED8;
+  --pri-s: rgba(37, 99, 235, 0.12);
+  --pri-line: #93C5FD;
 
-  /* M3 Secondary: Playful Fuchsia / Violet (#9333EA) */
-  --erp: #9333EA;
-  --erp-hover: #7E22CE;
-  --erp-s: rgba(147, 51, 234, 0.12);
-  --erp-line: #D8B4FE;
+  /* Secondary / ERP: Clean Purple/Violet (#7C3AED) */
+  --erp: #7C3AED;
+  --erp-hover: #6D28D9;
+  --erp-s: rgba(124, 58, 237, 0.12);
+  --erp-line: #DDD6FE;
 
   /* M3 Warm Pastel Surfaces & Backgrounds */
   --bg: #EEF2F6;
@@ -103,15 +103,15 @@
   --line: #263352;
   --line-2: #1F2A44;
 
-  --pri: #818CF8;
-  --pri-hover: #A5B4FC;
-  --pri-s: rgba(129, 140, 248, 0.16);
-  --pri-line: #6366F1;
+  --pri: #60A5FA;
+  --pri-hover: #93C5FD;
+  --pri-s: rgba(37, 99, 235, 0.16);
+  --pri-line: #3B82F6;
 
-  --erp: #C084FC;
-  --erp-hover: #D8B4FE;
-  --erp-s: rgba(192, 132, 252, 0.16);
-  --erp-line: #A855F7;
+  --erp: #A78BFA;
+  --erp-hover: #C4B5FD;
+  --erp-s: rgba(124, 58, 237, 0.16);
+  --erp-line: #8B5CF6;
 
   --tx: #F8FAFC;
   --tx-2: #CBD5E1;
@@ -127,8 +127,8 @@
   --err-s: rgba(248, 113, 113, 0.16);
   --err-line: #EF4444;
 
-  --nav-soft: #312E81;
-  --nav-ink: #C7D2FE;
+  --nav-soft: #1B3557;
+  --nav-ink: #93A3BB;
   --lc-canvas-bg: #080D1A;
   --lc-canvas-dot: #263352;
 

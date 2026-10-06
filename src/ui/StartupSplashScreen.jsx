@@ -94,7 +94,7 @@ export default function StartupSplashScreen({ onComplete }) {
             width: 540,
             height: 380,
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(99, 102, 241, 0.22) 0%, rgba(129, 140, 248, 0.06) 50%, transparent 75%)',
+            background: 'radial-gradient(circle, rgba(37, 99, 235, 0.25) 0%, rgba(59, 130, 246, 0.08) 50%, transparent 75%)',
             filter: 'blur(70px)',
             pointerEvents: 'none',
           }}
@@ -178,11 +178,11 @@ export default function StartupSplashScreen({ onComplete }) {
                 width: 22,
                 height: 22,
                 borderRadius: '50%',
-                bgcolor: '#4F46E5',
+                bgcolor: '#2563EB',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 2px 8px rgba(79, 70, 229, 0.6)',
+                boxShadow: '0 2px 8px rgba(37, 99, 235, 0.6)',
               }}
             >
               <Sparkles size={12} color="#FFFFFF" />
@@ -340,7 +340,7 @@ export default function StartupSplashScreen({ onComplete }) {
                   bgcolor: 'rgba(255, 255, 255, 0.08)',
                   '& .MuiLinearProgress-bar': {
                     borderRadius: 9999,
-                    background: 'linear-gradient(90deg, #4F46E5 0%, #818CF8 60%, #C084FC 100%)',
+                    background: 'linear-gradient(90deg, #2563EB 0%, #3B82F6 60%, #60A5FA 100%)',
                     transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                   },
                 }}
