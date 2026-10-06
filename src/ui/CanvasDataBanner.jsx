@@ -101,17 +101,17 @@ export default function CanvasDataBanner() {
 
       {/* No real data loaded — the everyday state (main_light.png) */}
       {!hasHostPreviewData && (
-        <div className="flex items-center justify-center px-4 py-2.5">
-          <div className="lc-card flex max-w-[720px] items-center gap-2.5 !rounded-[10px] px-3 py-2 shadow-[var(--sh-md)]">
+        <div className="pointer-events-none absolute top-3 left-0 right-0 z-10 flex items-center justify-center px-4">
+          <div className="pointer-events-auto lc-card flex max-w-[720px] items-center gap-2.5 !rounded-full px-4 py-1.5 shadow-[var(--sh-md)] backdrop-blur-md bg-[var(--panel)]/95">
             <Info size={15} className="flex-none text-[var(--mut)]" />
-            <span className="text-[13px] text-[var(--tx-2)]">
+            <span className="text-[12.5px] text-[var(--tx-2)]">
               <strong className="font-bold text-[var(--tx)]">No real data loaded.</strong>{' '}
               Bound fields show their key, e.g. N1F3.
             </span>
             <button
               type="button"
               onClick={() => useLabelStore.setState({ showLoadDataModal: true })}
-              className="lc-btn lc-btn-primary lc-btn-sm ml-1 flex-none"
+              className="lc-btn lc-btn-primary lc-btn-sm ml-1 flex-none !rounded-full"
             >
               <FolderOpen size={13} />
               <span>{client === 'erp' ? 'Load real ERP data' : 'Load real Opti data'}</span>

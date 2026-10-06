@@ -83,7 +83,6 @@ export function getMuiTheme(mode = 'light') {
         styleOverrides: {
           root: {
             backgroundImage: 'none',
-            borderRadius: 18,
           },
           rounded: {
             borderRadius: 18,

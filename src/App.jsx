@@ -137,10 +137,9 @@ export default function App() {
               <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
                 {/* 9: Canvas toolbar */}
                 <CanvasSubBar />
-                {/* 10: Data and status banners */}
-                <CanvasDataBanner />
-
                 <div className="lc-canvas-wrap relative min-h-0 flex-1 overflow-hidden">
+                  {/* 10: Data and status banners floating or docked at top of canvas */}
+                  <CanvasDataBanner />
                   <LabelCanvas />
                 </div>
 
