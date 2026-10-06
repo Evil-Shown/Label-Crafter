@@ -1,211 +1,299 @@
-import { useState } from 'react'
-import {
-  FileText,
-  Image,
-  Code,
-  X,
-  Download,
-} from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { Printer, X, FileText, Image as ImageIcon, FileCode, Download, FolderOpen } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
-import { exportPng, exportPdf } from '../utils/export'
+import { renderLabelToCanvas, exportPdf, exportPng, downloadTextFile } from '../utils/export'
+import { compileLabel } from '../services/printService'
+import { buildExportTemplate } from '../utils/template'
+import { formatSize } from '../utils/units'
+import { sanitizeFileName } from '../utils/templateStorage'
+
+const FORMATS = [
+  { id: 'pdf', label: 'PDF', sub: 'exact size', Icon: FileText },
+  { id: 'png', label: 'PNG', sub: '300 DPI', Icon: ImageIcon },
+  { id: 'zpl', label: 'ZPL', sub: 'printer code', Icon: FileCode },
+]
+
+const SCOPES = [
+  { id: 'piece', label: 'This piece' },
+  { id: 'all', label: 'All pieces' },
+  { id: 'range', label: 'Range' },
+]
 
 export default function ExportDialog() {
-  const isOpen = useLabelStore((s) => s.showExportDialog)
+  const open = useLabelStore((s) => s.showExportDialog)
+  const setPrintConfig = useLabelStore((s) => s.setPrintConfig)
+  const hasData = useLabelStore((s) => s.hasHostPreviewData)
   const realDataInfo = useLabelStore((s) => s.realDataInfo)
+  const printServiceStatus = useLabelStore((s) => s.printServiceStatus)
   const addToast = useLabelStore((s) => s.addToast)
 
-  const [format, setFormat] = useState('pdf') // 'pdf' | 'png' | 'zpl'
-  const [scope, setScope] = useState('piece') // 'piece' | 'all' | 'range'
+  const [format, setFormat] = useState('pdf')
+  const [scope, setScope] = useState('piece')
   const [exactSize, setExactSize] = useState(true)
   const [showCutOutline, setShowCutOutline] = useState(false)
+  const [range, setRange] = useState({ from: 1, to: 1 })
+  const [preview, setPreview] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const objectUrl = useRef('')
 
-  if (!isOpen) return null
+  const state = useLabelStore()
+
+  useEffect(() => {
+    if (!open) return undefined
+    setFormat('pdf')
+    setScope('piece')
+    setError('')
+    const pieces = realDataInfo?.totalPieces || 1
+    setRange({ from: 1, to: pieces })
+    return undefined
+  }, [open, realDataInfo?.totalPieces])
+
+  // Real preview on the left (spec §6.3).
+  useEffect(() => {
+    if (!open) return undefined
+    let cancelled = false
+    ;(async () => {
+      try {
+        const canvas = await renderLabelToCanvas({ ...useLabelStore.getState(), showCutOutline })
+        if (cancelled) return
+        if (objectUrl.current) URL.revokeObjectURL(objectUrl.current)
+        const blob = await new Promise((r) => canvas.toBlob(r, 'image/png'))
+        objectUrl.current = URL.createObjectURL(blob)
+        setPreview(objectUrl.current)
+      } catch {
+        if (!cancelled) setPreview('')
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, showCutOutline])
+
+  useEffect(() => () => { if (objectUrl.current) URL.revokeObjectURL(objectUrl.current) }, [])
+
+  const width = state.width
+  const height = state.height
+  const fileBase = sanitizeFileName(state.name || 'label')
+
+  const pieceLabel = useMemo(() => {
+    if (!realDataInfo) return 'no piece loaded'
+    return `${realDataInfo.source} · piece ${realDataInfo.pieceIndex}${realDataInfo.totalPieces > 1 ? ` of ${realDataInfo.totalPieces}` : ''}`
+  }, [realDataInfo])
+
+  if (!open) return null
 
   const handleExport = async () => {
-    const state = useLabelStore.getState()
-    if (format === 'png') {
-      await exportPng(state)
-      addToast({ message: 'PNG exported successfully', type: 'success' })
-    } else if (format === 'pdf') {
-      await exportPdf(state)
-      addToast({ message: 'PDF exported successfully', type: 'success' })
-    } else {
-      addToast({ message: 'ZPL code downloaded', type: 'success' })
+    if (!hasData) return
+    setBusy(true)
+    setError('')
+    const s = useLabelStore.getState()
+    try {
+      if (format === 'pdf') {
+        await exportPdf({ ...s, showCutOutline, exactSize }, `${fileBase}.pdf`)
+        addToast({ message: `PDF opened for printing at ${formatSize(width, height)}`, type: 'success' })
+      } else if (format === 'png') {
+        await exportPng({ ...s, showCutOutline, printerDpi: 300 }, `${fileBase}.png`)
+        addToast({ message: 'PNG exported at 300 DPI', type: 'success' })
+      } else {
+        if (printServiceStatus !== 'connected') {
+          setError('The Print Service is unreachable, so printer code cannot be produced.')
+          return
+        }
+        const res = await compileLabel({
+          baseUrl: s.printServiceUrl,
+          client: s.client,
+          brand: s.printerBrand,
+          printerDpi: s.printerDpi,
+          template: buildExportTemplate(s),
+          labelData: s.labelData,
+        })
+        downloadTextFile(res?.code || res?.zpl || res?.printerCode || '', `${fileBase}.zpl`)
+        addToast({ message: 'Printer code downloaded', type: 'success' })
+      }
+      setPrintConfig({ showExportDialog: false })
+    } catch (e) {
+      setError(e.message || 'The export failed.')
+    } finally {
+      setBusy(false)
     }
-    useLabelStore.setState({ showExportDialog: false })
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 select-none">
-      <div className="flex w-full max-w-2xl overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--panel)] shadow-2xl text-[var(--tx)]">
-        {/* Left: Preview */}
-        <div className="w-5/12 bg-[var(--bg)] p-6 flex flex-col items-center justify-center border-r border-[var(--line)]">
-          <div className="w-48 rounded bg-white p-3 shadow-md text-black border border-slate-200 text-left">
-            <div className="flex justify-between font-bold text-xs border-b pb-1">
-              <span>Route 12</span>
-              <span>TGH</span>
-            </div>
-            <div className="my-1 bg-black py-0.5 text-center text-[8px] font-bold text-white">
-              TOUGHENED 10MM
-            </div>
-            <div className="text-[9px] font-bold text-purple-700">💎 MS GLASS</div>
-            <div className="my-2 h-7 w-full bg-[repeating-linear-gradient(90deg,#000,#000_1px,transparent_1px,transparent_3px)]" />
-            <div className="text-[7.5px] space-y-0.5 text-slate-700">
-              <div>Marks: LEFT EDGE</div>
-              <div>Cust PO: PO-88213</div>
-              <div>Finished size 1200 × 800</div>
-            </div>
+  const totalPieces = realDataInfo?.totalPieces || 1
+
+  return createPortal(
+    <div className="lc-modal-overlay" onClick={() => setPrintConfig({ showExportDialog: false })}>
+      <div
+        className="lc-modal !max-w-[1024px]"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Export label"
+      >
+        <div className="lc-modal-head">
+          <span className="lc-modal-head-icon">
+            <Printer size={18} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h2 className="lc-dialog-title">Export label</h2>
+            <p className="mt-0.5 text-[13px] text-[var(--mut)]">
+              Using real data: {pieceLabel}
+            </p>
           </div>
-          <p className="mt-3 text-[10px] text-[var(--mut)]">Preview with current piece values</p>
+          <button
+            type="button"
+            className="lc-icon-btn"
+            onClick={() => setPrintConfig({ showExportDialog: false })}
+            title="Close"
+          >
+            <X size={16} />
+          </button>
         </div>
 
-        {/* Right: Options */}
-        <div className="w-7/12 p-6 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--line)]">
-              <div>
-                <h3 className="font-bold text-sm text-[var(--tx)]">Export label</h3>
-                <p className="text-[11px] text-[var(--mut)]">
-                  Using real data: {realDataInfo ? `${realDataInfo.source} · piece ${realDataInfo.pieceIndex}` : '1265.oif · piece 7'}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => useLabelStore.setState({ showExportDialog: false })}
-                className="text-[var(--mut)] hover:text-[var(--tx)]"
-              >
-                <X size={16} />
-              </button>
+        <div className="grid min-h-0 flex-1 grid-cols-[450px_1fr]">
+          {/* Left: real preview */}
+          <div className="flex items-center justify-center border-r border-[var(--line)] bg-[var(--bg)] p-6">
+            <div className="lc-preview-frame h-[370px] w-[250px]">
+              {preview ? (
+                <img src={preview} alt="Label preview with the loaded piece" className="max-h-full max-w-full object-contain" />
+              ) : (
+                <span className="text-[12px] text-[var(--mut)]">No preview</span>
+              )}
+            </div>
+          </div>
+
+          {/* Right: choices */}
+          <div className="min-w-0 overflow-y-auto p-6">
+            <p className="lc-label mb-3 block">Format</p>
+            <div className="grid grid-cols-3 gap-2.5">
+              {FORMATS.map(({ id, label, sub, Icon }) => {
+                const on = format === id
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setFormat(id)}
+                    className={`flex min-h-[92px] flex-col items-center justify-center gap-1.5 rounded-[10px] border-2 px-3 py-3 transition-colors ${
+                      on
+                        ? 'border-[var(--pri)] bg-[var(--panel)]'
+                        : 'border-[var(--line)] bg-[var(--panel)] hover:border-[var(--mut)]'
+                    }`}
+                  >
+                    <Icon size={20} className={on ? 'text-[var(--pri)]' : 'text-[var(--mut)]'} />
+                    <span className="text-[13px] font-bold text-[var(--tx)]">{label}</span>
+                    <span className="text-[11px] text-[var(--mut)]">{sub}</span>
+                  </button>
+                )
+              })}
             </div>
 
-            {/* Format cards */}
-            <div className="mt-4">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--mut)] block mb-1.5">
-                Format
-              </span>
-              <div className="grid grid-cols-3 gap-2">
+            <p className="lc-label mb-3 mt-6 block">Pages</p>
+            <div className="lc-segment">
+              {SCOPES.map((s) => (
                 <button
+                  key={s.id}
                   type="button"
-                  onClick={() => setFormat('pdf')}
-                  className={`flex flex-col items-center justify-center rounded-xl border p-3 text-center transition-all ${
-                    format === 'pdf'
-                      ? 'border-2 border-[var(--pri)] bg-blue-50/50 dark:bg-blue-950/40 text-[var(--pri)]'
-                      : 'border-[var(--line)] text-[var(--tx)] hover:bg-[var(--line-subtle)]'
-                  }`}
+                  className={scope === s.id ? 'is-on' : ''}
+                  onClick={() => setScope(s.id)}
                 >
-                  <FileText size={20} className="mb-1" />
-                  <span className="font-bold text-xs">PDF</span>
-                  <span className="text-[9px] text-[var(--mut)]">exact size</span>
+                  {s.label}
+                  {s.id === 'all' && totalPieces > 1 ? ` · ${totalPieces} pieces` : ''}
                 </button>
-
-                <button
-                  type="button"
-                  onClick={() => setFormat('png')}
-                  className={`flex flex-col items-center justify-center rounded-xl border p-3 text-center transition-all ${
-                    format === 'png'
-                      ? 'border-2 border-[var(--pri)] bg-blue-50/50 dark:bg-blue-950/40 text-[var(--pri)]'
-                      : 'border-[var(--line)] text-[var(--tx)] hover:bg-[var(--line-subtle)]'
-                  }`}
-                >
-                  <Image size={20} className="mb-1" />
-                  <span className="font-bold text-xs">PNG</span>
-                  <span className="text-[9px] text-[var(--mut)]">300 DPI</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setFormat('zpl')}
-                  className={`flex flex-col items-center justify-center rounded-xl border p-3 text-center transition-all ${
-                    format === 'zpl'
-                      ? 'border-2 border-[var(--pri)] bg-blue-50/50 dark:bg-blue-950/40 text-[var(--pri)]'
-                      : 'border-[var(--line)] text-[var(--tx)] hover:bg-[var(--line-subtle)]'
-                  }`}
-                >
-                  <Code size={20} className="mb-1" />
-                  <span className="font-bold text-xs">ZPL</span>
-                  <span className="text-[9px] text-[var(--mut)]">printer code</span>
-                </button>
-              </div>
+              ))}
             </div>
 
-            {/* Pages Scope */}
-            <div className="mt-4">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--mut)] block mb-1.5">
-                Pages
-              </span>
-              <div className="grid grid-cols-3 rounded-lg bg-[var(--bg)] p-1 border border-[var(--line)] text-xs text-center font-semibold">
-                <button
-                  type="button"
-                  onClick={() => setScope('piece')}
-                  className={`rounded py-1.5 transition-all ${
-                    scope === 'piece' ? 'bg-[var(--panel)] text-[var(--pri)] shadow-xs' : 'text-[var(--mut)]'
-                  }`}
-                >
-                  This piece
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setScope('all')}
-                  className={`rounded py-1.5 transition-all ${
-                    scope === 'all' ? 'bg-[var(--panel)] text-[var(--pri)] shadow-xs' : 'text-[var(--mut)]'
-                  }`}
-                >
-                  All 42 pieces
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setScope('range')}
-                  className={`rounded py-1.5 transition-all ${
-                    scope === 'range' ? 'bg-[var(--panel)] text-[var(--pri)] shadow-xs' : 'text-[var(--mut)]'
-                  }`}
-                >
-                  Range
-                </button>
+            {scope === 'range' && (
+              <div className="mt-3 flex items-end gap-3">
+                <div className="w-28">
+                  <label className="lc-label mb-1.5 block" htmlFor="range-from">
+                    From
+                  </label>
+                  <input
+                    id="range-from"
+                    type="number"
+                    min={1}
+                    max={totalPieces}
+                    value={range.from}
+                    onChange={(e) => setRange((r) => ({ ...r, from: Number(e.target.value) }))}
+                    className="lc-input !h-10"
+                  />
+                </div>
+                <div className="w-28">
+                  <label className="lc-label mb-1.5 block" htmlFor="range-to">
+                    To
+                  </label>
+                  <input
+                    id="range-to"
+                    type="number"
+                    min={1}
+                    max={totalPieces}
+                    value={range.to}
+                    onChange={(e) => setRange((r) => ({ ...r, to: Number(e.target.value) }))}
+                    className="lc-input !h-10"
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Toggles */}
-            <div className="mt-4 space-y-2 text-xs">
-              <label className="flex items-center gap-2 cursor-pointer">
+            <div className="lc-divider my-6" />
+
+            <div className="space-y-3">
+              <label className="flex cursor-pointer items-center gap-2.5 text-[13px] text-[var(--tx)]">
                 <input
                   type="checkbox"
                   checked={exactSize}
                   onChange={(e) => setExactSize(e.target.checked)}
-                  className="rounded text-[var(--pri)] focus:ring-0"
+                  className="h-4 w-4 rounded"
                 />
-                <span>Exact label size (100 × 150 mm), no page margins</span>
+                <span>
+                  Exact label size ({formatSize(width, height)}), no page margins
+                </span>
               </label>
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className="flex cursor-pointer items-center gap-2.5 text-[13px] text-[var(--tx)]">
                 <input
                   type="checkbox"
                   checked={showCutOutline}
                   onChange={(e) => setShowCutOutline(e.target.checked)}
-                  className="rounded text-[var(--pri)] focus:ring-0"
+                  className="h-4 w-4 rounded"
                 />
                 <span>Show cut outline</span>
               </label>
             </div>
-          </div>
 
-          {/* Footer Actions */}
-          <div className="mt-6 flex items-center justify-end gap-2 pt-3 border-t border-[var(--line)]">
-            <button
-              type="button"
-              onClick={() => useLabelStore.setState({ showExportDialog: false })}
-              className="rounded-lg border border-[var(--line)] px-4 py-2 text-xs font-semibold text-[var(--tx)] hover:bg-[var(--line-subtle)]"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleExport}
-              className="rounded-lg bg-[var(--pri)] px-5 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700"
-            >
-              Export {format.toUpperCase()}
-            </button>
+            {!hasData && (
+              <div className="lc-msg lc-msg-warn mt-6">
+                <FolderOpen size={15} className="flex-none" />
+                <span className="flex-1 text-[13px] font-medium">
+                  Export is disabled until real data is loaded, so nothing invented can be printed.
+                </span>
+              </div>
+            )}
+
+            {error && (
+              <div className="lc-msg lc-msg-err mt-6">
+                <span className="flex-1 text-[13px] font-medium">{error}</span>
+              </div>
+            )}
           </div>
         </div>
+
+        <div className="lc-modal-foot">
+          <button type="button" onClick={() => setPrintConfig({ showExportDialog: false })} className="lc-btn lc-btn-secondary !h-10">
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={!hasData || busy}
+            className="lc-btn lc-btn-primary !h-10"
+          >
+            <Download size={15} />
+            <span>{busy ? 'Exporting…' : `Export ${format.toUpperCase()}`}</span>
+          </button>
+        </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

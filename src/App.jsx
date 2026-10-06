@@ -25,11 +25,13 @@ import BatchPreview from './ui/BatchPreview'
 import ServerLibraryModal from './ui/ServerLibraryModal'
 import ToastContainer from './ui/Toast'
 import ConfirmationDialog from './ui/ConfirmationDialog'
+import StartupSplashScreen from './ui/StartupSplashScreen'
 
 import { useLabelStore } from './store/labelStore'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 
 export default function App() {
+  const showSplashScreen = useLabelStore((s) => s.showSplashScreen)
   const theme = useLabelStore((s) => s.theme)
   const activeTab = useLabelStore((s) => s.activeTab)
   const applyDesignSession = useLabelStore((s) => s.applyDesignSession)
@@ -157,6 +159,11 @@ export default function App() {
       <ServerLibraryModal />
       <ToastContainer />
       <ConfirmationDialog />
+
+      {/* Windows App Startup Opening Animation Window */}
+      {showSplashScreen && (
+        <StartupSplashScreen onComplete={() => useLabelStore.setState({ showSplashScreen: false })} />
+      )}
     </div>
   )
 }

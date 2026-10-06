@@ -1,145 +1,151 @@
-import { useState } from 'react'
-import { Search, X, Keyboard } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { Keyboard, X, Search } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
+
+const GROUPS = [
+  {
+    id: 'tools',
+    label: 'Tools',
+    rows: [
+      ['V', 'Select'],
+      ['H', 'Pan the canvas'],
+      ['T', 'Add text'],
+      ['B', 'Add barcode'],
+      ['Q', 'Add QR code'],
+      ['C', 'Add checkbox'],
+      ['L', 'Add line'],
+      ['R', 'Add shape'],
+    ],
+  },
+  {
+    id: 'edit',
+    label: 'Edit',
+    rows: [
+      ['Ctrl + S', 'Save to the database'],
+      ['Ctrl + Z', 'Undo'],
+      ['Ctrl + Y', 'Redo'],
+      ['Ctrl + C', 'Copy'],
+      ['Ctrl + X', 'Cut'],
+      ['Ctrl + V', 'Paste'],
+      ['Ctrl + D', 'Duplicate'],
+      ['Delete', 'Delete the selected element'],
+    ],
+  },
+  {
+    id: 'move',
+    label: 'Move and view',
+    rows: [
+      ['← → ↑ ↓', 'Nudge 0.1 mm'],
+      ['Shift + ← → ↑ ↓', 'Nudge 1 mm'],
+      ['Ctrl + wheel', 'Zoom in and out'],
+      ['Ctrl + 0', 'Fit the label to the window'],
+      ['Space + drag', 'Pan'],
+      ['?', 'Show or hide this list'],
+    ],
+  },
+]
 
 export default function ShortcutsOverlay() {
   const open = useLabelStore((s) => s.showShortcuts)
   const setPrintConfig = useLabelStore((s) => s.setPrintConfig)
-  const [search, setSearch] = useState('')
+  const [query, setQuery] = useState('')
+  const inputRef = useRef(null)
+
+  useEffect(() => {
+    if (!open) return undefined
+    setQuery('')
+    const onKey = (e) => {
+      if (e.key === 'Escape') setPrintConfig({ showShortcuts: false })
+    }
+    window.addEventListener('keydown', onKey)
+    const t = setTimeout(() => inputRef.current?.focus(), 30)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      clearTimeout(t)
+    }
+  }, [open, setPrintConfig])
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return GROUPS
+    return GROUPS.map((g) => ({
+      ...g,
+      rows: g.rows.filter(
+        ([k, l]) => l.toLowerCase().includes(q) || k.toLowerCase().includes(q),
+      ),
+    })).filter((g) => g.rows.length)
+  }, [query])
 
   if (!open) return null
 
-  const toolsShortcuts = [
-    { key: 'V', desc: 'Select' },
-    { key: 'H', desc: 'Hand / pan' },
-    { key: 'T', desc: 'Add text' },
-    { key: 'B', desc: 'Add barcode' },
-    { key: 'Q', desc: 'Add QR code' },
-    { key: 'R', desc: 'Add rectangle' },
-    { key: 'L', desc: 'Add line' },
-  ]
-
-  const editShortcuts = [
-    { key: 'Ctrl C / V / X', desc: 'Copy · paste · cut' },
-    { key: 'Ctrl D', desc: 'Duplicate' },
-    { key: 'Delete', desc: 'Delete selection' },
-    { key: 'Ctrl Z / Y', desc: 'Undo · redo' },
-    { key: 'Ctrl G', desc: 'Group' },
-    { key: 'Ctrl ⇧ G', desc: 'Ungroup' },
-  ]
-
-  const moveViewShortcuts = [
-    { key: 'Arrows', desc: 'Nudge 0.1 mm' },
-    { key: '⇧ Arrows', desc: 'Nudge 1 mm' },
-    { key: 'Space + drag', desc: 'Pan canvas' },
-    { key: 'Ctrl + wheel', desc: 'Zoom' },
-    { key: 'Ctrl 0', desc: 'Fit to screen' },
-    { key: 'Ctrl S', desc: 'Save' },
-    { key: '?', desc: 'This help' },
-  ]
-
-  const filter = (list) =>
-    list.filter(
-      (s) =>
-        s.key.toLowerCase().includes(search.toLowerCase()) ||
-        s.desc.toLowerCase().includes(search.toLowerCase())
-    )
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 select-none"
-      onClick={() => setPrintConfig({ showShortcuts: false })}
-    >
+  return createPortal(
+    /* Shown in dark mode on purpose — spec §9.1 */
+    <div className="lc-modal-overlay" onClick={() => setPrintConfig({ showShortcuts: false })}>
       <div
-        className="w-full max-w-2xl rounded-2xl border border-slate-700 bg-[#0F172A] p-6 shadow-2xl text-slate-100"
+        className="lc-modal !max-w-[780px] !max-h-[80vh] !border-[#243049] !bg-[#0F172A] !text-[#E6EDF7]"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Keyboard shortcuts"
       >
-        {/* Header */}
-        <div className="flex items-start justify-between pb-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/30">
-              <Keyboard size={20} />
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-white">Keyboard shortcuts</h2>
-              <p className="text-xs text-slate-400">Press ? any time to open this.</p>
-            </div>
-          </div>
+        <div className="flex items-center gap-3 border-b border-[#243049] px-6 py-4">
+          <span className="flex h-10 w-10 flex-none items-center justify-center rounded-[10px] bg-[#1B2B45] text-[#93C5FD]">
+            <Keyboard size={18} />
+          </span>
+          <h2 className="lc-dialog-title flex-1 !text-[#E6EDF7]">Keyboard shortcuts</h2>
           <button
             type="button"
+            className="lc-icon-btn !text-[#93A3BB] hover:!bg-white/10 hover:!text-white"
             onClick={() => setPrintConfig({ showShortcuts: false })}
-            className="text-slate-400 hover:text-white"
+            title="Close"
           >
             <X size={16} />
           </button>
         </div>
 
-        {/* Search */}
-        <div className="relative mt-2">
-          <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search shortcuts..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-9 w-full rounded-xl border border-slate-700 bg-slate-900/80 pl-9 pr-3 text-xs text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none"
-          />
+        <div className="px-6 pt-4">
+          <div className="relative">
+            <Search
+              size={15}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#64748B]"
+            />
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search shortcuts…"
+              className="!h-11 !w-full !rounded-[10px] !border-[#243049] !bg-[#111C2E] !pl-9 !text-[13px] !text-[#E6EDF7] placeholder:!text-[#64748B] focus:!border-[#3B82F6] focus:!shadow-none"
+            />
+          </div>
         </div>
 
-        {/* 3 Groups Layout (screen 9.1 / shortcuts.png) */}
-        <div className="mt-5 grid grid-cols-3 gap-6 text-xs">
-          {/* Group 1: Tools */}
-          <div>
-            <h3 className="mb-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              Tools
-            </h3>
-            <div className="space-y-2">
-              {filter(toolsShortcuts).map((s) => (
-                <div key={s.desc} className="flex items-center justify-between">
-                  <span className="text-slate-300">{s.desc}</span>
-                  <kbd className="rounded border border-slate-700 bg-slate-800/80 px-1.5 py-0.5 font-mono text-[10px] text-slate-200">
-                    {s.key}
-                  </kbd>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Group 2: Edit */}
-          <div>
-            <h3 className="mb-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              Edit
-            </h3>
-            <div className="space-y-2">
-              {filter(editShortcuts).map((s) => (
-                <div key={s.desc} className="flex items-center justify-between">
-                  <span className="text-slate-300">{s.desc}</span>
-                  <kbd className="rounded border border-slate-700 bg-slate-800/80 px-1.5 py-0.5 font-mono text-[10px] text-slate-200">
-                    {s.key}
-                  </kbd>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Group 3: Move & View */}
-          <div>
-            <h3 className="mb-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              Move & view
-            </h3>
-            <div className="space-y-2">
-              {filter(moveViewShortcuts).map((s) => (
-                <div key={s.desc} className="flex items-center justify-between">
-                  <span className="text-slate-300">{s.desc}</span>
-                  <kbd className="rounded border border-slate-700 bg-slate-800/80 px-1.5 py-0.5 font-mono text-[10px] text-slate-200">
-                    {s.key}
-                  </kbd>
-                </div>
-              ))}
-            </div>
-          </div>
+        <div className="grid gap-12 overflow-y-auto px-6 py-5 sm:grid-cols-3">
+          {filtered.map((g) => (
+            <section key={g.id}>
+              <h3 className="mb-2 text-[13px] font-bold text-[#93C5FD]">{g.label}</h3>
+              <ul>
+                {g.rows.map(([k, label]) => (
+                  <li
+                    key={k + label}
+                    className="flex items-center justify-between gap-3 border-b border-[#1C2739] py-2 last:border-b-0"
+                  >
+                    <span className="font-[var(--mono)] text-[12px] text-[#93A3BB]">{k}</span>
+                    <span className="text-right text-[13px] text-[#E6EDF7]">{label}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+          {filtered.length === 0 && (
+            <p className="col-span-full py-8 text-center text-[13px] text-[#64748B]">
+              Nothing matches “{query}”.
+            </p>
+          )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

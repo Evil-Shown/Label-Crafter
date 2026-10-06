@@ -1,22 +1,28 @@
 import { buildFieldCanvas, getTexturePixelRatio } from '../canvas/fieldTextures'
-import { mmToPx } from './units'
+import { mmToPx, DESIGN_DPI } from './units'
 
-/** Render label fields to a 2D canvas at design resolution (px @ 96 DPI). */
-export async function renderLabelToCanvas(state, { thermal = false } = {}) {
+/**
+ * Render at a chosen DPI so the PNG/PDF carries the printer's real resolution
+ * rather than the 96 DPI design size.
+ */
+export async function renderLabelToCanvas(state, { thermal = false, dpi } = {}) {
+  const targetDpi = Number(dpi) || state.printerDpi || 96
+  const scale = targetDpi / DESIGN_DPI
   const labelW = mmToPx(state.width)
   const labelH = mmToPx(state.height)
   const canvas = document.createElement('canvas')
-  canvas.width = Math.max(1, Math.round(labelW))
-  canvas.height = Math.max(1, Math.round(labelH))
+  canvas.width = Math.max(1, Math.round(labelW * scale))
+  canvas.height = Math.max(1, Math.round(labelH * scale))
   const ctx = canvas.getContext('2d')
   ctx.fillStyle = state.globalStyles?.backgroundColor || '#ffffff'
   ctx.fillRect(0, 0, canvas.width, canvas.height)
+  ctx.scale(scale, scale)
 
   const fields = [...(state.fields || [])]
     .filter((f) => !f.hidden)
     .sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0))
 
-  const exportPr = Math.max(2, getTexturePixelRatio(1))
+  const exportPr = Math.max(2, getTexturePixelRatio(scale))
   for (const field of fields) {
     const tex = await buildFieldCanvas(
       field,
@@ -44,6 +50,14 @@ export async function renderLabelToCanvas(state, { thermal = false } = {}) {
     tex.dispose?.()
   }
 
+  if (state.showCutOutline) {
+    ctx.strokeStyle = '#DC2626'
+    ctx.lineWidth = 1 / scale
+    ctx.setLineDash([4 / scale, 3 / scale])
+    ctx.strokeRect(0, 0, labelW, labelH)
+    ctx.setLineDash([])
+  }
+
   if (thermal) {
     const id = ctx.getImageData(0, 0, canvas.width, canvas.height)
     const d = id.data
@@ -59,7 +73,7 @@ export async function renderLabelToCanvas(state, { thermal = false } = {}) {
 }
 
 export async function exportPng(state, filename) {
-  const canvas = await renderLabelToCanvas(state, { thermal: state.thermalPreview })
+  const canvas = await renderLabelToCanvas(state, { thermal: state.thermalPreview, dpi: state.printerDpi })
   return new Promise((resolve) => {
     canvas.toBlob((blob) => {
       if (!blob) return resolve(false)
@@ -73,16 +87,34 @@ export async function exportPng(state, filename) {
   })
 }
 
+/**
+ * Exact-size PDF: one page in millimetres with no page margins. Uses the print
+ * dialog so the user can also choose "Save as PDF".
+ */
 export async function exportPdf(state, filename) {
-  const canvas = await renderLabelToCanvas(state)
+  const canvas = await renderLabelToCanvas(state, { dpi: state.printerDpi })
   const imgData = canvas.toDataURL('image/png')
-  const w = state.width
-  const h = state.height
+  const w = Number(state.width) || 90
+  const h = Number(state.height) || 43
   const win = window.open('', '_blank')
   if (!win) return false
-  win.document.write(`<!DOCTYPE html><html><head><title>${state.name || 'Label'}</title>
-<style>@page{size:${w}mm ${h}mm;margin:0}body{margin:0}img{width:${w}mm;height:${h}mm;display:block}</style></head>
-<body><img src="${imgData}" onload="window.print();setTimeout(()=>window.close(),300)"/></body></html>`)
+  const title = (filename || state.name || 'Label').replace(/</g, '&lt;')
+  win.document.write(`<!DOCTYPE html><html><head><title>${title}</title>
+<style>
+  @page { size: ${w}mm ${h}mm; margin: 0; }
+  html, body { margin: 0; padding: 0; }
+  img { width: ${w}mm; height: ${h}mm; display: block; }
+</style></head>
+<body><img src="${imgData}" onload="window.print();" /></body></html>`)
   win.document.close()
   return true
+}
+
+export function downloadTextFile(text, filename) {
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(a.href)
 }
