@@ -19,18 +19,48 @@ function assignNote(bag, noteNo, fieldNo, value) {
   bag[`note${noteNo}`][`field${fieldNo}`] = value
 }
 
+function parseNoteObject(val) {
+  if (typeof val === 'string') {
+    try {
+      const parsed = JSON.parse(val)
+      if (parsed && typeof parsed === 'object') return parsed
+    } catch {}
+  }
+  return val && typeof val === 'object' ? val : null
+}
+
 function collectNotes(source, out) {
   if (!source || typeof source !== 'object') return out
   for (const [key, value] of Object.entries(source)) {
-    if (value == null || typeof value === 'object') continue
+    if (value == null) continue
     const token = NOTE_TOKEN.exec(key.trim())
     if (token) {
-      assignNote(out, Number(token[1]), Number(token[2]), value)
+      if (typeof value !== 'object') {
+        assignNote(out, Number(token[1]), Number(token[2]), value)
+      }
       continue
     }
     const only = NOTE_ONLY.exec(key.trim())
     if (only) {
-      assignNote(out, Number(only[1]), 1, value)
+      const noteNo = Number(only[1])
+      const obj = parseNoteObject(value)
+      if (obj) {
+        if (Array.isArray(obj)) {
+          obj.forEach((v, j) => {
+            if (v != null && typeof v !== 'object') assignNote(out, noteNo, j + 1, v)
+          })
+        } else {
+          for (const [subKey, subVal] of Object.entries(obj)) {
+            if (subVal == null || typeof subVal === 'object') continue
+            const subMatch = /(?:field|f)?[\s._-]*(\d+)/i.exec(subKey.trim())
+            if (subMatch) {
+              assignNote(out, noteNo, Number(subMatch[1]), subVal)
+            }
+          }
+        }
+      } else if (typeof value !== 'object') {
+        assignNote(out, noteNo, 1, value)
+      }
     }
   }
   // A nested `notes: [{ fields: [...] }]` shape, if present.
@@ -118,8 +148,91 @@ export function pieceSummary(piece) {
     return val != null && String(val).trim() !== '' ? String(val) : ''
   }
   return {
-    size: pick('Dimensions', 'dimensions', 'size', 'Size') || note(1, 5),
+    size: pick('Dimensions', 'dimensions', 'size', 'Size') || note(1, 5) || (v.width && v.height ? `${Math.round(v.width)} × ${Math.round(v.height)}` : ''),
     custPo: pick('custPO', 'CustPO', 'custPo', 'PO', 'po'),
     service: pick('service1', 'Service1', 'service') || note(1, 2),
   }
+}
+
+/**
+ * Extracts and categorizes all unique data fields and note slots available
+ * across an array of parsed OIF pieces.
+ */
+export function extractOifDataFields(pieces = []) {
+  const pieceKeyMap = new Map()
+  const noteKeyMap = new Map()
+
+  pieces.forEach((p) => {
+    const v = p.values || {}
+    for (const [k, val] of Object.entries(v)) {
+      if (k.startsWith('note') && typeof val === 'object' && val !== null) {
+        const noteMatch = /^note(\d+)$/i.exec(k)
+        const noteNo = noteMatch ? Number(noteMatch[1]) : 1
+        for (const [fk, fval] of Object.entries(val)) {
+          const fieldMatch = /(?:field|f)?[\s._-]*(\d+)/i.exec(fk)
+          const fieldNo = fieldMatch ? Number(fieldMatch[1]) : 1
+          const fullKey = `note${noteNo}.field${fieldNo}`
+          if (!noteKeyMap.has(fullKey)) {
+            noteKeyMap.set(fullKey, {
+              key: fullKey,
+              label: `Note ${noteNo} · Field ${fieldNo}`,
+              category: 'note',
+              noteField: noteNo,
+              subField: fieldNo,
+              samples: new Set(),
+            })
+          }
+          if (fval != null && String(fval).trim() !== '') {
+            noteKeyMap.get(fullKey).samples.add(String(fval).trim())
+          }
+        }
+      } else if (val != null && typeof val !== 'object') {
+        if (!pieceKeyMap.has(k)) {
+          // Format label nicely
+          const formattedLabel = k
+            .replace(/([A-Z])/g, ' $1')
+            .replace(/^./, (s) => s.toUpperCase())
+            .trim()
+          pieceKeyMap.set(k, {
+            key: k,
+            label: formattedLabel,
+            category: 'piece',
+            samples: new Set(),
+          })
+        }
+        if (String(val).trim() !== '') {
+          pieceKeyMap.get(k).samples.add(String(val).trim())
+        }
+      }
+    }
+  })
+
+  const pieceFields = Array.from(pieceKeyMap.values()).map((f) => {
+    const sampleArr = Array.from(f.samples)
+    return {
+      key: f.key,
+      label: f.label,
+      category: 'piece',
+      sample: sampleArr[0] || '',
+      totalSamples: sampleArr.length,
+    }
+  })
+
+  // Sort note fields numerically by note then field
+  const noteFields = Array.from(noteKeyMap.values())
+    .map((f) => {
+      const sampleArr = Array.from(f.samples)
+      return {
+        key: f.key,
+        label: f.label,
+        category: 'note',
+        noteField: f.noteField,
+        subField: f.subField,
+        sample: sampleArr[0] || '',
+        totalSamples: sampleArr.length,
+      }
+    })
+    .sort((a, b) => (a.noteField === b.noteField ? a.subField - b.subField : a.noteField - b.noteField))
+
+  return { pieceFields, noteFields }
 }

@@ -16,6 +16,7 @@ import {
   Plus,
   FolderOpen,
   FileDown,
+  FileCode,
   Maximize,
   Minimize,
   Eye,
@@ -326,13 +327,26 @@ export default function TopHeader() {
                   <div className="min-w-0">
                     <div className="text-[13px] font-bold text-[var(--tx)]">Database</div>
                     <div className="lc-mono truncate text-[11.5px] text-[var(--mut)]">
-                      {dbServer} · {dbDatabase}
+                      {dbServer ? `${dbServer}${dbDatabase ? ` · ${dbDatabase}` : ''}` : 'Not configured'}
                     </div>
-                    <div className="text-[11.5px] text-[var(--mut)]">Last OK {sinceLabel(dbLastOkAt)}</div>
+                    {dbServer ? (
+                      <div className="text-[11.5px] text-[var(--mut)]">Last OK {sinceLabel(dbLastOkAt)}</div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowStatusPopover(false)
+                          setActiveTab('settings')
+                        }}
+                        className="text-[11.5px] font-medium text-[var(--brand)] hover:underline"
+                      >
+                        Configure in Settings →
+                      </button>
+                    )}
                   </div>
                 </div>
-                <span className={`lc-connection-status ${isDbOffline ? 'is-offline' : 'is-online'}`}>
-                  {isDbOffline ? 'Offline' : 'Connected'}
+                <span className={`lc-connection-status ${!dbServer ? 'is-offline' : isDbOffline ? 'is-offline' : 'is-online'}`}>
+                  {!dbServer ? 'Unconfigured' : isDbOffline ? 'Offline' : 'Connected'}
                 </span>
               </div>
 
@@ -396,6 +410,14 @@ export default function TopHeader() {
             title="Import template JSON"
           >
             <FolderOpen size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setModal('showOifImportModal', true)}
+            className="lc-icon-btn !text-[#C7D6E8] hover:!bg-white/12 hover:!text-white"
+            title="Import OIF project & create template"
+          >
+            <FileCode size={16} />
           </button>
           <button
             type="button"
