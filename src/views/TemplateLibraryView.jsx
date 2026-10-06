@@ -50,7 +50,7 @@ export default function TemplateLibraryView() {
   const [sortOpen, setSortOpen] = useState(false)
   const [activeMenuId, setActiveMenuId] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
-  const [deleteInputName, setDeleteInputName] = useState('')
+
   const [renaming, setRenaming] = useState(null)
   const [renameValue, setRenameValue] = useState('')
 
@@ -145,15 +145,11 @@ export default function TemplateLibraryView() {
       addToast({ message: 'The default template cannot be deleted', type: 'warning' })
       return
     }
-    if (deleteInputName !== deleteTarget.name) {
-      addToast({ message: 'The name does not match', type: 'error' })
-      return
-    }
     deleteFromLibrary(deleteTarget.id)
     addToast({ message: `Deleted “${deleteTarget.name}”`, type: 'success' })
     setDeleteTarget(null)
-    setDeleteInputName('')
   }
+
 
   const FILTERS = [
     { id: 'all', label: 'All' },
@@ -452,37 +448,23 @@ export default function TemplateLibraryView() {
                   <span>The default template cannot be deleted. Set another default first.</span>
                 </div>
               ) : (
-                <>
-                  <label className="lc-label-plain mb-1.5 block" htmlFor="delete-confirm-input">
-                    Type the template name to confirm
-                  </label>
-                  <input
-                    id="delete-confirm-input"
-                    type="text"
-                    autoFocus
-                    placeholder={deleteTarget.name}
-                    value={deleteInputName}
-                    onChange={(e) => setDeleteInputName(e.target.value)}
-                    className="lc-input !h-10"
-                  />
-                </>
+                <p className="text-[13px] text-[var(--txt)]">
+                  Are you sure you want to delete <strong className="font-semibold text-[var(--txt)]">“{deleteTarget.name}”</strong>?
+                </p>
               )}
             </div>
 
             <div className="lc-modal-foot">
               <button
                 type="button"
-                onClick={() => {
-                  setDeleteTarget(null)
-                  setDeleteInputName('')
-                }}
+                onClick={() => setDeleteTarget(null)}
                 className="lc-btn lc-btn-secondary"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                disabled={deleteTarget.id === defaultTemplateId || deleteInputName !== deleteTarget.name}
+                disabled={deleteTarget.id === defaultTemplateId}
                 onClick={handleDelete}
                 className="lc-btn lc-btn-danger"
               >
@@ -490,6 +472,7 @@ export default function TemplateLibraryView() {
                 <span>Delete template</span>
               </button>
             </div>
+
           </div>
         </div>
       )}
