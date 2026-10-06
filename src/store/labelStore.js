@@ -53,10 +53,25 @@ const DB_BACKOFF = [5, 10, 30]
 migrateLegacyLibrary()
 
 const defaultTemplate = () => ({
-  ...MSG(),
   id: 'LBL_NEW',
-  name: 'Standard Production Label',
+  name: 'New Label',
+  width: 100,
+  height: 150,
+  unit: 'mm',
+  labelType: 'production',
+  printerDpi: 300,
+  client: 'opti',
+  margins: { left: 3, right: 3, top: 2, bottom: 2 },
+  globalStyles: {
+    fontFamily: 'Arial, sans-serif',
+    defaultFontSize: 9,
+    backgroundColor: '#ffffff',
+    defaultColor: '#000000',
+  },
+  fields: [],
+  groups: {},
 })
+
 
 /** Strip Immer proxies and non-serializable values before history/export clones. */
 function plainValue(value) {
