@@ -84,7 +84,7 @@ export default function CanvasSubBar() {
       {/* Left side: Size, DPI, Brand selects & Canvas option chips */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
         {/* Label Size Select */}
-        <FormControl size="small" sx={{ minWidth: 125, flexShrink: 0 }}>
+        <FormControl size="small" sx={{ minWidth: 130, flexShrink: 0 }}>
           <Select
             value={sizeKey}
             onChange={(e) => {
@@ -92,16 +92,17 @@ export default function CanvasSubBar() {
               if (w && h) setLabelSize(w, h)
             }}
             sx={{
-              height: 32,
+              height: 34,
               fontSize: '0.8rem',
-              fontWeight: 600,
-              borderRadius: 2,
+              fontWeight: 700,
+              borderRadius: 9999,
+              bgcolor: 'background.paper',
               '& .MuiSelect-select': {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 0.75,
                 py: 0.5,
-                pl: 1,
+                pl: 1.2,
               },
             }}
             startAdornment={<Ruler size={14} style={{ opacity: 0.6, marginRight: -2 }} />}
@@ -125,11 +126,12 @@ export default function CanvasSubBar() {
             value={printerDpi || 300}
             onChange={(e) => setPrintConfig({ printerDpi: Number(e.target.value) })}
             sx={{
-              height: 32,
+              height: 34,
               fontSize: '0.8rem',
-              fontWeight: 600,
-              borderRadius: 2,
-              '& .MuiSelect-select': { py: 0.5, px: 1 },
+              fontWeight: 700,
+              borderRadius: 9999,
+              bgcolor: 'background.paper',
+              '& .MuiSelect-select': { py: 0.5, px: 1.2 },
             }}
           >
             <MenuItem value={203}>203 DPI</MenuItem>
@@ -172,7 +174,7 @@ export default function CanvasSubBar() {
         <Divider orientation="vertical" flexItem sx={{ mx: 0.5, height: 20, my: 'auto' }} />
 
         {/* Material ToggleButtonGroup for Canvas controls */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexShrink: 0 }}>
           <Tooltip title="Show 1 mm grid" arrow>
             <Button
               size="small"
@@ -182,11 +184,11 @@ export default function CanvasSubBar() {
               startIcon={<Grid3x3 size={14} />}
               sx={{
                 height: 32,
-                px: 1.2,
+                px: 1.5,
                 minWidth: 'auto',
                 fontSize: '0.78rem',
-                fontWeight: 600,
-                borderRadius: 4,
+                fontWeight: 700,
+                borderRadius: 9999,
                 borderColor: showGrid ? 'transparent' : 'divider',
                 bgcolor: showGrid ? undefined : 'background.paper',
               }}
@@ -204,11 +206,11 @@ export default function CanvasSubBar() {
               startIcon={<Magnet size={14} />}
               sx={{
                 height: 32,
-                px: 1.2,
+                px: 1.5,
                 minWidth: 'auto',
                 fontSize: '0.78rem',
-                fontWeight: 600,
-                borderRadius: 4,
+                fontWeight: 700,
+                borderRadius: 9999,
                 borderColor: snapToGrid ? 'transparent' : 'divider',
                 bgcolor: snapToGrid ? undefined : 'background.paper',
               }}
@@ -226,11 +228,11 @@ export default function CanvasSubBar() {
               startIcon={<Scan size={14} />}
               sx={{
                 height: 32,
-                px: 1.2,
+                px: 1.5,
                 minWidth: 'auto',
                 fontSize: '0.78rem',
-                fontWeight: 600,
-                borderRadius: 4,
+                fontWeight: 700,
+                borderRadius: 9999,
                 borderColor: snapToEdges ? 'transparent' : 'divider',
                 bgcolor: snapToEdges ? undefined : 'background.paper',
               }}
@@ -248,11 +250,11 @@ export default function CanvasSubBar() {
               startIcon={<Braces size={14} />}
               sx={{
                 height: 32,
-                px: 1.2,
+                px: 1.5,
                 minWidth: 'auto',
                 fontSize: '0.78rem',
-                fontWeight: 600,
-                borderRadius: 4,
+                fontWeight: 700,
+                borderRadius: 9999,
                 borderColor: showKeysOnCanvas ? 'transparent' : 'divider',
                 bgcolor: showKeysOnCanvas ? undefined : 'background.paper',
               }}
@@ -270,11 +272,11 @@ export default function CanvasSubBar() {
               startIcon={<Flame size={14} />}
               sx={{
                 height: 32,
-                px: 1.2,
+                px: 1.5,
                 minWidth: 'auto',
                 fontSize: '0.78rem',
-                fontWeight: 600,
-                borderRadius: 4,
+                fontWeight: 700,
+                borderRadius: 9999,
                 borderColor: thermalPreview ? 'transparent' : 'divider',
                 bgcolor: thermalPreview ? undefined : 'background.paper',
               }}
@@ -336,10 +338,10 @@ export default function CanvasSubBar() {
             startIcon={<FileSpreadsheet size={15} />}
             sx={{
               height: 32,
-              px: 1.5,
+              px: 1.8,
               fontSize: '0.78rem',
-              fontWeight: 600,
-              borderRadius: 4,
+              fontWeight: 700,
+              borderRadius: 9999,
               borderColor: 'divider',
               color: 'text.primary',
               bgcolor: 'background.paper',
@@ -364,10 +366,10 @@ export default function CanvasSubBar() {
             startIcon={<Code size={15} />}
             sx={{
               height: 32,
-              px: 1.5,
+              px: 1.8,
               fontSize: '0.78rem',
-              fontWeight: 600,
-              borderRadius: 4,
+              fontWeight: 700,
+              borderRadius: 9999,
               borderColor: showZplPanel ? 'transparent' : 'divider',
               bgcolor: showZplPanel ? undefined : 'background.paper',
             }}

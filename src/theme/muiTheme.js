@@ -7,33 +7,33 @@ export function getMuiTheme(mode = 'light') {
     palette: {
       mode: isDark ? 'dark' : 'light',
       primary: {
-        main: isDark ? '#90CAF9' : '#1976D2',
-        light: isDark ? '#E3F2FD' : '#42A5F5',
-        dark: isDark ? '#42A5F5' : '#1565C0',
-        contrastText: isDark ? '#0A1929' : '#FFFFFF',
+        main: isDark ? '#818CF8' : '#4F46E5',
+        light: isDark ? '#C7D2FE' : '#6366F1',
+        dark: isDark ? '#4F46E5' : '#3730A3',
+        contrastText: '#FFFFFF',
       },
       secondary: {
-        main: isDark ? '#CE93D8' : '#7B1FA2',
-        light: '#E1BEE7',
-        dark: '#4A148C',
+        main: isDark ? '#C084FC' : '#9333EA',
+        light: '#E9D5FF',
+        dark: '#6B21A8',
       },
       background: {
-        default: isDark ? '#0A1929' : '#F4F6F8',
-        paper: isDark ? '#101F33' : '#FFFFFF',
+        default: isDark ? '#0B0F19' : '#EEF2F6',
+        paper: isDark ? '#131B2E' : '#FFFFFF',
       },
       text: {
-        primary: isDark ? '#F1F5F9' : '#1E293B',
+        primary: isDark ? '#F8FAFC' : '#0F172A',
         secondary: isDark ? '#CBD5E1' : '#64748B',
       },
-      divider: isDark ? '#1E3A5F' : '#E0E3E7',
+      divider: isDark ? '#263352' : '#E2E8F0',
       success: {
-        main: isDark ? '#66BB6A' : '#2E7D32',
+        main: isDark ? '#34D399' : '#10B981',
       },
       warning: {
-        main: isDark ? '#FFA726' : '#ED6C02',
+        main: isDark ? '#FBBF24' : '#F59E0B',
       },
       error: {
-        main: isDark ? '#EF5350' : '#D32F2F',
+        main: isDark ? '#F87171' : '#EF4444',
       },
     },
     typography: {
@@ -47,11 +47,11 @@ export function getMuiTheme(mode = 'light') {
       ].join(','),
       button: {
         textTransform: 'none',
-        fontWeight: 600,
+        fontWeight: 700,
       },
     },
     shape: {
-      borderRadius: 8,
+      borderRadius: 14,
     },
     components: {
       MuiButton: {
@@ -60,9 +60,11 @@ export function getMuiTheme(mode = 'light') {
         },
         styleOverrides: {
           root: {
-            borderRadius: 8,
-            fontWeight: 600,
+            borderRadius: 24,
+            fontWeight: 700,
             textTransform: 'none',
+            paddingLeft: 16,
+            paddingRight: 16,
           },
         },
       },
@@ -70,15 +72,16 @@ export function getMuiTheme(mode = 'light') {
         styleOverrides: {
           root: {
             backgroundImage: 'none',
+            borderRadius: 18,
           },
         },
       },
       MuiTooltip: {
         styleOverrides: {
           tooltip: {
-            backgroundColor: isDark ? '#1E293B' : '#0F172A',
+            backgroundColor: isDark ? '#1E1B4B' : '#0F172A',
             fontSize: 12,
-            borderRadius: 6,
+            borderRadius: 8,
           },
         },
       },

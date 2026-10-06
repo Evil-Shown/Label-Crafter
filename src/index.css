@@ -8,58 +8,58 @@
    no glass, no glow. Icons Lucide 14-16px. Radius 7/10/16.
    ═══════════════════════════════════════════════════════════════ */
 :root {
-  /* ════ Material UI (MUI v5 / Material 3) Design Tokens ════ */
-  --nav: #121E36;
-  --nav-end: #1B2B4A;
-  --nav-soft: #23355A;
-  --nav-ink: #A3B5CC;
+  /* ════ Material Design 3 (Material You / Expressive) Tokens ════ */
+  --nav: #1E1B4B;
+  --nav-end: #312E81;
+  --nav-soft: #4338CA;
+  --nav-ink: #C7D2FE;
 
-  /* MUI Primary: Material Indigo / Blue (#1976D2 standard MUI Primary) */
-  --pri: #1976D2;
-  --pri-hover: #1565C0;
-  --pri-s: rgba(25, 118, 210, 0.08);
-  --pri-line: #90CAF9;
+  /* M3 Primary: Indigo / Electric Blue (#4F46E5 & #6366F1) */
+  --pri: #4F46E5;
+  --pri-hover: #4338CA;
+  --pri-s: rgba(79, 70, 229, 0.12);
+  --pri-line: #A5B4FC;
 
-  /* MUI Secondary / ERP: Material Purple (#9C27B0) */
-  --erp: #7B1FA2;
-  --erp-hover: #6A1B9A;
-  --erp-s: rgba(123, 31, 162, 0.08);
-  --erp-line: #CE93D8;
+  /* M3 Secondary: Playful Fuchsia / Violet (#9333EA) */
+  --erp: #9333EA;
+  --erp-hover: #7E22CE;
+  --erp-s: rgba(147, 51, 234, 0.12);
+  --erp-line: #D8B4FE;
 
-  /* MUI Surfaces & Backgrounds */
-  --bg: #F4F6F8;
+  /* M3 Warm Pastel Surfaces & Backgrounds */
+  --bg: #EEF2F6;
   --panel: #FFFFFF;
-  --panel-2: #FAFAFA;
-  --line: #E0E3E7;
-  --line-2: #ECEFF1;
+  --panel-2: #F8FAFC;
+  --line: #E2E8F0;
+  --line-2: #F1F5F9;
 
-  /* Material Text Hierarchy (High emphasis, medium emphasis, disabled/muted) */
-  --tx: #1E293B;
-  --tx-2: #475569;
+  /* Material Text Hierarchy */
+  --tx: #0F172A;
+  --tx-2: #334155;
   --mut: #64748B;
 
-  /* Material Semantic Colors */
-  --ok: #2E7D32;
-  --ok-s: #EDF7ED;
-  --ok-line: #A5D6A7;
-  --warn: #ED6C02;
-  --warn-s: #FFF4E5;
-  --warn-line: #FFCC80;
-  --err: #D32F2F;
-  --err-s: #FDEDED;
-  --err-line: #EF9A9A;
+  /* Semantic Colors */
+  --ok: #10B981;
+  --ok-s: #ECFDF5;
+  --ok-line: #A7F3D0;
+  --warn: #F59E0B;
+  --warn-s: #FFFBEB;
+  --warn-line: #FDE68A;
+  --err: #EF4444;
+  --err-s: #FEF2F2;
+  --err-line: #FECACA;
 
-  /* Material Radius Tokens: 8px (sm/inputs), 12px (md/cards), 16px (lg/dialogs), 9999px (pill) */
-  --r-sm: 8px;
-  --r-md: 12px;
-  --r-lg: 16px;
+  /* Material 3 Expressive Pill Radius Tokens */
+  --r-sm: 10px;
+  --r-md: 18px;
+  --r-lg: 24px;
   --r-full: 9999px;
 
-  /* Official Material Design Elevation Shadows (Elevation 1, 2, 4, 8, 16) */
-  --sh-sm: 0px 2px 1px -1px rgba(0,0,0,0.06), 0px 1px 1px 0px rgba(0,0,0,0.08), 0px 1px 3px 0px rgba(0,0,0,0.06);
-  --sh-md: 0px 3px 3px -2px rgba(0,0,0,0.08), 0px 3px 4px 0px rgba(0,0,0,0.06), 0px 1px 8px 0px rgba(0,0,0,0.05);
-  --sh-pop: 0px 8px 10px -5px rgba(0,0,0,0.1), 0px 16px 24px 2px rgba(0,0,0,0.08), 0px 6px 30px 5px rgba(0,0,0,0.06);
-  --sh-paper: 0px 4px 6px -2px rgba(0,0,0,0.07), 0px 10px 15px -3px rgba(0,0,0,0.1);
+  /* Expressive Floating Shadows */
+  --sh-sm: 0px 1px 3px rgba(15, 23, 42, 0.05), 0px 4px 12px rgba(79, 70, 229, 0.04);
+  --sh-md: 0px 4px 16px rgba(15, 23, 42, 0.08), 0px 8px 24px rgba(79, 70, 229, 0.08);
+  --sh-pop: 0px 12px 32px rgba(15, 23, 42, 0.14), 0px 4px 16px rgba(79, 70, 229, 0.1);
+  --sh-paper: 0px 6px 20px rgba(15, 23, 42, 0.06);
 
   --font: 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Roboto', 'Segoe UI', sans-serif;
   --mono: 'JetBrains Mono Variable', 'Roboto Mono', ui-monospace, 'Consolas', monospace;
@@ -97,45 +97,45 @@
 }
 
 [data-theme='dark'] {
-  --bg: #0A1929;
-  --panel: #101F33;
-  --panel-2: #0D1B2D;
-  --line: #1E3A5F;
-  --line-2: #162B47;
+  --bg: #0B0F19;
+  --panel: #131B2E;
+  --panel-2: #1A243B;
+  --line: #263352;
+  --line-2: #1F2A44;
 
-  --pri: #90CAF9;
-  --pri-hover: #42A5F5;
-  --pri-s: rgba(144, 202, 249, 0.14);
-  --pri-line: #64B5F6;
+  --pri: #818CF8;
+  --pri-hover: #A5B4FC;
+  --pri-s: rgba(129, 140, 248, 0.16);
+  --pri-line: #6366F1;
 
-  --erp: #CE93D8;
-  --erp-hover: #BA68C8;
-  --erp-s: rgba(206, 147, 216, 0.16);
-  --erp-line: #AB47BC;
+  --erp: #C084FC;
+  --erp-hover: #D8B4FE;
+  --erp-s: rgba(192, 132, 252, 0.16);
+  --erp-line: #A855F7;
 
-  --tx: #F1F5F9;
+  --tx: #F8FAFC;
   --tx-2: #CBD5E1;
   --mut: #94A3B8;
 
-  --ok: #66BB6A;
-  --ok-s: rgba(102, 187, 106, 0.16);
-  --ok-line: #81C784;
-  --warn: #FFA726;
-  --warn-s: rgba(255, 167, 38, 0.16);
-  --warn-line: #FFB74D;
-  --err: #EF5350;
-  --err-s: rgba(239, 83, 80, 0.16);
-  --err-line: #E57373;
+  --ok: #34D399;
+  --ok-s: rgba(52, 211, 153, 0.16);
+  --ok-line: #10B981;
+  --warn: #FBBF24;
+  --warn-s: rgba(251, 191, 36, 0.16);
+  --warn-line: #F59E0B;
+  --err: #F87171;
+  --err-s: rgba(248, 113, 113, 0.16);
+  --err-line: #EF4444;
 
-  --nav-soft: #132F4C;
-  --nav-ink: #90CAF9;
-  --lc-canvas-bg: #071321;
-  --lc-canvas-dot: #1E3A5F;
+  --nav-soft: #312E81;
+  --nav-ink: #C7D2FE;
+  --lc-canvas-bg: #080D1A;
+  --lc-canvas-dot: #263352;
 
-  --sh-sm: 0px 2px 1px -1px rgba(0,0,0,0.3), 0px 1px 1px 0px rgba(0,0,0,0.4), 0px 1px 3px 0px rgba(0,0,0,0.3);
-  --sh-md: 0px 3px 5px -1px rgba(0,0,0,0.4), 0px 5px 8px 0px rgba(0,0,0,0.3), 0px 1px 14px 0px rgba(0,0,0,0.25);
-  --sh-pop: 0px 8px 10px -5px rgba(0,0,0,0.5), 0px 16px 24px 2px rgba(0,0,0,0.4), 0px 6px 30px 5px rgba(0,0,0,0.35);
-  --sh-paper: 0px 5px 15px rgba(0,0,0,0.4);
+  --sh-sm: 0px 2px 4px rgba(0,0,0,0.3);
+  --sh-md: 0px 4px 16px rgba(0,0,0,0.4);
+  --sh-pop: 0px 12px 32px rgba(0,0,0,0.5);
+  --sh-paper: 0px 6px 20px rgba(0,0,0,0.4);
 }
 
 * { box-sizing: border-box; }
@@ -489,16 +489,15 @@ input[type='radio'] { accent-color: var(--pri); }
   color: var(--err);
 }
 
-/* Toolbar chip with a text label (spec §1.4 "Words, not mystery icons") */
-/* Toolbar chip with a text label (MUI Outlined Chip with Click Ripple) */
+/* Toolbar chip with a text label (Material Design 3 Expressive Pill) */
 .lc-chip-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 32px;
-  padding: 0 12px;
+  height: 34px;
+  padding: 0 14px;
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--tx-2);
   background: var(--panel);
   border: 1px solid var(--line);
@@ -506,31 +505,34 @@ input[type='radio'] { accent-color: var(--pri); }
   cursor: pointer;
   white-space: nowrap;
   user-select: none;
-  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .lc-chip-btn:hover:not(:disabled) {
   border-color: var(--pri);
   color: var(--pri);
   background: var(--pri-s);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(79, 70, 229, 0.15);
 }
 .lc-chip-btn.is-on {
   background: var(--pri);
   border-color: var(--pri);
   color: #fff;
-  box-shadow: 0 1px 3px rgba(25, 118, 210, 0.35);
+  box-shadow: 0 3px 10px rgba(79, 70, 229, 0.35);
 }
 .lc-chip-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
-/* ─── Segmented control (MUI ToggleButtonGroup Pattern) ────── */
+/* ─── Segmented control (M3 Expressive ToggleButtonGroup) ────── */
 .lc-segment {
   display: inline-flex;
   align-items: stretch;
   width: 100%;
-  padding: 3px;
-  gap: 3px;
+  padding: 4px;
+  gap: 4px;
   background: var(--bg);
   border: 1px solid var(--line);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-full);
 }
 .lc-segment button {
   display: flex;
@@ -540,26 +542,26 @@ input[type='radio'] { accent-color: var(--pri); }
   justify-content: center;
   gap: 3px;
   min-width: 0;
-  padding: 7px 6px;
+  padding: 7px 10px;
   border: none;
   background: transparent;
-  border-radius: 6px;
+  border-radius: var(--r-full);
   color: var(--mut);
   font-family: inherit;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   user-select: none;
-  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .lc-segment button:hover:not(.is-on) {
   color: var(--tx);
-  background: rgba(0, 0, 0, 0.03);
+  background: rgba(0, 0, 0, 0.04);
 }
 .lc-segment button.is-on {
   background: var(--panel);
   color: var(--pri);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 .lc-segment-row { flex-direction: row; }
 .lc-segment-row button { flex: 1; flex-direction: row; gap: 6px; padding: 7px 12px; }
@@ -698,7 +700,7 @@ input[type='radio'] { accent-color: var(--pri); }
   background: var(--panel-2);
 }
 
-/* ─── Tool grid (MUI Action Card Spec) ─────────────────────── */
+/* ─── Tool grid (Material Design 3 Expressive Action Cards) ─── */
 .lc-tool-btn {
   display: flex;
   flex-direction: column;
@@ -706,26 +708,26 @@ input[type='radio'] { accent-color: var(--pri); }
   justify-content: center;
   gap: 6px;
   padding: 10px 4px 8px;
-  min-height: 64px;
+  min-height: 66px;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   color: var(--tx-2);
   cursor: pointer;
   user-select: none;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .lc-tool-btn:active {
-  transform: scale(0.96);
+  transform: scale(0.94);
 }
 .lc-tool-btn svg {
   color: var(--pri);
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .lc-tool-btn span {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   text-align: center;
   line-height: 1.15;
 }
@@ -733,17 +735,17 @@ input[type='radio'] { accent-color: var(--pri); }
   border-color: var(--pri-line);
   background: var(--pri-s);
   color: var(--pri);
-  box-shadow: 0 4px 10px rgba(25, 118, 210, 0.16);
-  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(79, 70, 229, 0.18);
+  transform: translateY(-3px) scale(1.02);
 }
 .lc-tool-btn:hover svg {
-  transform: scale(1.12);
+  transform: scale(1.18);
 }
 .lc-tool-btn.is-on {
   border-color: var(--pri);
   background: var(--pri-s);
   color: var(--pri);
-  box-shadow: 0 2px 6px rgba(25, 118, 210, 0.25);
+  box-shadow: 0 3px 10px rgba(79, 70, 229, 0.25);
 }
 
 /* ─── Layer rows ────────────────────────────────────────────── */
