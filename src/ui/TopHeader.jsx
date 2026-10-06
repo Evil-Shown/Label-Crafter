@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   Tag,
   PenTool,
@@ -68,8 +69,31 @@ export default function TopHeader() {
   const checkServiceHealth = useLabelStore((s) => s.checkServiceHealth)
 
   const [showStatusPopover, setShowStatusPopover] = useState(false)
+  const [popoverStyle, setPopoverStyle] = useState({ top: -9999, left: -9999 })
   const [isFullscreen, setIsFullscreen] = useState(false)
   const statusRef = useRef(null)
+  const popoverRef = useRef(null)
+
+  // The header is a horizontal scroll container, so the popover is portalled to
+  // <body> and positioned in viewport coordinates to stay fully visible.
+  useLayoutEffect(() => {
+    if (!showStatusPopover || !statusRef.current) return undefined
+    const place = () => {
+      const r = statusRef.current?.getBoundingClientRect()
+      if (!r) return
+      const width = 408
+      const gap = 8
+      const left = Math.max(8, Math.min(r.right - width, window.innerWidth - width - 8))
+      setPopoverStyle({ top: r.bottom + gap, left })
+    }
+    place()
+    window.addEventListener('resize', place)
+    window.addEventListener('scroll', place, true)
+    return () => {
+      window.removeEventListener('resize', place)
+      window.removeEventListener('scroll', place, true)
+    }
+  }, [showStatusPopover])
 
   const hasUnsavedChanges = useLabelStore((s) => getTemplateFingerprint(s) !== s._savedSnapshot)
   const isDbOffline = dbStatus !== 'connected'
@@ -77,7 +101,10 @@ export default function TopHeader() {
   useEffect(() => {
     if (!showStatusPopover) return undefined
     const onDown = (e) => {
-      if (statusRef.current && !statusRef.current.contains(e.target)) setShowStatusPopover(false)
+      // The popover lives in a portal, so both nodes must be checked.
+      if (statusRef.current?.contains(e.target)) return
+      if (popoverRef.current?.contains(e.target)) return
+      setShowStatusPopover(false)
     }
     const onKey = (e) => {
       if (e.key === 'Escape') setShowStatusPopover(false)
@@ -173,7 +200,7 @@ export default function TopHeader() {
   })()
 
   return (
-    <header className="lc-top-header flex h-14 shrink-0 items-center justify-between gap-2 sm:gap-4 overflow-x-auto px-3 sm:px-4 text-white select-none no-scrollbar">
+    <header className="lc-top-header flex h-14 shrink-0 items-center justify-between gap-2 overflow-visible px-3 sm:px-4 text-white select-none">
       {/* 1. App title + subtitle + new template */}
       <div className="flex flex-none items-center gap-2.5">
         <button
@@ -348,8 +375,9 @@ export default function TopHeader() {
                   Retry
                 </button>
               </div>
-            </div>
-          )}
+              </div>,
+              document.body,
+            )}
         </div>
 
         {/* Utility icon-only actions (universal actions, tooltiped per §1.4) */}

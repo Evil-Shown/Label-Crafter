@@ -207,6 +207,29 @@ function drawPlaceholderImage(ctx, w, h, field, data) {
   ctx.restore()
 }
 
+function drawUnboundIndicator(ctx, w, h) {
+  ctx.save()
+  // 1px amber border
+  ctx.strokeStyle = '#f59e0b'
+  ctx.lineWidth = 1
+  ctx.strokeRect(0.5, 0.5, w - 1, h - 1)
+
+  // Top-right corner tag: UNBOUND
+  const tagText = 'UNBOUND'
+  ctx.font = '700 8px sans-serif'
+  const tw = ctx.measureText(tagText).width + 6
+  const th = 11
+  const tx = Math.max(0, w - tw - 2)
+  const ty = 2
+  ctx.fillStyle = '#f59e0b'
+  ctx.fillRect(tx, ty, tw, th)
+  ctx.fillStyle = '#ffffff'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(tagText, tx + tw / 2, ty + th / 2 + 0.5)
+  ctx.restore()
+}
+
 function drawFallbackBarcode(ctx, w, h, text) {
   ctx.save()
   ctx.fillStyle = '#ffffff'
@@ -227,7 +250,7 @@ function drawFallbackBarcode(ctx, w, h, text) {
   }
   ctx.font = '10px monospace'
   ctx.textAlign = 'center'
-  ctx.fillText(text || '123456789012', w / 2, h - 3)
+  ctx.fillText(text || 'Barcode', w / 2, h - 3)
   ctx.restore()
 }
 
@@ -467,12 +490,12 @@ export async function buildFieldCanvas(
         if (data[s]) { val = String(data[s]); break }
       }
     }
-    if (!val) {
-      val = field.value || field.fallbackValue || '123456789012'
-    }
 
-    let cleanVal = String(val).replace(/\{\{[^}]+\}\}/g, '123456789012').trim()
-    if (!cleanVal) cleanVal = '123456789012'
+    const isUnbound = !String(val).trim()
+    const keyString = chipKeyLabel(field) || field.fieldKey || 'Barcode'
+    const cleanVal = isUnbound
+      ? keyString.replace(/[^\x20-\x7E]/g, '') || 'Barcode'
+      : String(val).trim()
 
     try {
       const bc = document.createElement('canvas')
@@ -488,22 +511,11 @@ export async function buildFieldCanvas(
       ctx.drawImage(bc, 0, 0, w, h)
       ctx.imageSmoothingEnabled = true
     } catch {
-      try {
-        const bc = document.createElement('canvas')
-        JsBarcode(bc, '123456789012', {
-          format: 'CODE128',
-          displayValue: true,
-          fontSize: Math.max(9, Math.min(14, h * 0.22)) * pr,
-          margin: 2 * pr,
-          width: Math.max(1, 2 * pr),
-          height: Math.max(20, h - 18) * pr,
-        })
-        ctx.imageSmoothingEnabled = false
-        ctx.drawImage(bc, 0, 0, w, h)
-        ctx.imageSmoothingEnabled = true
-      } catch {
-        drawFallbackBarcode(ctx, w, h, cleanVal)
-      }
+      drawFallbackBarcode(ctx, w, h, cleanVal)
+    }
+
+    if (isUnbound) {
+      drawUnboundIndicator(ctx, w, h)
     }
     return canvasTexture(canvas, { crisp: true })
   }
@@ -516,11 +528,10 @@ export async function buildFieldCanvas(
         if (data[s]) { val = String(data[s]); break }
       }
     }
-    if (!val) {
-      val = field.value || field.fallbackValue || 'https://spil-labs.com'
-    }
-    let cleanVal = String(val).replace(/\{\{[^}]+\}\}/g, 'https://spil-labs.com').trim()
-    if (!cleanVal) cleanVal = 'https://spil-labs.com'
+
+    const isUnbound = !String(val).trim()
+    const keyString = chipKeyLabel(field) || field.fieldKey || 'QR'
+    const cleanVal = isUnbound ? keyString : String(val).trim()
 
     try {
       const qrCanvas = document.createElement('canvas')
@@ -542,6 +553,10 @@ export async function buildFieldCanvas(
       ctx.imageSmoothingEnabled = true
     } catch {
       drawFallbackQr(ctx, w, h)
+    }
+
+    if (isUnbound) {
+      drawUnboundIndicator(ctx, w, h)
     }
     return canvasTexture(canvas, { crisp: true })
   }

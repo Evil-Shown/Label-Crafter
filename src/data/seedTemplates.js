@@ -71,8 +71,6 @@ export const MSG = (over = {}) => ({
     createBarcodeField({
       fieldKey: 'barcode',
       label: 'Barcode',
-      value: '123456789012',
-      fallbackValue: '123456789012',
       x: 160, y: 100, width: 208, height: 50,
       source: ['pieceId'], noteField: 1, subField: 1,
       barcodeFormat: 'CODE128', displayValue: true, barWidth: 2,
