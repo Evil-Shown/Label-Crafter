@@ -244,10 +244,12 @@ export default function TopHeader() {
   return (
     <AppBar
       position="static"
-      elevation={2}
+      elevation={0}
+      square
       className="lc-top-header"
       sx={{
         height: 56,
+        borderRadius: 0,
         justifyContent: 'center',
         background: 'linear-gradient(90deg, var(--nav) 0%, var(--nav-end) 100%)',
         borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
