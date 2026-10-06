@@ -47,11 +47,11 @@ export default function CanvasSubBar() {
   const currentSize = sizes.find((s) => `${s.w}x${s.h}` === sizeKey)
 
   return (
-    <div className="lc-canvas-toolbar flex min-h-[50px] shrink-0 items-center justify-between gap-2 overflow-x-auto px-3 select-none no-scrollbar">
+    <div className="lc-canvas-toolbar flex min-h-[50px] shrink-0 items-center justify-between gap-2 overflow-x-auto px-3 select-none no-scrollbar whitespace-nowrap">
       {/* 9. Size, DPI, printer language, grid, snap, edges, show keys */}
-      <div className="flex min-w-0 flex-1 items-center gap-1.5 md:gap-2">
+      <div className="flex shrink-0 items-center gap-1 sm:gap-1.5 md:gap-2">
         {/* Label Size */}
-        <label className="relative flex flex-none items-center">
+        <label className="relative flex shrink-0 items-center">
           <Ruler size={14} className="pointer-events-none absolute left-2 text-[var(--mut)]" />
           <select
             aria-label="Label size"
@@ -60,7 +60,7 @@ export default function CanvasSubBar() {
               const [w, h] = e.target.value.split('x').map(Number)
               if (w && h) setLabelSize(w, h)
             }}
-            className="lc-select !h-[32px] !w-[110px] sm:!w-[135px] lg:!w-[160px] !pl-7 !pr-6 !text-[12px] sm:!text-[12.5px] !font-semibold"
+            className="lc-select !h-[32px] !w-[110px] sm:!w-[125px] xl:!w-[150px] !pl-7 !pr-6 !text-[12px] sm:!text-[12.5px] !font-semibold shrink-0"
           >
             {!currentSize && (
               <option value={sizeKey}>
@@ -88,13 +88,13 @@ export default function CanvasSubBar() {
         </select>
 
         {/* Printer Brand / Language */}
-        <label className="relative hidden sm:flex flex-none items-center">
+        <label className="relative hidden md:flex shrink-0 items-center">
           <Printer size={14} className="pointer-events-none absolute left-2 text-[var(--mut)]" />
           <select
             aria-label="Printer"
             value={printerBrand || 'zebra'}
             onChange={(e) => setPrintConfig({ printerBrand: e.target.value })}
-            className="lc-select !h-[32px] !w-[150px] lg:!w-[200px] !pl-7 !pr-6 !text-[12px] sm:!text-[12.5px] !font-semibold"
+            className="lc-select !h-[32px] !w-[130px] xl:!w-[170px] !pl-7 !pr-6 !text-[12px] sm:!text-[12.5px] !font-semibold shrink-0"
             title={`Printer code language: ${(LANGUAGE_LABELS[brandLanguage(printerBrand)] || 'ZPL').toUpperCase()}`}
           >
             {/* Every brand the Print Service supports — see PRINTER_BRANDS. */}
@@ -106,16 +106,16 @@ export default function CanvasSubBar() {
           </select>
         </label>
 
-        <div className="mx-0.5 hidden h-5 w-px bg-[var(--line)] sm:block flex-none" />
+        <div className="mx-0.5 hidden h-5 w-px bg-[var(--line)] md:block shrink-0" />
 
         {/* Toggle Buttons with responsive text (icon on compact, text on wider) */}
-        <div className="flex items-center gap-1 flex-none">
+        <div className="flex items-center gap-1 shrink-0">
           <button
             type="button"
             onClick={() => setPrintConfig({ showGrid: !showGrid })}
             title="Show 1 mm grid"
             aria-pressed={showGrid}
-            className={`lc-chip-btn !h-[32px] !px-2.5 !text-[12px] ${showGrid ? 'is-on' : ''}`}
+            className={`lc-chip-btn !h-[32px] !px-2.5 !text-[12px] shrink-0 ${showGrid ? 'is-on' : ''}`}
           >
             <Grid3x3 size={14} className="shrink-0" />
             <span className="hidden xl:inline">Grid</span>
@@ -126,7 +126,7 @@ export default function CanvasSubBar() {
             onClick={() => setPrintConfig({ snapToGrid: !snapToGrid })}
             title="Snap to grid"
             aria-pressed={snapToGrid}
-            className={`lc-chip-btn !h-[32px] !px-2.5 !text-[12px] ${snapToGrid ? 'is-on' : ''}`}
+            className={`lc-chip-btn !h-[32px] !px-2.5 !text-[12px] shrink-0 ${snapToGrid ? 'is-on' : ''}`}
           >
             <Magnet size={14} className="shrink-0" />
             <span className="hidden xl:inline">Snap</span>
@@ -137,7 +137,7 @@ export default function CanvasSubBar() {
             onClick={() => setPrintConfig({ snapToEdges: !snapToEdges })}
             title="Snap to edges"
             aria-pressed={snapToEdges}
-            className={`lc-chip-btn !h-[32px] !px-2.5 !text-[12px] ${snapToEdges ? 'is-on' : ''}`}
+            className={`lc-chip-btn !h-[32px] !px-2.5 !text-[12px] shrink-0 ${snapToEdges ? 'is-on' : ''}`}
           >
             <Scan size={14} className="shrink-0" />
             <span className="hidden xl:inline">Edges</span>
@@ -148,7 +148,7 @@ export default function CanvasSubBar() {
             onClick={() => setPrintConfig({ showKeysOnCanvas: !showKeysOnCanvas })}
             title="Show field keys on canvas"
             aria-pressed={showKeysOnCanvas}
-            className={`lc-chip-btn !h-[32px] !px-2.5 !text-[12px] ${showKeysOnCanvas ? 'is-on' : ''}`}
+            className={`lc-chip-btn !h-[32px] !px-2.5 !text-[12px] shrink-0 ${showKeysOnCanvas ? 'is-on' : ''}`}
           >
             <Braces size={14} className="shrink-0" />
             <span className="hidden 2xl:inline">Keys</span>
@@ -159,7 +159,7 @@ export default function CanvasSubBar() {
             onClick={() => setPrintConfig({ thermalPreview: !thermalPreview })}
             title="Preview thermal printer dot burn"
             aria-pressed={thermalPreview}
-            className={`lc-chip-btn !h-[32px] !px-2.5 !text-[12px] ${thermalPreview ? 'is-on' : ''}`}
+            className={`lc-chip-btn !h-[32px] !px-2.5 !text-[12px] shrink-0 ${thermalPreview ? 'is-on' : ''}`}
           >
             <Flame size={14} className="shrink-0" />
             <span className="hidden 2xl:inline">Thermal</span>
@@ -168,7 +168,7 @@ export default function CanvasSubBar() {
       </div>
 
       {/* Right side: Undo/Redo, Real data, Code */}
-      <div className="flex flex-none items-center gap-1.5 sm:gap-2">
+      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
         {/* Undo/Redo */}
         <div className="flex items-center rounded-[6px] border border-[var(--line)] bg-[var(--panel)] p-0.5 shadow-2xs">
           <button
