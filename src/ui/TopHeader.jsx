@@ -212,10 +212,6 @@ export default function TopHeader() {
   }
 
   const handleSave = () => {
-    if (isDbOffline) {
-      addToast({ message: 'Read-only: the database is offline, so saving is paused.', type: 'warning' })
-      return
-    }
     if (designSession) {
       saveToDesignService().catch((err) =>
         addToast({ message: err.message || 'Save failed', type: 'error' })
@@ -713,7 +709,6 @@ export default function TopHeader() {
           variant="contained"
           size="small"
           startIcon={<SaveIcon size={15} />}
-          disabled={isDbOffline}
           onClick={handleSave}
           color="success"
           sx={{

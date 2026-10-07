@@ -46,15 +46,9 @@ export function useKeyboardShortcuts() {
       // Ctrl+S saves — spec §4.1.
       if (mod && e.key === 's') {
         e.preventDefault()
-        if (store.dbStatus === 'connected') {
-          if (store.designSession) store.saveToDesignService()
-          else store.saveToLibrary()
-        } else {
-          store.addToast({
-            message: 'Read-only: the database is offline, so saving is paused.',
-            type: 'warning',
-          })
-        }
+        if (store.designSession) store.saveToDesignService()
+        else if (store.hostedInApp || (window.parent && window.parent !== window)) store.saveToHost()
+        else store.saveToLibrary()
         return
       }
 
