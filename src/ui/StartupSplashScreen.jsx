@@ -13,7 +13,6 @@ import {
   AlertTriangle,
   KeyRound,
   X,
-  Sparkles,
 } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
 import BrandMark from './BrandMark'
@@ -185,23 +184,6 @@ export default function StartupSplashScreen({ onComplete }) {
             }}
           >
             <BrandMark size={58} className="h-full w-full" />
-            <Box
-              sx={{
-                position: 'absolute',
-                top: -6,
-                right: -6,
-                width: 24,
-                height: 24,
-                borderRadius: '50%',
-                bgcolor: '#2563EB',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 2px 8px rgba(37, 99, 235, 0.8)',
-              }}
-            >
-              <Sparkles size={13} color="#FFFFFF" />
-            </Box>
           </Box>
 
           {/* Typography */}
