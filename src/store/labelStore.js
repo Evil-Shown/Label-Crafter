@@ -41,6 +41,7 @@ import {
   fetchDesignSession,
   fetchFieldCatalog,
   getServerTemplate,
+  inspectDatabase,
   listServerTemplates,
   saveServerTemplate,
 } from '../services/designApi'
@@ -189,7 +190,7 @@ export const useLabelStore = create(
     client: 'opti',
     /** Real host/session bag only — never fake OPTI_SAMPLE / ERP_SAMPLE. */
     labelData: {},
-    fieldCatalog: catalogForClient('opti'),
+    fieldCatalog: [],
     designSession: null,
     hostedInApp: false,
     /** True when Opti/ERP (or a design session) supplied previewData. */
@@ -238,7 +239,7 @@ export const useLabelStore = create(
     activeTab: 'design', // 'design' | 'templates' | 'settings' | 'opti'
     showSplashScreen: true,
     firstTimeSetupOpen: !localStorage.getItem('lc-setup-done') && !localStorage.getItem('lc-db-server'),
-    dbStatus: localStorage.getItem('lc-db-server') ? 'connected' : 'offline', // 'connected' | 'offline'
+    dbStatus: localStorage.getItem('lc-db-server') ? 'offline' : 'unconfigured',
     dbLatencyMs: 0,
     dbLastOkAt: null,
     dbRetryIn: 0,
@@ -247,6 +248,18 @@ export const useLabelStore = create(
     dbDatabase: localStorage.getItem('lc-db-database') || '',
     dbPort: Number(localStorage.getItem('lc-db-port')) || 1433,
     dbAuthType: localStorage.getItem('lc-db-auth') || 'windows', // 'windows' | 'sql'
+    dbSchema: localStorage.getItem('lc-db-schema') || '',
+    dbTable: localStorage.getItem('lc-db-table') || '',
+    dbSqlUser: localStorage.getItem('lc-db-sql-user') || '',
+    dbPassword: '',
+    dbTables: [],
+    dbInspectError: '',
+    erpUseSeparate: localStorage.getItem('lc-erp-separate') === '1',
+    erpDbServer: localStorage.getItem('lc-erp-db-server') || '',
+    erpDbPort: Number(localStorage.getItem('lc-erp-db-port')) || 1433,
+    erpDbDatabase: localStorage.getItem('lc-erp-db-database') || '',
+    erpDbSchema: localStorage.getItem('lc-erp-db-schema') || '',
+    erpDbTable: localStorage.getItem('lc-erp-db-table') || '',
     printServiceStatus: 'unreachable', // 'connected' | 'unreachable'
     printServiceLastOkAt: null,
 
@@ -346,15 +359,19 @@ export const useLabelStore = create(
         get().addToast({ message: `This session is locked to ${locked}`, type: 'warning' })
         return
       }
+      if (get().designSession) return
       set((st) => {
         st.client = next
-        if (!st.designSession) {
-          st.fieldCatalog = catalogForClient(next)
-          // Standalone toggle: do not carry or invent sample bags across clients.
-          st.labelData = {}
-          st.hasHostPreviewData = false
-        }
+        st.fieldCatalog = next === 'erp' ? [] : catalogForClient('opti')
+        st.labelData = {}
+        st.hasHostPreviewData = false
+        st.realDataInfo = null
       })
+      get().addToast({
+        message: `Switched to ${next === 'erp' ? 'ERP' : 'Opti'} mode`,
+        type: 'info',
+      })
+      if (next === 'erp') get().inspectErpSchema()
     },
 
     setLabelData(data) {
@@ -1058,11 +1075,130 @@ st.lastSavedAt = Date.now()
 
     /** R5: database details can be changed later without reinstalling. */
     setDbConfig(patch) {
-      if (patch.dbServer != null) localStorage.setItem('lc-db-server', patch.dbServer)
-      if (patch.dbPort != null) localStorage.setItem('lc-db-port', String(patch.dbPort))
-      if (patch.dbDatabase != null) localStorage.setItem('lc-db-database', patch.dbDatabase)
-      if (patch.dbAuthType != null) localStorage.setItem('lc-db-auth', patch.dbAuthType)
+      const persist = {
+        dbServer: 'lc-db-server',
+        dbPort: 'lc-db-port',
+        dbDatabase: 'lc-db-database',
+        dbAuthType: 'lc-db-auth',
+        dbSchema: 'lc-db-schema',
+        dbTable: 'lc-db-table',
+        dbSqlUser: 'lc-db-sql-user',
+        erpDbServer: 'lc-erp-db-server',
+        erpDbPort: 'lc-erp-db-port',
+        erpDbDatabase: 'lc-erp-db-database',
+        erpDbSchema: 'lc-erp-db-schema',
+        erpDbTable: 'lc-erp-db-table',
+      }
+      for (const [key, ls] of Object.entries(persist)) {
+        if (patch[key] != null) localStorage.setItem(ls, String(patch[key]))
+      }
+      if (patch.erpUseSeparate != null) {
+        localStorage.setItem('lc-erp-separate', patch.erpUseSeparate ? '1' : '0')
+      }
       set((st) => Object.assign(st, patch))
+    },
+
+    clearDbConfig() {
+      ;[
+        'lc-db-server',
+        'lc-db-port',
+        'lc-db-database',
+        'lc-db-auth',
+        'lc-db-schema',
+        'lc-db-table',
+        'lc-db-sql-user',
+        'lc-erp-separate',
+        'lc-erp-db-server',
+        'lc-erp-db-port',
+        'lc-erp-db-database',
+        'lc-erp-db-schema',
+        'lc-erp-db-table',
+      ].forEach((k) => localStorage.removeItem(k))
+      set((st) => {
+        st.dbServer = ''
+        st.dbDatabase = ''
+        st.dbPort = 1433
+        st.dbAuthType = 'windows'
+        st.dbSchema = ''
+        st.dbTable = ''
+        st.dbSqlUser = ''
+        st.dbPassword = ''
+        st.dbTables = []
+        st.dbInspectError = ''
+        st.dbStatus = 'unconfigured'
+        st.dbLatencyMs = 0
+        st.dbLastOkAt = null
+        st.erpUseSeparate = false
+        st.erpDbServer = ''
+        st.erpDbPort = 1433
+        st.erpDbDatabase = ''
+        st.erpDbSchema = ''
+        st.erpDbTable = ''
+        if (st.client === 'erp' && !st.designSession) st.fieldCatalog = []
+      })
+    },
+
+    activeDbTarget() {
+      const st = get()
+      const erpSep = st.client === 'erp' && st.erpUseSeparate
+      return {
+        server: erpSep ? st.erpDbServer : st.dbServer,
+        port: erpSep ? st.erpDbPort : st.dbPort,
+        database: erpSep ? st.erpDbDatabase : st.dbDatabase,
+        schema: erpSep ? st.erpDbSchema : st.dbSchema,
+        table: erpSep ? st.erpDbTable : st.dbTable,
+        authType: st.dbAuthType,
+        user: st.dbSqlUser,
+        password: st.dbPassword,
+      }
+    },
+
+    async inspectErpSchema() {
+      const st = get()
+      const target = get().activeDbTarget()
+      if (!String(target.server || '').trim() || !String(target.database || '').trim()) {
+        set((s) => {
+          s.dbStatus = 'unconfigured'
+          s.dbTables = []
+          s.dbInspectError = ''
+          if (s.client === 'erp' && !s.designSession) s.fieldCatalog = []
+        })
+        return { ok: false, error: 'No database configured' }
+      }
+      const started = Date.now()
+      try {
+        const data = await inspectDatabase(st.printServiceUrl, {
+          server: target.server,
+          port: target.port || 1433,
+          database: target.database,
+          authType: target.authType,
+          user: target.user,
+          password: target.password,
+          schema: target.schema || undefined,
+          table: target.table || undefined,
+        })
+        const fields = Array.isArray(data.fields) ? data.fields : []
+        set((s) => {
+          s.dbStatus = 'connected'
+          s.dbLatencyMs = Date.now() - started
+          s.dbLastOkAt = Date.now()
+          s.dbRetryIn = 0
+          s.dbRetryStep = 0
+          s.dbTables = Array.isArray(data.tables) ? data.tables : []
+          s.dbInspectError = ''
+          if (s.client === 'erp' && !s.designSession) s.fieldCatalog = fields
+        })
+        return { ok: true, data }
+      } catch (err) {
+        const message = err?.message || 'Could not inspect the database'
+        set((s) => {
+          s.dbStatus = 'offline'
+          s.dbInspectError = message
+          s.dbTables = []
+          if (s.client === 'erp' && !s.designSession) s.fieldCatalog = []
+        })
+        return { ok: false, error: message }
+      }
     },
 
     requestConfirmation(config) {
@@ -1075,22 +1211,6 @@ st.lastSavedAt = Date.now()
 
     setActiveTab(tab) {
       set({ activeTab: tab })
-    },
-
-    setClient(client) {
-      if (get().designSession) return
-      set((st) => {
-        st.client = client
-        st.fieldCatalog = catalogForClient(client)
-        // Rule: switching clears loaded data and reloads fields
-        st.labelData = {}
-        st.hasHostPreviewData = false
-        st.realDataInfo = null
-      })
-      get().addToast({
-        message: `Switched to ${client === 'erp' ? 'ERP' : 'Opti'} mode`,
-        type: 'info',
-      })
     },
 
     loadRealData({ source, pieceIndex, totalPieces, data, pieces }) {
@@ -1152,7 +1272,6 @@ st.lastSavedAt = Date.now()
      */
     async checkServiceHealth() {
       const st = get()
-      const started = Date.now()
       try {
         await checkServiceHealth(st.printServiceUrl)
         set((s) => {
@@ -1166,23 +1285,15 @@ st.lastSavedAt = Date.now()
         })
       }
 
-      // The database is reached through the same design service endpoint.
       try {
         const templates = await listServerTemplates(st.printServiceUrl, st.client)
-        set((s) => {
-          s.dbStatus = 'connected'
-          s.dbLastOkAt = Date.now()
-          s.dbLatencyMs = Date.now() - started
-          s.dbRetryIn = 0
-          s.dbRetryStep = 0
-          if (Array.isArray(templates)) s.serverTemplates = templates
-        })
+        if (Array.isArray(templates)) {
+          set((s) => {
+            s.serverTemplates = templates
+          })
+        }
       } catch {
-        set((s) => {
-          s.dbStatus = 'offline'
-          s.dbRetryStep = Math.min(s.dbRetryStep + 1, DB_BACKOFF.length - 1)
-          s.dbRetryIn = DB_BACKOFF[s.dbRetryStep]
-        })
+        /* template library is independent of SQL */
       }
     },
 

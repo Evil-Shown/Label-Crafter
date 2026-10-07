@@ -46,6 +46,7 @@ export default function FirstRunWizardModal() {
   const setDbConfig = useLabelStore((s) => s.setDbConfig)
   const setPrintConfig = useLabelStore((s) => s.setPrintConfig)
   const runHealthCheck = useLabelStore((s) => s.checkServiceHealth)
+  const inspectErpSchema = useLabelStore((s) => s.inspectErpSchema)
   const setSetupDone = useLabelStore((s) => s.setSetupDone)
 
   const [step, setStep] = useState(1)
@@ -91,8 +92,9 @@ export default function FirstRunWizardModal() {
     setDbConfig({ dbServer: server, dbPort: port, dbDatabase: dbName, dbAuthType: authType })
     setPrintConfig({ printServiceUrl: printUrl, printerBrand: brand, printerDpi: dpi })
     await runHealthCheck()
+    const db = await inspectErpSchema()
     const s = useLabelStore.getState()
-    setDbOk(s.dbStatus === 'connected')
+    setDbOk(db.ok && s.dbStatus === 'connected')
     setSvcOk(s.printServiceStatus === 'connected')
     setCounts({
       opti: s.templateLibrary.filter((t) => (t.client || 'opti') === 'opti').length,

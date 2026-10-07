@@ -22,7 +22,11 @@ export default function MappingDialog({ field, onSave, onClose }) {
   const labelData = useLabelStore((s) => s.labelData) || {}
   const realDataInfo = useLabelStore((s) => s.realDataInfo)
   const client = useLabelStore((s) => s.client)
-  const catalog = useMemo(() => catalogForClient(client), [client])
+  const fieldCatalog = useLabelStore((s) => s.fieldCatalog)
+  const catalog = useMemo(
+    () => (client === 'erp' ? fieldCatalog || [] : catalogForClient('opti')),
+    [client, fieldCatalog],
+  )
 
   const noteNumber = Number(field?.noteField) || 0
   const [activeTab, setActiveTab] = useState(

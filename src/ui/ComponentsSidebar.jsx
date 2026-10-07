@@ -22,7 +22,6 @@ import {
   FolderOpen,
 } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
-import { catalogForClient } from '../data/fieldCatalog'
 import { mappingLabel } from '../utils/template'
 import { elementIcon } from '../elements/typeMeta'
 
@@ -30,6 +29,8 @@ export default function ComponentsSidebar() {
   const [fieldSearch, setFieldSearch] = useState('')
   const [layersOpen, setLayersOpen] = useState(true)
   const client = useLabelStore((s) => s.client)
+  const dbStatus = useLabelStore((s) => s.dbStatus)
+  const fieldCatalog = useLabelStore((s) => s.fieldCatalog)
   const fields = useLabelStore((s) => s.fields)
   const selectedKeys = useLabelStore((s) => s.selectedKeys)
   const realDataInfo = useLabelStore((s) => s.realDataInfo)
@@ -63,7 +64,7 @@ export default function ComponentsSidebar() {
     { label: 'DXF', Icon: Frame, onClick: () => addDxfField() },
   ]
 
-  const baseCatalog = catalogForClient(client)
+  const dbReady = dbStatus === 'connected'
 
   // Opti fields only come when real OIF data is imported. Unless OIF is imported, Opti field section stays empty.
   const catalog = (() => {
@@ -139,17 +140,17 @@ export default function ComponentsSidebar() {
       return dynamicFields
     }
 
-    // For ERP:
-    if (!realDataInfo || !labelData || Object.keys(labelData).length === 0) {
-      return baseCatalog
-    }
+    // ERP: only columns from a live SQL inspect (plus extra keys from loaded order data).
+    if (!dbReady) return []
+    const baseCatalog = Array.isArray(fieldCatalog) ? fieldCatalog : []
+    if (!labelData || Object.keys(labelData).length === 0) return baseCatalog
     const existingKeys = new Set(baseCatalog.map((c) => c.key.toLowerCase()))
-    const dynamicFields = []
+    const extra = []
     for (const [k, v] of Object.entries(labelData)) {
       if (typeof v === 'object' || v == null) continue
       if (!existingKeys.has(k.toLowerCase()) && String(v).trim() !== '') {
         existingKeys.add(k.toLowerCase())
-        dynamicFields.push({
+        extra.push({
           key: k,
           label: k.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase()).trim(),
           type: 'text',
@@ -158,7 +159,7 @@ export default function ComponentsSidebar() {
         })
       }
     }
-    return dynamicFields.length ? [...baseCatalog, ...dynamicFields] : baseCatalog
+    return extra.length ? [...baseCatalog, ...extra] : baseCatalog
   })()
 
   const q = fieldSearch.trim().toLowerCase()
@@ -222,20 +223,41 @@ export default function ComponentsSidebar() {
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--panel-2)] text-[var(--mut)] mb-2.5">
                 <FileCode size={20} />
               </div>
-              <p className="text-[12.5px] font-medium text-[var(--tx)] mb-1">
-                No Opti fields loaded
-              </p>
-              <p className="text-[11.5px] leading-relaxed text-[var(--mut)] mb-3">
-                Import an .OIF file to automatically extract and populate piece and note fields.
-              </p>
-              <button
-                type="button"
-                onClick={() => useLabelStore.getState().setModal('showOifImportModal', true)}
-                className="lc-btn lc-btn-primary lc-btn-sm"
-              >
-                <FolderOpen size={13} />
-                <span>Import OIF file</span>
-              </button>
+              {client === 'erp' ? (
+                <>
+                  <p className="text-[12.5px] font-medium text-[var(--tx)] mb-1">
+                    No ERP fields yet
+                  </p>
+                  <p className="text-[11.5px] leading-relaxed text-[var(--mut)] mb-3">
+                    Connect SQL Server in Settings. Fields load from the database — or from one table if you pick one.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => useLabelStore.getState().setActiveTab('settings')}
+                    className="lc-btn lc-btn-primary lc-btn-sm"
+                  >
+                    <Database size={13} />
+                    <span>Open Settings</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="text-[12.5px] font-medium text-[var(--tx)] mb-1">
+                    No Opti fields loaded
+                  </p>
+                  <p className="text-[11.5px] leading-relaxed text-[var(--mut)] mb-3">
+                    Import an .OIF file to automatically extract and populate piece and note fields.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => useLabelStore.getState().setModal('showOifImportModal', true)}
+                    className="lc-btn lc-btn-primary lc-btn-sm"
+                  >
+                    <FolderOpen size={13} />
+                    <span>Import OIF file</span>
+                  </button>
+                </>
+              )}
             </div>
           ) : filteredCatalog.length === 0 ? (
             <p className="px-2 py-6 text-center text-[13px] text-[var(--mut)]">
@@ -260,8 +282,8 @@ export default function ComponentsSidebar() {
                   <span className="lc-field-name block truncate">{field.label || field.key}</span>
                   <span className="lc-field-key block truncate">{field.key}</span>
                 </span>
-                <span className={`lc-badge flex-none ${isNote ? 'lc-badge-warn' : 'lc-badge-opti'}`}>
-                  {isNote ? 'Note' : 'Piece'}
+                <span className={`lc-badge flex-none ${isNote ? 'lc-badge-warn' : client === 'erp' ? 'lc-badge-erp' : 'lc-badge-opti'}`}>
+                  {isNote ? 'Note' : client === 'erp' ? (field.table || field.source || 'SQL') : 'Piece'}
                 </span>
               </button>
             )

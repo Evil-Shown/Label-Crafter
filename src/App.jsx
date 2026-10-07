@@ -65,7 +65,7 @@ export default function App() {
   useEffect(() => {
     const onBeforeUnload = (e) => {
       const s = useLabelStore.getState()
-      if (s.dbStatus !== 'connected') {
+      if (s.dbServer && s.dbStatus === 'offline') {
         e.preventDefault()
         e.returnValue = ''
         return ''

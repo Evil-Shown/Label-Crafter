@@ -34,7 +34,11 @@ export default function FieldPickerModal() {
   const open = useLabelStore((s) => s.showFieldPicker)
   const callback = useLabelStore((s) => s.fieldPickerCallback)
   const client = useLabelStore((s) => s.client)
-  const catalog = useMemo(() => catalogForClient(client), [client])
+  const fieldCatalog = useLabelStore((s) => s.fieldCatalog)
+  const catalog = useMemo(
+    () => (client === 'erp' ? fieldCatalog || [] : catalogForClient('opti')),
+    [client, fieldCatalog],
+  )
 
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)

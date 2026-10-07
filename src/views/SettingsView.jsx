@@ -15,6 +15,7 @@ import {
   Save,
   RefreshCw,
   KeyRound,
+  Unlink,
 } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
 import { formatSize } from '../utils/units'
@@ -71,6 +72,18 @@ export default function SettingsView() {
     dbDatabase,
     dbPort,
     dbAuthType,
+    dbSchema,
+    dbTable,
+    dbSqlUser,
+    dbPassword,
+    dbTables,
+    dbInspectError,
+    erpUseSeparate,
+    erpDbServer,
+    erpDbPort,
+    erpDbDatabase,
+    erpDbSchema,
+    erpDbTable,
     dbStatus,
     dbLatencyMs,
     printServiceUrl,
@@ -89,6 +102,9 @@ export default function SettingsView() {
   const checkServiceHealth = useLabelStore((s) => s.checkServiceHealth)
   const refreshTemplateLibrary = useLabelStore((s) => s.refreshTemplateLibrary)
   const setDbConfig = useLabelStore((s) => s.setDbConfig)
+  const clearDbConfig = useLabelStore((s) => s.clearDbConfig)
+  const inspectErpSchema = useLabelStore((s) => s.inspectErpSchema)
+  const requestConfirmation = useLabelStore((s) => s.requestConfirmation)
   const addToast = useLabelStore((s) => s.addToast)
 
   // Draft values: nothing is written until Save is pressed.
@@ -97,13 +113,24 @@ export default function SettingsView() {
     port: dbPort,
     database: dbDatabase,
     authType: dbAuthType,
+    schema: dbSchema,
+    table: dbTable,
+    sqlUser: dbSqlUser,
+    password: dbPassword,
     printServiceUrl,
     printerBrand,
     printerDpi,
     printerHost,
     printerPort,
   })
-  const [erpMode, setErpMode] = useState('same')
+  const [erpMode, setErpMode] = useState(erpUseSeparate ? 'different' : 'same')
+  const [erpDraft, setErpDraft] = useState({
+    server: erpDbServer,
+    port: erpDbPort,
+    database: erpDbDatabase,
+    schema: erpDbSchema,
+    table: erpDbTable,
+  })
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState(null)
 
@@ -114,44 +141,86 @@ export default function SettingsView() {
       port: dbPort,
       database: dbDatabase,
       authType: dbAuthType,
+      schema: dbSchema,
+      table: dbTable,
+      sqlUser: dbSqlUser,
       printServiceUrl,
       printerBrand,
       printerDpi,
       printerHost,
       printerPort,
     }))
-  }, [dbServer, dbPort, dbDatabase, dbAuthType, printServiceUrl, printerBrand, printerDpi, printerHost, printerPort])
+    setErpMode(erpUseSeparate ? 'different' : 'same')
+    setErpDraft({
+      server: erpDbServer,
+      port: erpDbPort,
+      database: erpDbDatabase,
+      schema: erpDbSchema,
+      table: erpDbTable,
+    })
+  }, [dbServer, dbPort, dbDatabase, dbAuthType, dbSchema, dbTable, dbSqlUser, erpUseSeparate, erpDbServer, erpDbPort, erpDbDatabase, erpDbSchema, erpDbTable, printServiceUrl, printerBrand, printerDpi, printerHost, printerPort])
 
   const patch = (k) => (e) => {
     const raw = e.target.value
     setDraft((d) => ({ ...d, [k]: e.target.type === 'number' ? Number(raw) : raw }))
   }
 
+  const persistDraft = () => {
+    setDbConfig({
+      dbServer: draft.server,
+      dbPort: draft.port,
+      dbDatabase: draft.database,
+      dbAuthType: draft.authType,
+      dbSchema: draft.schema,
+      dbTable: draft.table,
+      dbSqlUser: draft.sqlUser,
+      dbPassword: draft.password,
+      erpUseSeparate: erpMode === 'different',
+      erpDbServer: erpDraft.server,
+      erpDbPort: erpDraft.port,
+      erpDbDatabase: erpDraft.database,
+      erpDbSchema: erpDraft.schema,
+      erpDbTable: erpDraft.table,
+    })
+  }
+
   const handleTest = async () => {
     setTesting(true)
     setTestResult(null)
+    persistDraft()
+    const result = await inspectErpSchema()
+    const s = useLabelStore.getState()
+    const fieldCount = (s.fieldCatalog || []).length
+    const tableCount = (s.dbTables || []).length
+    setTestResult({
+      ok: result.ok,
+      ms: s.dbLatencyMs,
+      message: result.ok
+        ? `Connected in ${s.dbLatencyMs} ms · ${tableCount} tables · ${fieldCount} columns`
+        : result.error || s.dbInspectError || 'Could not reach the database.',
+    })
+    setTesting(false)
+  }
+
+  const handlePrintTest = async () => {
+    setTesting(true)
+    setPrintConfig({ printServiceUrl: draft.printServiceUrl })
     await checkServiceHealth()
     const s = useLabelStore.getState()
     setTestResult({
-      ok: s.dbStatus === 'connected',
-      ms: s.dbLatencyMs,
+      ok: s.printServiceStatus === 'connected',
       message:
-        s.dbStatus === 'connected'
-          ? `Connected in ${s.dbLatencyMs} ms · found ${countFor('opti')} Opti and ${countFor('erp')} ERP templates`
-          : 'Could not reach the database. Check the server name and that SQL Server is running.',
+        s.printServiceStatus === 'connected'
+          ? 'Print service is reachable'
+          : 'Print service is not reachable. Check the address and that the Windows Service is running.',
     })
     setTesting(false)
   }
 
   const countFor = (c) => templateLibrary.filter((t) => (t.client || 'opti') === c).length
 
-  const handleSave = () => {
-    setDbConfig({
-      dbServer: draft.server,
-      dbPort: draft.port,
-      dbDatabase: draft.database,
-      dbAuthType: draft.authType,
-    })
+  const handleSave = async () => {
+    persistDraft()
     setPrintConfig({
       printServiceUrl: draft.printServiceUrl,
       printerBrand: draft.printerBrand,
@@ -160,8 +229,40 @@ export default function SettingsView() {
       printerPort: draft.printerPort,
     })
     refreshTemplateLibrary()
+    if (draft.server && draft.database) await inspectErpSchema()
     addToast({ message: 'Settings saved', type: 'success' })
   }
+
+  const handleRemoveConnection = () => {
+    requestConfirmation({
+      title: 'Remove database connection?',
+      message: 'SQL details on this PC will be cleared. ERP fields will stay empty until you connect again. Templates already on this PC are not deleted.',
+      confirmLabel: 'Remove connection',
+      tone: 'danger',
+      onConfirm: () => {
+        clearDbConfig()
+        setDraft((d) => ({
+          ...d,
+          server: '',
+          database: '',
+          port: 1433,
+          authType: 'windows',
+          schema: '',
+          table: '',
+          sqlUser: '',
+          password: '',
+        }))
+        setErpMode('same')
+        setErpDraft({ server: '', port: 1433, database: '', schema: '', table: '' })
+        setTestResult(null)
+        addToast({ message: 'Database connection removed', type: 'info' })
+      },
+    })
+  }
+
+  const tableOptions = (dbTables || []).map((t) => (typeof t === 'string' ? t : `${t.schema ? `${t.schema}.` : ''}${t.name}`))
+  const connected = dbStatus === 'connected'
+  const configured = Boolean(String(dbServer || draft.server || '').trim())
 
   const meta = NAV.find((n) => n.id === activeNav)
 
@@ -207,16 +308,21 @@ export default function SettingsView() {
                   title="Connection"
                   icon={Database}
                   action={
-                    <span className={`lc-connection-status ${dbStatus === 'connected' ? 'is-online' : 'is-offline'}`}>
-                      {dbStatus === 'connected' ? (
+                    <span className={`lc-connection-status ${connected ? 'is-online' : 'is-offline'}`}>
+                      {connected ? (
                         <>
                           <CircleCheck size={13} />
                           Connected · {dbLatencyMs} ms
                         </>
-                      ) : (
+                      ) : configured ? (
                         <>
                           <TriangleAlert size={13} />
                           Offline
+                        </>
+                      ) : (
+                        <>
+                          <TriangleAlert size={13} />
+                          Not connected
                         </>
                       )}
                     </span>
@@ -252,6 +358,39 @@ export default function SettingsView() {
                     </Field>
                   </div>
 
+                  <div className="mt-4 grid grid-cols-2 gap-4">
+                    <Field
+                      label="Schema"
+                      hint="Optional. Leave blank for every schema. Default on SQL Server is dbo."
+                    >
+                      <input
+                        type="text"
+                        value={draft.schema || ''}
+                        onChange={patch('schema')}
+                        placeholder="dbo (optional)"
+                        className="lc-input !h-10"
+                      />
+                    </Field>
+                    <Field
+                      label="Table"
+                      hint="Optional. Empty = whole database. Pick one table for a large SaaS database."
+                    >
+                      <input
+                        type="text"
+                        list="lc-db-tables"
+                        value={draft.table || ''}
+                        onChange={patch('table')}
+                        placeholder="Whole database"
+                        className="lc-input !h-10"
+                      />
+                      <datalist id="lc-db-tables">
+                        {tableOptions.map((name) => (
+                          <option key={name} value={name.includes('.') ? name.split('.').pop() : name} label={name} />
+                        ))}
+                      </datalist>
+                    </Field>
+                  </div>
+
                   <div className="mt-4">
                     <Field label="Sign in with">
                       <div className="lc-segment">
@@ -274,9 +413,41 @@ export default function SettingsView() {
                       </div>
                     </Field>
                     <p className="mt-2 text-[12px] leading-snug text-[var(--mut)]">
-                      The password is kept in Windows Credential Manager, never in a plain text file.
+                      SQL passwords stay in memory for this session. Windows auth uses the Label Print Service account.
                     </p>
                   </div>
+
+                  {draft.authType === 'sql' && (
+                    <div className="mt-4 grid grid-cols-2 gap-4">
+                      <Field label="SQL user">
+                        <input
+                          type="text"
+                          value={draft.sqlUser || ''}
+                          onChange={patch('sqlUser')}
+                          placeholder="sql login"
+                          className="lc-input !h-10"
+                          autoComplete="off"
+                        />
+                      </Field>
+                      <Field label="Password">
+                        <input
+                          type="password"
+                          value={draft.password || ''}
+                          onChange={patch('password')}
+                          placeholder="not saved to disk"
+                          className="lc-input !h-10"
+                          autoComplete="new-password"
+                        />
+                      </Field>
+                    </div>
+                  )}
+
+                  {dbInspectError && !testResult && (
+                    <div className="lc-msg lc-msg-err mt-4">
+                      <TriangleAlert size={15} className="flex-none" />
+                      <span className="text-[13px] font-medium">{dbInspectError}</span>
+                    </div>
+                  )}
 
                   {testResult && (
                     <div className={`lc-msg ${testResult.ok ? 'lc-msg-ok' : 'lc-msg-err'} mt-4`}>
@@ -297,6 +468,15 @@ export default function SettingsView() {
                     <button type="button" onClick={handleSave} className="lc-btn lc-btn-primary !h-10">
                       <Save size={15} />
                       <span>Save changes</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleRemoveConnection}
+                      disabled={!configured}
+                      className="lc-btn lc-btn-ghost !h-10 text-[var(--mut)] hover:text-[var(--tx)]"
+                    >
+                      <Unlink size={15} />
+                      <span>Remove connection</span>
                     </button>
                   </div>
                 </Card>
@@ -398,6 +578,8 @@ export default function SettingsView() {
                   <Field label="ERP server">
                     <input
                       type="text"
+                      value={erpDraft.server || ''}
+                      onChange={(e) => setErpDraft((d) => ({ ...d, server: e.target.value }))}
                       placeholder="e.g. ERP-SQL01"
                       className="lc-input !h-10"
                     />
@@ -405,6 +587,8 @@ export default function SettingsView() {
                   <Field label="ERP port">
                     <input
                       type="number"
+                      value={erpDraft.port || ''}
+                      onChange={(e) => setErpDraft((d) => ({ ...d, port: Number(e.target.value) }))}
                       placeholder="1433"
                       className="lc-input !h-10"
                     />
@@ -412,12 +596,66 @@ export default function SettingsView() {
                   <Field label="ERP database">
                     <input
                       type="text"
+                      value={erpDraft.database || ''}
+                      onChange={(e) => setErpDraft((d) => ({ ...d, database: e.target.value }))}
                       placeholder="e.g. SpilErp"
                       className="lc-input !h-10"
                     />
                   </Field>
                 </div>
               )}
+
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <Field
+                  label="ERP schema"
+                  hint="Optional. Leave blank to read every schema in the database."
+                >
+                  <input
+                    type="text"
+                    value={(erpMode === 'different' ? erpDraft.schema : draft.schema) || ''}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      if (erpMode === 'different') setErpDraft((d) => ({ ...d, schema: v }))
+                      else setDraft((d) => ({ ...d, schema: v }))
+                    }}
+                    placeholder="dbo (optional)"
+                    className="lc-input !h-10"
+                  />
+                </Field>
+                <Field
+                  label="ERP table"
+                  hint="Optional. Empty uses the whole database. Choose one table for a huge SaaS DB."
+                >
+                  <input
+                    type="text"
+                    list="lc-erp-tables"
+                    value={(erpMode === 'different' ? erpDraft.table : draft.table) || ''}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      if (erpMode === 'different') setErpDraft((d) => ({ ...d, table: v }))
+                      else setDraft((d) => ({ ...d, table: v }))
+                    }}
+                    placeholder="Whole database"
+                    className="lc-input !h-10"
+                  />
+                  <datalist id="lc-erp-tables">
+                    {tableOptions.map((name) => (
+                      <option key={name} value={name.includes('.') ? name.split('.').pop() : name} label={name} />
+                    ))}
+                  </datalist>
+                </Field>
+              </div>
+
+              <div className="mt-5">
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  className="lc-btn lc-btn-primary !h-10"
+                >
+                  <Save size={15} />
+                  <span>Save ERP source</span>
+                </button>
+              </div>
             </Card>
           )}
 
@@ -453,7 +691,7 @@ export default function SettingsView() {
                 <div className="mt-5 flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={handleTest}
+                    onClick={handlePrintTest}
                     disabled={testing}
                     className="lc-btn lc-btn-secondary !h-10"
                   >
@@ -533,7 +771,7 @@ export default function SettingsView() {
                 <dl className="grid gap-3 sm:grid-cols-2">
                   {[
                     ['Version', '1.0 · standalone'],
-                    ['Database', `${dbServer} · ${dbDatabase}`],
+                    ['Database', dbServer ? `${dbServer} · ${dbDatabase}${dbTable ? ` · ${dbTable}` : ''}` : 'Not connected'],
                     ['Print service', printServiceUrl],
                     ['Active client', client === 'erp' ? 'ERP' : 'Opti'],
                     ['Label size', formatSize(useLabelStore.getState().width, useLabelStore.getState().height)],

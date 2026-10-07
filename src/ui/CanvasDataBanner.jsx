@@ -20,6 +20,7 @@ export default function CanvasDataBanner() {
   const realDataInfo = useLabelStore((s) => s.realDataInfo)
   const client = useLabelStore((s) => s.client)
   const dbStatus = useLabelStore((s) => s.dbStatus)
+  const dbServer = useLabelStore((s) => s.dbServer)
   const dbRetryIn = useLabelStore((s) => s.dbRetryIn)
   const printServiceStatus = useLabelStore((s) => s.printServiceStatus)
   const printServiceUrl = useLabelStore((s) => s.printServiceUrl)
@@ -30,7 +31,7 @@ export default function CanvasDataBanner() {
   return (
     <>
       {/* Database offline — read-only, with back-off countdown (offline.png) */}
-      {dbStatus !== 'connected' && (
+      {dbStatus === 'offline' && Boolean(dbServer) && (
         <div className="lc-strip lc-strip-warn">
           <Lock size={15} className="flex-none" />
           <span className="min-w-0 flex-1">

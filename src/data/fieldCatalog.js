@@ -30,22 +30,9 @@ export const OPTI_FIELD_CATALOG = [
   { key: 'note3.field1', label: 'Note 3 field 1', type: 'text', source: 'notes' },
 ]
 
-export const ERP_FIELD_CATALOG = [
-  { key: 'OrderNo', label: 'Order number', type: 'text', source: 'piece' },
-  { key: 'CustOrderNo', label: 'Customer order', type: 'text', source: 'piece' },
-  { key: 'JobDescription', label: 'Job description', type: 'text', source: 'piece' },
-  { key: 'Dimensions', label: 'Dimensions', type: 'text', source: 'piece' },
-  { key: 'GlassSpec', label: 'Glass spec', type: 'text', source: 'piece' },
-  { key: 'MarkAs', label: 'Mark', type: 'text', source: 'piece' },
-  { key: 'DeliveryDate', label: 'Delivery date', type: 'text', source: 'piece' },
-  { key: 'Sqm', label: 'Square metres', type: 'text', source: 'piece' },
-  { key: 'LineRef', label: 'Line ref', type: 'text', source: 'piece' },
-  { key: 'Route', label: 'Route', type: 'text', source: 'piece' },
-  { key: 'WeightKg', label: 'Weight kg', type: 'text', source: 'piece' },
-  { key: 'Barcode', label: 'Barcode', type: 'barcode', source: 'piece' },
-  { key: 'ProcessNotes', label: 'Process notes', type: 'text', source: 'piece' },
-]
+/** ERP has no dummy catalog — columns load from SQL after a successful connection. */
+export const ERP_FIELD_CATALOG = []
 
 export function catalogForClient(client) {
-  return client === 'erp' ? ERP_FIELD_CATALOG : OPTI_FIELD_CATALOG
+  return client === 'erp' ? [] : OPTI_FIELD_CATALOG
 }

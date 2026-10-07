@@ -18,6 +18,17 @@ export async function fetchDesignSession(serviceUrl, sessionId) {
   return res.json()
 }
 
+/** Read SQL table/column names for the ERP field list. Password is not stored on the service. */
+export async function inspectDatabase(serviceUrl, body) {
+  const res = await fetch(`${baseUrl(serviceUrl)}/api/db/inspect`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body || {}),
+  })
+  if (!res.ok) throw new Error(await readError(res))
+  return res.json()
+}
+
 export async function fetchFieldCatalog(serviceUrl, client) {
   const res = await fetch(`${baseUrl(serviceUrl)}/api/field-catalog?client=${encodeURIComponent(client)}`)
   if (!res.ok) throw new Error(await readError(res))
