@@ -8,6 +8,7 @@ import {
   resolveFieldDisplayText,
   resolveMappedPreview,
 } from '../utils/template'
+import { effectiveFormat } from '../utils/formatFormula'
 
 /** Keys shown inside the grey dashed chip when a bound field has no real data. */
 const CHIP_FONT = '600 11px "JetBrains Mono", ui-monospace, monospace'
@@ -126,6 +127,28 @@ function isBoldWeight(weight) {
   if (w === 'bold' || w === 'bolder') return true
   const n = Number(weight)
   return Number.isFinite(n) && n >= 600
+}
+
+function strokeSides(ctx, w, h, style) {
+  const sides = [
+    ['borderTop', 0.5, 0.5, w - 0.5, 0.5],
+    ['borderRight', w - 0.5, 0.5, w - 0.5, h - 0.5],
+    ['borderBottom', 0.5, h - 0.5, w - 0.5, h - 0.5],
+    ['borderLeft', 0.5, 0.5, 0.5, h - 0.5],
+  ]
+  ctx.save()
+  ctx.strokeStyle = style.borderColor || '#000'
+  ctx.lineWidth = 1
+  for (const [key, x1, y1, x2, y2] of sides) {
+    const mode = style[key] || 'none'
+    if (mode === 'none') continue
+    ctx.setLineDash(mode === 'dashed' ? [4, 3] : [])
+    ctx.beginPath()
+    ctx.moveTo(x1, y1)
+    ctx.lineTo(x2, y2)
+    ctx.stroke()
+  }
+  ctx.restore()
 }
 
 function drawEmptyDxf(ctx, w, h, field) {
@@ -361,36 +384,66 @@ export async function buildFieldCanvas(
   const data = showLiveTokens ? labelData : {}
 
   if (isTextLikeType(type)) {
-    let text = resolveFieldDisplayText(field, data, { showLiveTokens })
+    const style = effectiveFormat(field, data)
+    let text = style.display != null && String(style.display) !== ''
+      ? style.display
+      : resolveFieldDisplayText(field, data, { showLiveTokens })
     if (text == null || !String(text).trim()) {
       text = field.value || field.fallbackValue || field.label || ''
     }
-    const fs = field.fontSize || globalStyles?.defaultFontSize || 12
-    const ff = field.fontFamily || globalStyles?.fontFamily || 'Arial'
-    const fw = isBoldWeight(field.fontWeight) ? 'bold' : 'normal'
+    if (options?.seenTexts && field.suppressIfDuplicated) {
+      const key = String(text)
+      if (options.seenTexts.has(key)) style.suppress = true
+      else options.seenTexts.add(key)
+    }
+    if (style.suppress) return canvasTexture(canvas, { crisp: false })
+
+    const fs = style.fontSize || globalStyles?.defaultFontSize || 12
+    const ff = style.fontFamily || globalStyles?.fontFamily || 'Arial'
+    const fw = isBoldWeight(style.fontWeight) ? 'bold' : 'normal'
+    const italic = style.fontStyle === 'italic' ? 'italic ' : ''
     const inverted = !!(field.blackBox || field.isBlackBox)
 
+    if (style.background && !inverted) {
+      ctx.fillStyle = style.backgroundColor || '#ffffff'
+      ctx.fillRect(0, 0, w, h)
+    }
     if (inverted) {
       ctx.fillStyle = '#000000'
       ctx.fillRect(0, 0, w, h)
-      ctx.fillStyle = field.color && field.color !== '#000000' ? field.color : '#ffffff'
+      ctx.fillStyle = style.color && style.color !== '#000000' ? style.color : '#ffffff'
     } else {
-      ctx.fillStyle = field.color || globalStyles?.defaultColor || '#000'
+      ctx.fillStyle = style.color || globalStyles?.defaultColor || '#000'
     }
 
-    ctx.font = `${fw} ${fs}px ${ff}`
-    const align = String(field.textAlign || 'left').toLowerCase()
+    ctx.font = `${italic}${fw} ${fs}px ${ff}`
+    if (style.letterSpacing) ctx.letterSpacing = `${style.letterSpacing}px`
+    const align = String(style.textAlign || 'left').toLowerCase()
     ctx.textAlign = align === 'center' || align === 'middle' ? 'center'
       : align === 'right' || align === 'end' ? 'right'
       : 'left'
     ctx.textBaseline = 'middle'
     const pad = inverted ? 4 : 2
-    const lines = String(text || '').split('\n')
+    let lines = String(text || '').split('\n')
+    if (style.canGrow && lines.length === 1) {
+      const words = lines[0].split(/\s+/)
+      const wrapped = []
+      let cur = ''
+      for (const word of words) {
+        const trial = cur ? `${cur} ${word}` : word
+        if (ctx.measureText(trial).width > w - pad * 2 && cur) {
+          wrapped.push(cur)
+          cur = word
+        } else cur = trial
+      }
+      if (cur) wrapped.push(cur)
+      lines = wrapped
+    }
+    if (style.maxLines > 0) lines = lines.slice(0, style.maxLines)
     const lineH = fs * 1.2
     const totalH = Math.max(lineH, lines.length * lineH)
     let y = (h - totalH) / 2 + lineH / 2
 
-    // Clip text to bounding box with padding to prevent spilling over into other components
     ctx.save()
     ctx.beginPath()
     ctx.rect(0, 0, w, h)
@@ -401,14 +454,26 @@ export async function buildFieldCanvas(
       if (ctx.textAlign === 'center') x = w / 2
       if (ctx.textAlign === 'right') x = w - pad
       ctx.fillText(line, x, y, Math.max(1, w - pad * 2))
+      const measured = Math.min(ctx.measureText(line).width, w - pad * 2)
+      const start = ctx.textAlign === 'center' ? x - measured / 2 : ctx.textAlign === 'right' ? x - measured : x
+      ctx.strokeStyle = ctx.fillStyle
+      ctx.lineWidth = Math.max(1, fs / 14)
+      if (style.underline) {
+        ctx.beginPath()
+        ctx.moveTo(start, y + fs * 0.35)
+        ctx.lineTo(start + measured, y + fs * 0.35)
+        ctx.stroke()
+      }
+      if (style.strikeout) {
+        ctx.beginPath()
+        ctx.moveTo(start, y)
+        ctx.lineTo(start + measured, y)
+        ctx.stroke()
+      }
       y += lineH
     }
     ctx.restore()
-    if (field.border) {
-      ctx.strokeStyle = '#000'
-      ctx.lineWidth = 1
-      ctx.strokeRect(0.5, 0.5, w - 1, h - 1)
-    }
+    strokeSides(ctx, w, h, style)
     return canvasTexture(canvas, { crisp: false })
   }
 

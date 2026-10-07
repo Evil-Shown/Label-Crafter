@@ -251,9 +251,10 @@ export default function LabelCanvas() {
     sm.clearMeshes()
     const visible = fields.filter((f) => !f.hidden)
     const sorted = [...visible].sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0))
+    const seenTexts = new Set()
     const pr = getTexturePixelRatio(useLabelStore.getState().zoom)
     for (const field of sorted) {
-      const tex = await buildFieldCanvas(field, labelData, globalStyles, showLiveTokens, pr, { showKeysOnCanvas })
+      const tex = await buildFieldCanvas(field, labelData, globalStyles, showLiveTokens, pr, { showKeysOnCanvas, seenTexts })
       const w = Math.max(1, field.width)
       const h = Math.max(1, field.height)
       const mesh = new THREE.Mesh(

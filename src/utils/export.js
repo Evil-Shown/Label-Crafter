@@ -22,6 +22,7 @@ export async function renderLabelToCanvas(state, { thermal = false, dpi } = {}) 
     .filter((f) => !f.hidden)
     .sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0))
 
+  const seenTexts = new Set()
   const exportPr = Math.max(2, getTexturePixelRatio(scale))
   for (const field of fields) {
     const tex = await buildFieldCanvas(
@@ -30,6 +31,7 @@ export async function renderLabelToCanvas(state, { thermal = false, dpi } = {}) 
       state.globalStyles,
       state.showLiveTokens,
       exportPr,
+      { seenTexts },
     )
     const img = tex.image
     const x = field.x ?? 0

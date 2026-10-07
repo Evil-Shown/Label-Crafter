@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import { getMuiTheme } from './theme/muiTheme'
@@ -30,6 +30,8 @@ import ServerLibraryModal from './ui/ServerLibraryModal'
 import ToastContainer from './ui/Toast'
 import ConfirmationDialog from './ui/ConfirmationDialog'
 import StartupSplashScreen from './ui/StartupSplashScreen'
+import AppLauncher from './ui/AppLauncher'
+import ReportDesignerView from './views/ReportDesignerView'
 
 import { useLabelStore } from './store/labelStore'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
@@ -44,6 +46,12 @@ export default function App() {
   const addToast = useLabelStore((s) => s.addToast)
   const checkServiceHealth = useLabelStore((s) => s.checkServiceHealth)
   const tickRetryCountdown = useLabelStore((s) => s.tickRetryCountdown)
+  const [product, setProduct] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    const embedded = window.parent && window.parent !== window
+    if (embedded || params.get('session') || params.get('view')) return 'labels'
+    return null
+  })
 
   useKeyboardShortcuts()
 
@@ -125,6 +133,10 @@ export default function App() {
     <ThemeProvider theme={muiTheme}>
       <CssBaseline />
       <div className="lc-app-shell relative flex h-full w-full flex-col overflow-hidden font-sans">
+        {product === 'reports' ? (
+          <ReportDesignerView onBack={() => setProduct(null)} />
+        ) : (
+          <>
         {/* 1-5: Top header — title, tabs, Opti/ERP switch, status dots, Export, Save */}
         <TopHeader />
 
@@ -172,9 +184,12 @@ export default function App() {
         <ServerLibraryModal />
         <ToastContainer />
         <ConfirmationDialog />
+          </>
+        )}
 
-        {/* Windows App Startup Opening Animation Window */}
-        {showSplashScreen && (
+        {product == null && <AppLauncher onChoose={setProduct} />}
+
+        {product === 'labels' && showSplashScreen && (
           <StartupSplashScreen onComplete={() => useLabelStore.setState({ showSplashScreen: false })} />
         )}
       </div>

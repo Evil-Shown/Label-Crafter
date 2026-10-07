@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { useLabelStore } from '../store/labelStore'
 import MappingDialog from './MappingDialog'
+import FormatEditor from './FormatEditor'
 import { mmToPx, pxToMm } from '../utils/units'
 import { elementDisplayName, elementIcon } from '../elements/typeMeta'
 
@@ -595,8 +596,17 @@ export default function PropertiesPanel() {
           )}
         </Group>
 
+        {isText && (
+          <Group n={3} title="Format">
+            <FormatEditor
+              field={field}
+              onChange={(partial) => updateField(field.fieldKey, partial)}
+            />
+          </Group>
+        )}
+
         {/* 3. Position & size — millimetres everywhere */}
-        <Group n={3} title="Position & size">
+        <Group n={4} title="Position & size">
           <div className="grid grid-cols-4 gap-2">
             <Field label="X">
               <MmInput
